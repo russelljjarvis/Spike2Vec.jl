@@ -27,15 +27,13 @@ end
 IF
 
 function integrate!(p::IF, param::IFParameter, dt::Float32)
-    @unpack N, v, ge, gi, fire, I = p
-    @unpack τm, τe, τi, Vt, Vr, El = param
-    @inbounds for i = 1:N
-        v[i] += dt * (ge[i] + gi[i] - (v[i] - El) + I[i]) / τm
-        ge[i] += dt * -ge[i] / τe
-        gi[i] += dt * -gi[i] / τi
-    end
-    @inbounds for i = 1:N
-        fire[i] = v[i] > Vt
-        v[i] = ifelse(fire[i], Vr, v[i])
+    @inbounds for i = 1:p.N
+        p.v[i] += dt * (p.ge[i] + p.gi[i] - (p.v[i] - param.El) + p.I[i]) / param.τm
+        p.ge[i] += dt * -p.ge[i] / param.τe
+        p.gi[i] += dt * -p.gi[i] / param.τi
+    #end
+    #@inbounds for i = 1:p.N
+        p.fire[i] = p.v[i] > param.Vt
+        p.v[i] = ifelse(p.fire[i], param.Vr, p.v[i])
     end
 end

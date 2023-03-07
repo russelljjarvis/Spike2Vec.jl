@@ -41,6 +41,27 @@ function record!(obj)
     end
 end
 
+
+    #=
+    cellsa = Array{Union{Missing,Any}}(undef, 1, Int(findmax(y)[1]))
+    nac = Int(findmax(y)[1])
+    for (inx, cell_id) in enumerate(1:nac)
+        cellsa[inx] = []
+    end
+    @inbounds for cell_id in unique(y)
+        @inbounds for (time, cell) in collect(zip(x, y))
+            if Int(cell_id) == cell
+                append!(cellsa[Int(cell_id)], time)
+            end
+        end
+    end
+    cellsa
+
+end
+=#
+
+
+
 function monitor(obj, keys)
     for key in keys
         if isa(key, Tuple)
@@ -59,6 +80,34 @@ function monitor(objs::Array, keys)
     end
 end
 
+function get_trains(P::Array)
+    y0 = Int32[0]
+    X = Float32[]; Y = Float32[]
+    for p in P
+        x, y = get_trains(p)
+        append!(X, x)
+        append!(Y, y)
+        #push!(y0, p.N)
+    end
+    #plt = scatter(X, Y, m = (1, :black), leg = :none,
+    #              xaxis=("t", (0, Inf)), yaxis = ("neuron",))
+    #y0 = y0[2:end-1]
+    #!isempty(y0) && hline!(plt, cumsum(y0), linecolor = :red)
+    #return plt
+    (X,Y)
+end
+
+function get_trains(p)
+    fire = p.records[:fire]
+    x, y = Float32[], Int32[]
+    for time in eachindex(fire)
+        for neuron_id in findall(fire[time])
+            push!(x, time)
+            push!(y, neuron_id)
+        end
+    end
+    (x,y)
+end
 function getrecord(p, sym)
     key = sym
     for (k,val) in p.records
