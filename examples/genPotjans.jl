@@ -50,6 +50,7 @@ Ideally iteration could flatten to support the readability of subsequent code.
 """
 #function index_assignment!(item,w0Weights,Lexc,Linh,g_strengths::Vector{Float64})#,Ne,Ni)  
 function index_assignment!(item::Tuple{Int64, Int64, String, String}, w0Weights::SparseMatrixCSC{Float64, Int64}, g_strengths::Vector{Float64})
+    mul!(g_strengths, 0.01)
     (jee,jie,jei,jii) = g_strengths
     # Mean synaptic weight for all excitatory projections except L4e->L2/3e
     w_mean = 87.8e-3  # nA
@@ -73,6 +74,8 @@ function index_assignment!(item::Tuple{Int64, Int64, String, String}, w0Weights:
                 d = Normal(w_234,w_rel_234)
                 td = truncated(d, 0.0, Inf)
                 weight = abs(rand(td, 1))
+                mul!(weight, 0.01)
+
                 setindex!(w0Weights, weight, src,tgt)
             else         
                 setindex!(w0Weights, jee, src,tgt)
