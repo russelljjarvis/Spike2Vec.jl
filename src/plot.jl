@@ -1,8 +1,8 @@
-#using .Plots
+using .Plots
 #using Plots
 # FIXME: using StatsBase
-#using StatsPlots
-#using StatsBase
+using StatsPlots
+using StatsBase
 
 function bespoke_2dhist(nbins::Int64,times::Vector{Float32},nodes::Vector{Int64},fname=nothing)
 
@@ -66,7 +66,9 @@ function normalised_2dhist(data)
     #    data[ind,:] .= row .- StatsBase.mean(row)./sum(row)
     #    @show(data[ind,:]) 
     #end
-    data = data[:,:]./maximum(data[:,:])
+    #data = data[:,:]./maximum(data[:,:])
+    #data = x ./ norm.(eachrow(x))'
+    foreach(normalize!, eachcol(data'))
     return data
 end
 

@@ -9,7 +9,7 @@ using Requires
 using UnPack
 using StatsPlots
 #using StatsBase
-using Plots
+#using Plots
 
 #using StaticArrays
 include("genPotjans.jl")

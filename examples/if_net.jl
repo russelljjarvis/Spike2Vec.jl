@@ -7,6 +7,7 @@ using SpikingNeuralNetworks
 #using OhMyREPL
 SNN.@load_units
 using SparseArrays
+import LinearAlgebra.normalize!
 #using ProfileView
 
 function potjans_layer(scale=1.0::Float64)
@@ -27,7 +28,7 @@ function potjans_layer(scale=1.0::Float64)
 end
 
 function potjans_layer()
-    scale = 1.0/40.0
+    scale = 1.0/50.0
     #Ncells,Ne,Ni, ccu = potjans_layer(scale)    
     Ncells,Ne,Ni, ccu = potjans_layer(scale)    
 
@@ -63,68 +64,78 @@ end
 #@show(type)
 type_ = SparseMatrixCSC{Float32, Int64}
 function getpopulations(Lee::type_,Lei::type_,Lii::type_,Lie::type_)
-    #EE = Lee+Lei
-    #II = Lie+Lii
-    eerow = unique([x for (x,y,v) in zip(findnz(Lee)...) ])
-    #@assert 0.0 != eerow[:]
-    @assert !(0 in eerow)
-    iirow = unique([x for (x,y,v) in zip(findnz(Lii)...) ])
-    @assert !(0 in iirow)
+    eerow = [x for (x,y,v) in zip(findnz(Lee)...) ]
+    iirow = [x for (x,y,v) in zip(findnz(Lii)...) ]
+    eirow = [x for (x,y,v) in zip(findnz(Lei)...) ]
+    ierow = [x for (x,y,v) in zip(findnz(Lie)...) ]
+    eecol = [y for (x,y,v) in zip(findnz(Lee)...) ]
+    iicol = [y for (x,y,v) in zip(findnz(Lii)...) ]
+    eicol = [y for (x,y,v) in zip(findnz(Lei)...) ]
+    iecol = [y for (x,y,v) in zip(findnz(Lie)...) ]
+    @assert length(eecol) == length(eerow) 
+    @assert length(iicol) == length(iirow) 
+    @assert length(eicol) == length(eirow) 
+    @assert length(iecol) == length(ierow) 
 
-    eirow = unique([x for (x,y,v) in zip(findnz(Lei)...) ])
-    @assert !(0.0 in eirow)
-
-    ierow = unique([x for (x,y,v) in zip(findnz(Lie)...) ])
     @assert !(0.0 in ierow)
-
+    @assert !(0.0 in eirow)
+    @assert !(0 in iirow)
+    @assert !(0 in eerow)
+    @assert !(0.0 in eecol)
+    @assert !(0.0 in iicol)
+    @assert !(0.0 in eicol)
+    @assert !(0.0 in iecol)
     ee_src = SNN.IF(;N = length(eerow), param = SNN.IFParameter(;El = -49mV))
     ii_src = SNN.IF(;N = length(iirow), param = SNN.IFParameter(;El = -49mV))
     ei_src = SNN.IF(;N = length(eirow), param = SNN.IFParameter(;El = -49mV))
     ie_src = SNN.IF(;N = length(ierow), param = SNN.IFParameter(;El = -49mV))
-
-    eerow = unique([y for (x,y,v) in zip(findnz(Lee)...) ])
-    iirow = unique([y for (x,y,v) in zip(findnz(Lii)...) ])
-    eirow = unique([y for (x,y,v) in zip(findnz(Lei)...) ])
-    ierow = unique([y for (x,y,v) in zip(findnz(Lie)...) ])
-
     ee_tgt = SNN.IF(;N = length(eerow), param = SNN.IFParameter(;El = -49mV))
     ii_tgt = SNN.IF(;N = length(iirow), param = SNN.IFParameter(;El = -49mV))
     ei_tgt = SNN.IF(;N = length(eirow), param = SNN.IFParameter(;El = -49mV))
     ie_tgt = SNN.IF(;N = length(ierow), param = SNN.IFParameter(;El = -49mV))
 
-
-    number_of_cells = length(eerow) + length(iirow)
-    #new_weight = EE+II
-    #ww = unique([x for (x,y,v) in zip(findnz(new_weight)...) ])
-    #@show(number_of_cells,length(ww))
+    new_weight = Lee+Lei+Lie+Lii
+    ww = unique([x for (x,y,v) in zip(findnz(new_weight)...) ])
     return (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt)
 end
-#if true #!isfile("costly_sim.jld")
-#    if true#!isfile("wiring.jld")
-#@profview 
 
 function global_scope_sucks()
-    (w0Weights,Lee,Lie,Lei,Lii),Ne,Ni = potjans_layer()
-    print("connection Matrix built")
-    spy(w0Weights) 
-    savefig("potjanswiring.png")
+    @time (_,Lee,Lie,Lei,Lii),Ne,Ni = potjans_layer()
     print("wiring done")
-
     (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt) = getpopulations(Lee,Lei,Lii,Lie)
     (LeeSyn,LeiSyn,LiiSyn,LieSyn) = SNN.SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee,Lei,Lii,Lie)#Lexc,Linh)
     P = [ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt] # populations 
-    C = [LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
-    SNN.monitor(P, [:fire])
-    duration = 1second
-    #println("Monitor sim okay but fails elsewhere!")
-    SNN.sim!(P, C; duration = duration)
-
-    #SNN.raster(P) 
-    #println("Does sim okay but fails elsewhere 2!")
-    savefig("untrained_raster_all.png")
+    C = [LeeSyn] # connections
+    return P,C
 end
-global_scope_sucks()
+P, C = global_scope_sucks()
+SNN.monitor(P, [:fire])
+@time SNN.sim!(P, C; duration = 1second)
+SNN.raster(P)
+(times,nodes) = SNN.get_trains(P)
+nbins = 525
+data = SNN.bespoke_2dhist(nbins,times,nodes)
+foreach(normalize!, eachcol(data'))
+Plots.plot(heatmap(data),legend = false)#, normalize=:pdf)
+Plots.savefig("untrainedHeatMap_raster_trained.png")
+Plots.savefig("default_raster_untrained.png")
+#Plots.savefig("heatmap_untrained_unnormalised.png")
+SNN.train!(P, C; duration = 1second)
+SNN.raster(P)
+Plots.savefig("default_raster_trained.png")
+(times,nodes) = SNN.get_trains(P)
+nbins = 525
+data = SNN.bespoke_2dhist(nbins,times,nodes)
+foreach(normalize!, eachcol(data'))
+Plots.plot(heatmap(data),legend = false)#, normalize=:pdf)
+Plots.savefig("trainingHeatMap_raster_trained.png")
 
+#println("my code failed")
+
+
+#P,C = global_scope_sucks()
+#@show(P)
+#@show(C)
     #nbins = 525
     #(times,nodes) = SNN.get_trains(P);
 

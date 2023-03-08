@@ -1,7 +1,6 @@
 using JLD2
 using Distributions, Random
 using SparseArrays
-using SnoopCompile
 """
 This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using TrainSpikeNet.jl to simulate.
 This code draws heavily on the PyNN OSB Potjans implementation code found here:
@@ -203,7 +202,7 @@ function potjans_weights(args)
     (cumulative,ccu,layer_names,_,conn_probs) = potjans_params(ccu,scale)    
     g_strengths = Vector{Float64}([jee,jie,jei,jii])
     w0Weights,Lee,Lie,Lei,Lii = build_matrix(cumulative,conn_probs,Ncells,g_strengths)
-    w0Weights = w0Weights.*0.1
+    #w0Weights = w0Weights.*0.01
     w0Weights,Lee,Lie,Lei,Lii
 end
 

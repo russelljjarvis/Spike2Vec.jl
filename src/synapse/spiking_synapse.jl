@@ -33,6 +33,8 @@ SpikingSynapse
 
 function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
     w = σ * sprand(post.N, pre.N, p)
+    #spy(w)
+    #savefig("random_wiring.png")
     rowptr, colptr, I, J, index, W = dsparse(w)
     fireI, fireJ = post.fire, pre.fire
     g = getfield(post, sym)
@@ -49,37 +51,37 @@ function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,
     @assert maximum(Lie) <= 0.0
     @assert maximum(Lee) >= 0.0
 
-    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lee))
+    rowptr, colptr, I, J, index, W = dsparse(Lee)
     fireI, fireJ = ee_src.fire, ee_tgt.fire
     g = getfield(ee_src, :ge)
     LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
-    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lei))
+    rowptr, colptr, I, J, index, W = dsparse(Lei)
     fireI, fireJ = ei_src.fire, ei_tgt.fire
     g = getfield(ei_src, :ge)
     LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
-    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lii))
+    rowptr, colptr, I, J, index, W = dsparse(Lii)
     fireI, fireJ = ii_src.fire, ii_tgt.fire
     g = getfield(ii_src, :gi)
     LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
-    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lie))
+    rowptr, colptr, I, J, index, W = dsparse(Lie)
     fireI, fireJ = ie_src.fire, ie_tgt.fire
     g = getfield(ie_src, :gi)
     LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
 
-    (LeeSyn,LeiSyn,LiiSyn,LieSyn)#,EE,II)
+    (LeeSyn,LeiSyn,LiiSyn,LieSyn)
 end
 
 
 function forward!(c::SpikingSynapse, param::SpikingSynapseParameter)
-    #@unpack colptr, I, W, fireJ, g = c
-    @inbounds for j in 1:(length(c.colptr) - 1)
-        if c.fireJ[j]
-            for s in c.colptr[j]:(c.colptr[j+1] - 1)
-                c.g[c.I[s]] += c.W[s]
+    @unpack colptr, I, W, fireJ, g = c
+    @inbounds for j in 1:(length(colptr) - 1)
+        if fireJ[j]
+            for s in colptr[j]:(colptr[j+1] - 1)
+                g[I[s]] += W[s]
             end
         end
     end
