@@ -1,5 +1,5 @@
-using Revise
-using SpikingNeuralNetworks
+#using Revise
+#using SpikingNeuralNetworks
 @snn_kw struct SpikingSynapseParameter{FT=Float32}
     τpre::FT = 20ms
     τpost::FT = 20ms
@@ -40,46 +40,37 @@ function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
 end
 
 
-function SpikingSynapse(w::SparseMatrixCSC{Float64, Int64},Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)#,Lexc::SparseMatrixCSC{Float64, Int64},Linh::SparseMatrixCSC{Float64, Int64},; kwargs...)
-#    ::SparseMatrixCSC{Float64, Int64}, ::SparseMatrixCSC{Int32, Int64}, ::SparseMatrixCSC{Int32, Int64}, ::SparseMatrixCSC{Int32, Int64}, ::SparseMatrixCSC{Int32, Int64}
-    #spy(Lee) |>display 
-    #@show(findnz(Lee))
-    #spy(Lei) |>display 
+function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)#,Lexc::SparseMatrixCSC{Float64, Int64},Linh::SparseMatrixCSC{Float64, Int64},; kwargs...)
 
-    ee = [x for (x,y,v) in zip(findnz(Lee)...) ]
-    ei = [x for (x,y,v) in zip(findnz(Lei)...) ]
-    ie = [x for (x,y,v) in zip(findnz(Lie)...) ]
-    ii = [x for (x,y,v) in zip(findnz(Lii)...) ]
 
-    pree = SNN.IF(;N = length(ee)+length(ei), param = SNN.IFParameter(;El = -49mV))
-    poste = SNN.IF(;N = length(ie)+length(ee), param = SNN.IFParameter(;El = -49mV))
 
-    prei = SNN.IF(;N = length(ie)+length(ii), param = SNN.IFParameter(;El = -49mV))
-    posti = SNN.IF(;N = length(ei)+length(ii), param = SNN.IFParameter(;El = -49mV))
-    
     @assert maximum(Lii) <= 0.0
-    rowptr, colptr, I, J, index, W = dsparse(Lee)
-    fireI, fireJ = poste.fire, pree.fire
-    g = getfield(poste, :ge)
+    @assert maximum(Lei) >= 0.0
+    @assert maximum(Lie) <= 0.0
+    @assert maximum(Lee) >= 0.0
+
+    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lee))
+    fireI, fireJ = ee_src.fire, ee_tgt.fire
+    g = getfield(ee_src, :ge)
     LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
-    rowptr, colptr, I, J, index, W = dsparse(Lei)
-    fireI, fireJ = posti.fire, pree.fire
-    g = getfield(poste, :ge)
+    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lei))
+    fireI, fireJ = ei_src.fire, ei_tgt.fire
+    g = getfield(ei_src, :ge)
     LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
-    rowptr, colptr, I, J, index, W = dsparse(Lii)
-    fireI, fireJ = posti.fire, prei.fire
-    g = getfield(poste, :gi)
+    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lii))
+    fireI, fireJ = ii_src.fire, ii_tgt.fire
+    g = getfield(ii_src, :gi)
     LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
-    rowptr, colptr, I, J, index, W = dsparse(Lie)
-    fireI, fireJ = poste.fire, prei.fire
-    g = getfield(poste, :gi)
+    rowptr, colptr, I, J, index, W = dsparse(dropzeros!(Lie))
+    fireI, fireJ = ie_src.fire, ie_tgt.fire
+    g = getfield(ie_src, :gi)
     LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
 
-    (LeeSyn,LeiSyn,LiiSyn,LieSyn,pree,poste,prei,posti)
+    (LeeSyn,LeiSyn,LiiSyn,LieSyn)#,EE,II)
 end
 
 

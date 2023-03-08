@@ -1,3 +1,4 @@
+
 function connect!(c, j, i, σ = 1e-6)
     W = sparse(c.I, c.J, c.W, length(c.rowptr) - 1, length(c.colptr) - 1)
     W[i, j] = σ * randn(Float32)
@@ -79,35 +80,92 @@ function monitor(objs::Array, keys)
         monitor(obj, keys)
     end
 end
+#=
+struct get_trains
+    X = Float32[] 
+    Y = Int32[]
+end
+=#
 
-function get_trains(P::Array)
-    y0 = Int32[0]
-    X = Float32[]; Y = Float32[]
+function divide_epoch(nodes,times,duration)
+    t1=[]
+    n1=[]
+    t0=[]
+    n0=[]
+    for (n,t) in zip(nodes,times)
+        if t<=duration
+            append!(t0,t)
+            append!(n0,n)            
+        else
+            append!(t1,t)
+            append!(n1,n)
+        end
+    end
+    (t0,n0,t1,n1)
+end
+
+
+
+function get_vector_coords()
+    (t0,n0,t1,n1) = divide_epoch(nodes,times,duration)
+    maxt = findmax(sort!(unique(vcat(spikes,ground_spikes))))[1]
+
+    #@show(times)
+
+end
+
+
+#=
+function nloss(E,ngt_spikes,ground_spikes)
+    spikes = get_spikes(E)
+    spikes = [s/1000.0 for s in spikes]
+	maxt = findmax(sort!(unique(vcat(spikes,ground_spikes))))[1]
+    if size(spikes)[1]>1
+        t, S = SPIKE_distance_profile(spikes, ground_spikes;t0=0,tf = maxt)
+        spkdistance = SpikeSynchrony.trapezoid_integral(t, S)/(t[end]-t[1]) # == SPIKE_distance(y1, y2)
+    else
+        spkdistance = 10.0
+    end
+	if length(spikes)>1
+		custom_raster2(spikes,ground_spikes)
+		custom_raster(spikes,ground_spikes)
+	end
+	spkdistance*=spkdistance
+
+    delta = abs(size(spikes)[1] - ngt_spikes)
+    return spkdistance+delta
+
+end
+=#
+
+function get_trains(P::Array)    
+    X = Float32[]
+    Y = Int64[]
     for p in P
         x, y = get_trains(p)
         append!(X, x)
         append!(Y, y)
-        #push!(y0, p.N)
     end
-    #plt = scatter(X, Y, m = (1, :black), leg = :none,
-    #              xaxis=("t", (0, Inf)), yaxis = ("neuron",))
-    #y0 = y0[2:end-1]
-    #!isempty(y0) && hline!(plt, cumsum(y0), linecolor = :red)
-    #return plt
-    (X,Y)
+    print("fails here")
+    return (X,Y)
+    #return get_trains(X,Y)
 end
+
+#get_trains = get_trains(P::Array)  
 
 function get_trains(p)
     fire = p.records[:fire]
-    x, y = Float32[], Int32[]
+    x, y = Float32[], Int64[]
     for time in eachindex(fire)
         for neuron_id in findall(fire[time])
             push!(x, time)
             push!(y, neuron_id)
         end
     end
-    (x,y)
+    return (x,y)
 end
+#get_trains = get_trains(p)  
+
 function getrecord(p, sym)
     key = sym
     for (k,val) in p.records

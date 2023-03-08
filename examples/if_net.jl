@@ -1,14 +1,15 @@
 using Plots
 #using UnicodePlots
 using Plots
-
+#using JLD
 using SpikingNeuralNetworks
 #unicodeplots()
-
+#using OhMyREPL
 SNN.@load_units
+using SparseArrays
+#using ProfileView
 
-include("genPotjans.jl")
-function get_Ncell(scale=1.0::Float64)
+function potjans_layer(scale=1.0::Float64)
 	ccu = Dict{String, Int32}("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
@@ -26,8 +27,11 @@ function get_Ncell(scale=1.0::Float64)
 end
 
 function potjans_layer()
-    scale = 1.0/100.0
-    Ncells,Ne,Ni, ccu = get_Ncell(scale)    
+    scale = 1.0/40.0
+    #Ncells,Ne,Ni, ccu = potjans_layer(scale)    
+    Ncells,Ne,Ni, ccu = potjans_layer(scale)    
+
+     #profile_test(1)  # run once to trigger compilation (ignore this one)
     pree = prie = prei = prii = 0.1
     K = round(Int, Ne*pree)
     sqrtK = sqrt(K)
@@ -41,146 +45,147 @@ function potjans_layer()
     jie = -0.75ji 
     jii = -ji
     genStaticWeights_args = (;Ncells,jee,jie,jei,jii,ccu,scale)
-    (potjans_weights(genStaticWeights_args),Ne,Ni)
+    (SNN.potjans_weights(genStaticWeights_args),Ne,Ni)
 end
+#=
+function get_trains(x::Vector{Float32},y::Vector{Int64})
+    lenx=length(x)
+    leny=length(y)
+    x = SVector{(4225333),Float32}(x)
+    y = SVector{(lenx),Int32}(y)
 
-(w0Weights,Lee,Lie,Lei,Lii),Ne,Ni = potjans_layer()
+    #y = @SVector y
+    return (x,y)
+    #(SVector{lenx}(x),SVector{leny}(y))
+end
+=#
+#type_ = SpikingNeuralNetworks.IF{Vector{Float32}, Vector{Bool}}
+#@show(type)
+type_ = SparseMatrixCSC{Float32, Int64}
+function getpopulations(Lee::type_,Lei::type_,Lii::type_,Lie::type_)
+    #EE = Lee+Lei
+    #II = Lie+Lii
+    eerow = unique([x for (x,y,v) in zip(findnz(Lee)...) ])
+    #@assert 0.0 != eerow[:]
+    @assert !(0 in eerow)
+    iirow = unique([x for (x,y,v) in zip(findnz(Lii)...) ])
+    @assert !(0 in iirow)
+
+    eirow = unique([x for (x,y,v) in zip(findnz(Lei)...) ])
+    @assert !(0.0 in eirow)
+
+    ierow = unique([x for (x,y,v) in zip(findnz(Lie)...) ])
+    @assert !(0.0 in ierow)
+
+    ee_src = SNN.IF(;N = length(eerow), param = SNN.IFParameter(;El = -49mV))
+    ii_src = SNN.IF(;N = length(iirow), param = SNN.IFParameter(;El = -49mV))
+    ei_src = SNN.IF(;N = length(eirow), param = SNN.IFParameter(;El = -49mV))
+    ie_src = SNN.IF(;N = length(ierow), param = SNN.IFParameter(;El = -49mV))
+
+    eerow = unique([y for (x,y,v) in zip(findnz(Lee)...) ])
+    iirow = unique([y for (x,y,v) in zip(findnz(Lii)...) ])
+    eirow = unique([y for (x,y,v) in zip(findnz(Lei)...) ])
+    ierow = unique([y for (x,y,v) in zip(findnz(Lie)...) ])
+
+    ee_tgt = SNN.IF(;N = length(eerow), param = SNN.IFParameter(;El = -49mV))
+    ii_tgt = SNN.IF(;N = length(iirow), param = SNN.IFParameter(;El = -49mV))
+    ei_tgt = SNN.IF(;N = length(eirow), param = SNN.IFParameter(;El = -49mV))
+    ie_tgt = SNN.IF(;N = length(ierow), param = SNN.IFParameter(;El = -49mV))
+
+
+    number_of_cells = length(eerow) + length(iirow)
+    #new_weight = EE+II
+    #ww = unique([x for (x,y,v) in zip(findnz(new_weight)...) ])
+    #@show(number_of_cells,length(ww))
+    return (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt)
+end
+#if true #!isfile("costly_sim.jld")
+#    if true#!isfile("wiring.jld")
+#@profview 
+
+function global_scope_sucks()
+    (w0Weights,Lee,Lie,Lei,Lii),Ne,Ni = potjans_layer()
+    print("connection Matrix built")
+    spy(w0Weights) 
+    savefig("potjanswiring.png")
+    print("wiring done")
+
+    (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt) = getpopulations(Lee,Lei,Lii,Lie)
+    (LeeSyn,LeiSyn,LiiSyn,LieSyn) = SNN.SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee,Lei,Lii,Lie)#Lexc,Linh)
+    P = [ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt] # populations 
+    C = [LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
+    SNN.monitor(P, [:fire])
+    duration = 1second
+    #println("Monitor sim okay but fails elsewhere!")
+    SNN.sim!(P, C; duration = duration)
+
+    #SNN.raster(P) 
+    #println("Does sim okay but fails elsewhere 2!")
+    savefig("untrained_raster_all.png")
+end
+global_scope_sucks()
+
+    #nbins = 525
+    #(times,nodes) = SNN.get_trains(P);
+
+    #SNN.train!(P, C; duration = duration)
+    #SNN.monitor(P, [:fire])
+
+    #SNN.raster(P) 
+    #savefig("trained_raster_all.png")
+    #(times,nodes) = SNN.get_trains(P);
+
+    
+
+#(times,nodes) = 
+#=
+#(LeeSyn,LeiSyn,LiiSyn,LieSyn) = global_scope_sucks()
+println("makes wiring okay!, but may fail at sim")
+#P = [ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt] # populations 
+#C = [LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
+#SNN.monitor(P, [:fire])
+#duration = 1second
+#println("Monitor sim okay but fails elsewhere!")
+#SNN.sim!(P, C; duration = duration)
+#@profview SNN.sim!(P, C; duration = duration)
+println("Does sim okay but fails elsewhere!")
+#
+#SNN.raster(P) 
+#println("Does sim okay but fails elsewhere 2!")
+#savefig("untrained_raster_all.png")
+nbins = 525
+#(times,nodes) = SNN.get_trains(P);
+#valgrind --smc-check=all-non-file julia if_net.jl
+
+data = SNN.bespoke_2dhist(nbins,times,nodes)
+Plots.plot(heatmap(data),legend = false, normalize=:pdf)
+Plots.savefig("heatmap_untrained_unnormalised.png")
+
+
+
+savefig("trained_raster_all.png")
+
+(times,nodes) = SNN.get_trains(P);
+    #@save "costly_sim.jld" nodes times P
+#else
+    #@load "costly_sim.jld" nodes times P
+    #(times,nodes) = SNN.get_trains(P);
+
+    #(times,nodes) = get_trains(times,nodes)
+#end
 spy(w0Weights) 
-savefig("potjanswiring.png")
-
-(LeeSyn,LeiSyn,LiiSyn,LieSyn,pree,poste,prei,posti) = SNN.SpikingSynapse(w0Weights,Lee,Lei,Lii,Lie)#Lexc,Linh)
-P = [pree,poste,prei,posti] # populations 
-C = [LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
-SNN.monitor([pree,poste,prei,posti], [:fire])
-duration = 1second
-SNN.sim!(P, C; duration = duration)
-SNN.train!(P, C; duration = duration)
+savefig("corrupted_potjanswiring.png")
 
 
+#nbins = 2425
+#data = bespoke_2dhist(nbins,nodes,times)
 SNN.raster(P) 
 savefig("raster_all.png")
-@show(nodes,times)
-(nodes,times) = SNN.get_trains(P);
 
-
-function bespoke_2dhist(nbins::Float32,nodes::Vector{Float32},times::Vector{Float32},fname=nothing)
-    stimes = sort(times)
-    ns = maximum(unique(nodes))    
-    temp_vec = collect(0:Float64(maximum(stimes)/nbins):maximum(stimes))
-    templ = []
-    for (cnt,n) in enumerate(collect(1:maximum(nodes)+1))
-        push!(templ,[])
-    end
-    for (cnt,n) in enumerate(nodes)
-
-        push!(templ[n+1],times[cnt])    
-        @show(templ[n+1])
-    end
-    list_of_artifact_rows = []
-    #data = Matrix{Float64}(undef, ns+1, Int(length(temp_vec)-1))
-    for (ind,t) in enumerate(templ)
-        psth = fit(Histogram,t,temp_vec)
-        #data[ind,:] = psth.weights[:]
-        if sum(psth.weights[:]) == 0.0
-            append!(list_of_artifact_rows,ind)
-        end
-    end
-    @show(list_of_artifact_rows)
-    adjusted_length = ns+1-length(list_of_artifact_rows)
-    data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)-1))
-    cnt = 1
-    for t in templ
-        psth = fit(Histogram,t,temp_vec)        
-        if sum(psth.weights[:]) != 0.0
-            data[cnt,:] = psth.weights[:]
-            @assert sum(data[cnt,:])!=0
-            cnt +=1
-        end
-    end
-
-    ##
-    #
-    ##
-    #data = view(data, vec(mapslices(col -> any(col .!= 0), data, dims = 2)), :)[:]
-    #@show(first(data[:]))
-    #@show(last(data[:]))
-    ##
-    # All neuron s are block normalised according to a global mean/std rate
-    ##
-
-    #data .= (data .- StatsBase.mean(data))./StatsBase.std(data)
-    #@show(size(data))
-    return data
-end
-
-
-function normalised_2dhist(data)
-    ##
-    # Each neuron is indipendently normalised according to its own rate
-    ##
-    
-    #for (ind,row) in enumerate(eachrow(data))
-    #    data[ind,:] .= row .- StatsBase.mean(row)./sum(row)
-    #    @show(data[ind,:]) 
-    #end
-    data = data[:,:]./maximum(data[:,:])
-    return data
-end
-
-
-nbins = 425.0
-data = bespoke_2dhist(nbins,nodes,times)
-datan = normalised_2dhist(data)
-Plots.plot(heatmap(datan),legend = false, normalize=:pdf)
+data = SNN.bespoke_2dhist(nbins,times,nodes)
+#datan = SNN.normalised_2dhist(data)
+Plots.plot(heatmap(data),legend = false, normalize=:pdf)
 Plots.savefig("heatmap_normalised.png")
 
-function divide_epoch(nodes,times,duration)
-    t1=[]
-    n1=[]
-    t0=[]
-    n0=[]
-    for (n,t) in zip(nodes,times)
-        if t<=duration
-            append!(t0,t)
-            append!(n0,n)            
-        else
-            append!(t1,t)
-            append!(n1,n)
-        end
-    end
-    (t0,n0,t1,n1)
-end
-
-(t0,n0,t1,n1) = divide_epoch(nodes,times,duration);
-
-
-function get_vector_coords()
-    (t0,n0,t1,n1) = divide_epoch(nodes,times,duration)
-    maxt = findmax(sort!(unique(vcat(spikes,ground_spikes))))[1]
-
-    #@show(times)
-
-end
-
-
-
-function nloss(E,ngt_spikes,ground_spikes)
-    spikes = get_spikes(E)
-    spikes = [s/1000.0 for s in spikes]
-	maxt = findmax(sort!(unique(vcat(spikes,ground_spikes))))[1]
-    if size(spikes)[1]>1
-        t, S = SPIKE_distance_profile(spikes, ground_spikes;t0=0,tf = maxt)
-        spkdistance = SpikeSynchrony.trapezoid_integral(t, S)/(t[end]-t[1]) # == SPIKE_distance(y1, y2)
-    else
-        spkdistance = 10.0
-    end
-	if length(spikes)>1
-		custom_raster2(spikes,ground_spikes)
-		custom_raster(spikes,ground_spikes)
-	end
-	spkdistance*=spkdistance
-
-    delta = abs(size(spikes)[1] - ngt_spikes)
-    return spkdistance+delta
-
-end
+(t0,n0,t1,n1) = SNN.divide_epoch(nodes,times,duration);
+=#
