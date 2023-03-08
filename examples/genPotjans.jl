@@ -1,6 +1,6 @@
-using JLD2
-using Distributions, Random
+using Distributions
 using SparseArrays
+
 """
 This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using TrainSpikeNet.jl to simulate.
 This code draws heavily on the PyNN OSB Potjans implementation code found here:
@@ -41,7 +41,15 @@ function potjans_params(ccu, scale=1.0::Float64)
         cumulative[k]=collect(v_old:v+v_old)
         v_old=v+v_old
     end    
-    return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs)
+    syn_pol = Vector{Int64}(zeros(length(ccu)))#
+    for (i,(k,v)) in enumerate(pairs(ccu))
+        if occursin("E",k) 
+            syn_pol[i] = 1
+        else
+            syn_pol[i] = 0
+        end
+    end
+    return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs,syn_pol)
 end
 """
 This function contains synapse selection logic seperated from iteration logic for readability only.
@@ -89,17 +97,17 @@ function index_assignment!(item::Tuple{Int64, Int64, String, String}, w0Weights:
         # meaning meaning if the same as a logic: elseif occursin("I",k) is true  
         if occursin("E",k1)    
             setindex!(w0Weights, wig, src,tgt)
-            @assert w0Weights[src,tgt]<=0.0
+
             @assert w0Weights[src,tgt]<=0.0
 
         else# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
             setindex!(w0Weights, wig, src,tgt)
-            #@show(w0Weights[src,tgt])
+
             @assert w0Weights[src,tgt]<=0.0
 
             @assert occursin("I",k1) 
         end
-    end        
+    end
 end
 """
 This function contains iteration logic seperated from synapse selection logic for readability only.
@@ -142,7 +150,7 @@ struct NetworkParameter{}
     El::FT = Vr
 end
 =#
-function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matrix{Float64}, Ncells::Int32, g_strengths::Vector{Float64})    
+function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matrix{Float64}, Ncells::Int32, g_strengths::Vector{Float64},syn_pol::Vector{Int64})    
 
     w0Weights = spzeros(Float64, (Ncells, Ncells))
     Lee = spzeros(Float32, (Ncells, Ncells))
@@ -154,9 +162,15 @@ function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matri
     # use maybe threaded paradigm.
     # From BA.
     ##
+    #Threads.@threads for i = 1:10
+    cumvalues = values(cumulative)
+    #@inbounds for (i,(syn,(k,v))) in enumerate(zip(syn_pol,pairs(cumulative)))
     @inbounds for (i,(k,v)) in enumerate(pairs(cumulative))
+
         @inbounds for src in v
             @inbounds for (j,(k1,v1)) in enumerate(pairs(cumulative))
+                #@inbounds for (j,(syn,(k,v1))) in enumerate(zip(syn_pol,pairs(cumulative)))
+    
                 @inbounds for tgt in v1
                     if src!=tgt                        
                         prob = conn_probs[i,j]
@@ -202,10 +216,9 @@ function potjans_weights(args)
     #
     #(Ncells::Int64, jee::Float64, jie::Float64, jei::Float64, jii::Float64, ccu, scale=1.0::Float64) = args
     Ncells, jee, jie, jei, jii, ccu, scale = args
-    (cumulative,ccu,layer_names,_,conn_probs) = potjans_params(ccu,scale)    
+    (cumulative,ccu,layer_names,_,conn_probs,syn_pol) = potjans_params(ccu,scale)    
     g_strengths = Vector{Float64}([jee,jie,jei,jii])
-    w0Weights,Lee,Lie,Lei,Lii = build_matrix(cumulative,conn_probs,Ncells,g_strengths)
-    #w0Weights = w0Weights.*0.01
+    w0Weights,Lee,Lie,Lei,Lii = build_matrix(cumulative,conn_probs,Ncells,g_strengths,syn_pol)
     w0Weights,Lee,Lie,Lei,Lii
 end
 
