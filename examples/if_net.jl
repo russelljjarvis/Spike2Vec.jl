@@ -95,14 +95,14 @@ function getpopulations(Lee::type_,Lei::type_,Lii::type_,Lie::type_)
 
     #@assert length(unique(ierow)) == length(unique(iecol))
     
-    ee_src = SNN.IF(;N = length(eerow), param = SNN.IFParameter(;El = -49mV))
-    ii_src = SNN.IF(;N = length(iirow), param = SNN.IFParameter(;El = -49mV))
-    ei_src = SNN.IF(;N = length(eirow), param = SNN.IFParameter(;El = -49mV))
-    ie_src = SNN.IF(;N = length(ierow), param = SNN.IFParameter(;El = -49mV))
-    ee_tgt = SNN.IF(;N = length(eecol), param = SNN.IFParameter(;El = -49mV))
-    ii_tgt = SNN.IF(;N = length(iicol), param = SNN.IFParameter(;El = -49mV))
-    ei_tgt = SNN.IF(;N = length(eicol), param = SNN.IFParameter(;El = -49mV))
-    ie_tgt = SNN.IF(;N = length(iecol), param = SNN.IFParameter(;El = -49mV))
+    ee_src = SNN.IF(;N = length(eerow), param = SNN.IFParameter())#;El = -49mV))
+    ii_src = SNN.IF(;N = length(iirow), param = SNN.IFParameter())#;El = -49mV))
+    ei_src = SNN.IF(;N = length(eirow), param = SNN.IFParameter())#;El = -49mV))
+    ie_src = SNN.IF(;N = length(ierow), param = SNN.IFParameter())#;El = -49mV))
+    ee_tgt = SNN.IF(;N = length(eecol), param = SNN.IFParameter())#;El = -49mV))
+    ii_tgt = SNN.IF(;N = length(iicol), param = SNN.IFParameter())#;El = -49mV))
+    ei_tgt = SNN.IF(;N = length(eicol), param = SNN.IFParameter())#;El = -49mV))
+    ie_tgt = SNN.IF(;N = length(iecol), param = SNN.IFParameter())#;El = -49mV))
 
     #new_weight = Lee+Lei+Lie+Lii
     #ww = unique([x for (x,y,v) in zip(findnz(new_weight)...) ])

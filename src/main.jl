@@ -1,9 +1,9 @@
 function sim!(P, C, dt)
-    Threads.@threads for p in P
+    for p in P
         integrate!(p, p.param, Float32(dt))
         record!(p)
     end
-    Threads.@threads for c in C
+    for c in C
         forward!(c, c.param)
         record!(c)
     end
@@ -16,11 +16,11 @@ function sim!(P, C; dt = 0.1ms, duration = 10ms)
 end
 
 function train!(P, C, dt, t = 0)
-    Threads.@threads for p in P
+    for p in P
         integrate!(p, p.param, Float32(dt))
         record!(p)
     end
-    Threads.@threads for c in C
+    for c in C
         forward!(c, c.param)
         plasticity!(c, c.param, Float32(dt), Float32(t))
         record!(c)
