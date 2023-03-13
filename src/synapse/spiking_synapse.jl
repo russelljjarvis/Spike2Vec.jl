@@ -1,43 +1,100 @@
 
-@snn_kw struct SpikingSynapseParameter{FT=Float32}
-    τpre::FT = 20ms
-    τpost::FT = 20ms
-    Wmax::FT = 0.01
-    ΔApre::FT = 0.01 * Wmax
-    ΔApost::FT = -ΔApre * τpre / τpost * 1.05
+FT=Float32
+struct SpikingSynapseParameter
+    τpre::FT # = 20ms
+    τpost::FT#  = 20ms
+    Wmax::FT#  = 0.01
+    ΔApre::FT#  = 0.01 * Wmax
+    ΔApost::FT#  = -ΔApre * τpre / τpost * 1.05
+    function SpikingSynapseParameter()
+        τpre::FT  = 20ms
+        τpost::FT  = 20ms
+        Wmax::FT  = 0.01
+        ΔApre::FT  = 0.01 * Wmax
+        ΔApost::FT  = -ΔApre * τpre / τpost * 1.05
+        new(20ms,20ms,Wmax,ΔApre,ΔApost)
+    end
 end
 
-@snn_kw mutable struct SpikingSynapse{VIT=Vector{Int32},VFT=Vector{Float32},VBT=Vector{Bool}}
-    param::SpikingSynapseParameter = SpikingSynapseParameter()
+#@snn_kw mutable 
+
+VIT=Vector{Int32}
+VFT=Vector{Float32}
+VBT=Vector{Bool}
+struct SpikingSynapse
+    param::SpikingSynapseParameter # = SpikingSynapseParameter()
     rowptr::VIT # row pointer of sparse W
     colptr::VIT # column pointer of sparse W
     I::VIT      # postsynaptic index of W
     J::VIT      # presynaptic index of W
     index::VIT  # index mapping: W[index[i]] = Wt[i], Wt = sparse(dense(W)')
     W::VFT  # synaptic weight
-    tpre::VFT = zero(W) # presynaptic spiking time
-    tpost::VFT = zero(W) # postsynaptic spiking time
-    Apre::VFT = zero(W) # presynaptic trace
-    Apost::VFT = zero(W) # postsynaptic trace
+    tpre::VFT # = zero(W) # presynaptic spiking time
+    tpost::VFT # = zero(W) # postsynaptic spiking time
+    Apre::VFT # = zero(W) # presynaptic trace
+    Apost::VFT # = zero(W) # postsynaptic trace
     fireI::VBT # postsynaptic firing
     fireJ::VBT # presynaptic firing
     g::VFT # postsynaptic conductance
-    records::Dict = Dict()
+    records::Dict # = Dict()
+    #LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    function SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
+        param::SpikingSynapseParameter = SpikingSynapseParameter()
+        #rowptr, colptr, I, J, index, W = dsparse(w)
+        tpre::VFT = zero(W) # presynaptic spiking time
+        tpost::VFT = zero(W) # postsynaptic spiking time
+        Apre::VFT = zero(W) # presynaptic trace
+        Apost::VFT = zero(W) # postsynaptic trace
+
+        #@show(size(w))
+        #fireI, fireJ = post.fire, pre.fire
+        #g = getfield(post, sym)
+        records::Dict  = Dict()
+        new(param,rowptr,colptr,I,J,index,W,tpre,tpost,Apre,Apost,fireI,fireJ,g,records)
+    end
+
+    #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
+    function SpikingSynapse(rowptr, colptr, I, J, index, w)#, fireI, fireJ, g)#::Int64,param::SpikingNeuralNetworks.IFParameter)
+        param::SpikingSynapseParameter = SpikingSynapseParameter()
+        rowptr, colptr, I, J, index, W = dsparse(w)
+        tpre::VFT = zero(W) # presynaptic spiking time
+        tpost::VFT = zero(W) # postsynaptic spiking time
+        Apre::VFT = zero(W) # presynaptic trace
+        Apost::VFT = zero(W) # postsynaptic trace
+
+        fireI, fireJ = post.fire, pre.fire
+        g = getfield(post, sym)
+        records::Dict  = Dict()
+        new(param,rowptr,colptr,I,J,index,W,tpre,tpost,Apre,Apost,fireI,fireJ,g,records)
+    end
+
+
+
+    #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
+
+    function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0)#, kwargs...)
+        w = σ * sprand(post.N, pre.N, p)
+        rowptr, colptr, I, J, index, W = dsparse(w)
+        fireI, fireJ = post.fire, pre.fire
+        g = getfield(post, sym)
+
+        param::SpikingSynapseParameter = SpikingSynapseParameter()
+        rowptr, colptr, I, J, index, W = dsparse(w)
+        tpre::VFT = zero(W) # presynaptic spiking time
+        tpost::VFT = zero(W) # postsynaptic spiking time
+        Apre::VFT = zero(W) # presynaptic trace
+        Apost::VFT = zero(W) # postsynaptic trace
+        records::Dict  = Dict()
+        new(param,rowptr,colptr,I,J,index,W,tpre,tpost,Apre,Apost,fireI,fireJ,g,records)
+
+    end
+
 end
 
 """
 [Spking Synapse](https://brian2.readthedocs.io/en/2.0b4/resources/tutorials/2-intro-to-brian-synapses.html)
 """
 SpikingSynapse
-
-function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
-    w = σ * sprand(post.N, pre.N, p)
-    rowptr, colptr, I, J, index, W = dsparse(w)
-    #@show(size(w))
-    fireI, fireJ = post.fire, pre.fire
-    g = getfield(post, sym)
-    SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-end
 
 
 function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)
@@ -73,7 +130,7 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     rowptr, colptr, I, J, index, W = dsparse(wnoise)
     fireI, fireJ = Noisey.fire, Epop.fire    
     g = getfield(Noisey, :ge)
-    NoisyInputSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    NoisyInputSyn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
 
     
     σ, p = 60*0.27/40 , 0.005
@@ -81,7 +138,7 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     rowptr, colptr, I, J, index, W = dsparse(wnoise)
     fireI, fireJ = Noisey.fire, Ipop.fire    
     g = getfield(Noisey, :ge)
-    NoisyInputSynInh = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    NoisyInputSynInh = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
 
 
     @assert maximum(Lii) <= 0.0
@@ -92,22 +149,25 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     rowptr, colptr, I, J, index, W = dsparse(Lee)
     fireI, fireJ = Epop.fire, Epop.fire
     g = getfield(Epop, :ge)
-    LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-
+    LeeSyn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)#..., kwargs...)
+    spy(LeeSyn)
     rowptr, colptr, I, J, index, W = dsparse(Lei)
     fireI, fireJ = Epop.fire, Ipop.fire
     g = getfield(Epop, :ge)    
-    LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    LeiSyn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)#..., kwargs...)
+    #LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
     
     rowptr, colptr, I, J, index, W = dsparse(Lii)
     fireI, fireJ = Ipop.fire, Ipop.fire
     g = getfield(Ipop, :gi)
-    LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    LiiSyn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
+
+    #LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
     
     rowptr, colptr, I, J, index, W = dsparse(Lie)
     fireI, fireJ = Ipop.fire, Epop.fire
     g = getfield(Ipop, :gi)
-    LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    LieSyn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
     (NoisyInputSynInh,NoisyInputSyn,LeeSyn,LeiSyn,LiiSyn,LieSyn,Epop,Ipop,Noisey)
 end
 
