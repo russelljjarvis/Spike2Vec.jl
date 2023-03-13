@@ -50,56 +50,53 @@ end
 
 
 function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)
-    inhib = Lii+Lie
-    cnt=0
+    inhib = Lii+Lie # total inhibitory population
+    cnte=0
+    exc = Lee+Lei # total excitatory population
+    cnti=0
+# count neurons which are being pre-synapses to something
+
     for i in eachrow(inhib)
         if sum(i[:]) != 0.0
-            cnt+=1
+            cnte+=1
         end
     end
 
-    exc = Lee+Lei
-    cnt=0
+
+    # count neurons which are being pre-synapses to something
     for i in eachrow(exc)
         if sum(i[:]) != 0.0
-            cnt+=1
+            cnti+=1
         end
     end
     total = inhib+exc
     cnt = length(total)
-    Ipop = SNN.IF16(;N = cnt, param = SNN.IFParameter16())
-    Epop = SNN.IF16(;N = cnt, param = SNN.IFParameter16())
+    Ipop = SNN.IF16(;N = cnti, param = SNN.IFParameter16())
+    Epop = SNN.IF16(;N = cnte, param = SNN.IFParameter16())
 
     @assert maximum(Lii) <= 0.0
     @assert maximum(Lei) >= 0.0
     @assert maximum(Lie) <= 0.0
     @assert maximum(Lee) >= 0.0
-    Lee = 0.001*Lee
 
     rowptr, colptr, I, J, index, W = dsparse(Lee)
     fireI, fireJ = Epop.fire, Epop.fire
     g = getfield(Epop, :ge)
     LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-
     rowptr, colptr, I, J, index, W = dsparse(Lei)
     fireI, fireJ = Epop.fire, Ipop.fire
     g = getfield(Epop, :ge)
     LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-
     rowptr, colptr, I, J, index, W = dsparse(Lii)
     fireI, fireJ = Ipop.fire, Ipop.fire
     g = getfield(Ipop, :gi)
     LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-
     rowptr, colptr, I, J, index, W = dsparse(Lie)
     fireI, fireJ = Ipop.fire, Epop.fire
     g = getfield(Ipop, :gi)
     LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-
-
     (LeeSyn,LeiSyn,LiiSyn,LieSyn,Epop,Ipop)
 end
-
 
 function forward!(c::SpikingSynapse, param::SpikingSynapseParameter)
     @unpack colptr, I, W, fireJ, g = c

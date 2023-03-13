@@ -7,9 +7,9 @@ This code draws heavily on the PyNN OSB Potjans implementation code found here:
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py#L139-L146
 """
 
+
 """
-Hard coded Potjans parameters follow.
-and then the function outputs adapted Potjans parameters.
+An optional container that is not even used yet.
 """
 
 struct NetParameter 
@@ -20,10 +20,19 @@ struct NetParameter
     columns_conn_probs::SubArray{Float32, 1, Matrix{Float32}, Tuple{Base.Slice{Base.OneTo{Int64}}, Int64}, true}
 end
 
+
+"""
+The constructor for an optional container that is not even used yet.
+"""
 #function NetParameter()
     #syn_pol,conn_probs,cumulative)
     #return NetParameter(syn_pol,conn_probs,cumulative)
-#end    
+#end
+
+"""
+Hard coded Potjans parameters follow.
+and then the function outputs adapted Potjans parameters.
+"""
 function potjans_params(ccu, scale=1.0::Float64)
     # a cummulative cell count
     cumulative = Dict{String, Vector{Int64}}()  
@@ -90,8 +99,9 @@ function index_assignment!(item::NTuple{4, Int64}, w0Weights::SparseMatrixCSC{Fl
             @assert lie[src,tgt]<=0.0
 
         elseif syn1==0# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
+            @assert syn1==0
             setindex!(w0Weights, wig, src,tgt)
-            setindex!(lii, wig, src,tgt)
+            setindex!(lii,wig, src,tgt)
             @assert w0Weights[src,tgt]<=0.0
             @assert syn1==0
             @assert lii[src,tgt]<=0.0
@@ -99,7 +109,6 @@ function index_assignment!(item::NTuple{4, Int64}, w0Weights::SparseMatrixCSC{Fl
         end
     end
 end
-
 
 function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matrix{Float32}, Ncells::Int32, g_strengths::Vector{Float64},syn_pol::Vector{Int64})    
 
@@ -111,15 +120,12 @@ function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matri
 
     ##
     # use maybe threaded paradigm.
-    # From BA.
     ##
     #Threads.@threads for i = 1:10
     cumvalues = values(cumulative)
     total_len = length(cumvalues)*length(cumvalues)*length(syn_pol)*length(syn_pol)
     iter_item::Vector{NTuple{4, Int64}} = zeros(total_len)
-    
-    
-    
+
     @inbounds for (i,(syn0,v)) in enumerate(zip(syn_pol,cumvalues))
         @inbounds for src in v
             @inbounds for (j,(syn1,v1)) in enumerate(zip(syn_pol,cumvalues))
@@ -128,15 +134,16 @@ function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matri
                         prob = conn_probs[i,j]
                         if rand()<prob
                             item = src,tgt,syn0,syn1
-                            push!(iter_item,item)
-                            #index_assignment!(item,w0Weights,g_strengths,Lee,Lie,Lii,Lei)                        end
+                            #push!(iter_item,item)
+                            index_assignment!(item,w0Weights,g_strengths,Lee,Lie,Lii,Lei)
+                        end
                     end
                 end
             end
         end
     end
 
-    map!(index_assignment!, item for iter_item)
+    #map!(index_assignment!, item for iter_item)
     @assert maximum(Lexc[:])>=0.0
     @assert maximum(Linh[:])<=0.0
     return w0Weights,Lee,Lie,Lei,Lii
@@ -192,4 +199,102 @@ function potjans_layer()
     genStaticWeights_args = (;Ncells,jee,jie,jei,jii,ccu,scale)
     potjans_weights(genStaticWeights_args),Ne,Ni
 end
+"""
+Build the matrix from the Potjans parameters.
 
+"""
+function potjans_weights(args)
+    _, _, _, _, _, ccu, scale = args
+    (cumulative,ccu,layer_names,_,conn_probs,syn_pol) = potjans_params(ccu,scale)    
+    g_strengths = Vector{Float64}([jee,jie,jei,jii])
+    w0Weights,Lee,Lie,Lei,Lii = build_matrix(cumulative,conn_probs,Ncells,g_strengths,syn_pol)
+    w0Weights,Lee,Lie,Lei,Lii
+end
+
+#=
+
+https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py
+
+
+layer_thicknesses = {
+  'L23': total_cortical_thickness*N_full['L23']['E']/N_E_total,
+  'L4' : total_cortical_thickness*N_full['L4']['E']/N_E_total,
+  'L5' : total_cortical_thickness*N_full['L5']['E']/N_E_total,
+  'L6' : total_cortical_thickness*N_full['L6']['E']/N_E_total,
+  'thalamus' : 100
+}
+
+https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network.py
+
+
+
+# Create cortical populations
+self.pops = {}
+layer_structures = {}
+total_cells = 0 
+
+x_dim_scaled = x_dimension * math.sqrt(N_scaling)
+z_dim_scaled = z_dimension * math.sqrt(N_scaling)
+
+default_cell_radius = 10 # for visualisation 
+default_input_radius = 5 # for visualisation 
+
+for layer in layers:
+    self.pops[layer] = {}
+    for pop in pops:
+        
+        y_offset = 0
+        if layer == 'L6': y_offset = layer_thicknesses['L6']/2
+        if layer == 'L5': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']/2
+        if layer == 'L4': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']+layer_thicknesses['L4']/2
+        if layer == 'L23': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']+layer_thicknesses['L4']+layer_thicknesses['L23']/2
+        
+        layer_volume = Cuboid(x_dim_scaled,layer_thicknesses[layer],z_dim_scaled)
+        layer_structures[layer] = RandomStructure(layer_volume, origin=(0,y_offset,0))
+
+
+https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/scaling.py
+
+
+def get_indegrees():
+    '''Get in-degrees for each connection for the full-scale (1 mm^2) model'''
+    K = np.zeros([n_layers * n_pops_per_layer, n_layers * n_pops_per_layer])
+    for target_layer in layers:
+        for target_pop in pops:
+            for source_layer in layers:
+                for source_pop in pops:
+                    target_index = structure[target_layer][target_pop]
+                    source_index = structure[source_layer][source_pop]
+                    n_target = N_full[target_layer][target_pop]
+                    n_source = N_full[source_layer][source_pop]
+                    K[target_index][source_index] = round(np.log(1. -
+                        conn_probs[target_index][source_index]) / np.log(
+                        (n_target * n_source - 1.) / (n_target * n_source))) / n_target
+    return K
+
+
+def adjust_w_and_ext_to_K(K_full, K_scaling, w, DC):
+  '''Adjust synaptic weights and external drive to the in-degrees
+     to preserve mean and variance of inputs in the diffusion approximation'''
+  K_ext_new = {}
+  I_ext = {}
+  for target_layer in layers:
+    K_ext_new[target_layer] = {}
+    I_ext[target_layer] = {}
+    for target_pop in pops:
+      target_index = structure[target_layer][target_pop]
+      x1 = 0
+      for source_layer in layers:
+        for source_pop in pops:
+          source_index = structure[source_layer][source_pop]
+          x1 += w[target_index][source_index] * K_full[target_index][source_index] * \
+                full_mean_rates[source_layer][source_pop]
+      if input_type == 'poisson':
+          x1 += w_ext*K_ext[target_layer][target_pop]*bg_rate
+          K_ext_new[target_layer][target_pop] = K_ext[target_layer][target_pop]*K_scaling
+      I_ext[target_layer][target_pop] = 0.001 * neuron_params['tau_syn_E'] * \
+          (1. - np.sqrt(K_scaling)) * x1 + DC[target_layer][target_pop]
+      w_new = w / np.sqrt(K_scaling)
+      w_ext_new = w_ext / np.sqrt(K_scaling)
+  return w_new, w_ext_new, K_ext_new, I_ext
+  =#
