@@ -4,6 +4,7 @@ using .Plots
 using StatsPlots
 using StatsBase
 
+#=
 function bespoke_2dhist(nbins::Int64,times::Vector{Float32},nodes::Vector{Int64},fname=nothing)
 
     stimes = sort(times)
@@ -40,34 +41,11 @@ function bespoke_2dhist(nbins::Int64,times::Vector{Float32},nodes::Vector{Int64}
             cnt +=1
         end
     end
-
-    ##
-    #
-    ##
-    #data = view(data, vec(mapslices(col -> any(col .!= 0), data, dims = 2)), :)[:]
-    #@show(first(data[:]))
-    #@show(last(data[:]))
-    ##
-    # All neuron s are block normalised according to a global mean/std rate
-    ##
-
-    #data .= (data .- StatsBase.mean(data))./StatsBase.std(data)
-    #@show(size(data))
     return data
 end
-
+=#
 
 function normalised_2dhist(data)
-    ##
-    # Each neuron is indipendently normalised according to its own rate
-    ##
-    
-    #for (ind,row) in enumerate(eachrow(data))
-    #    data[ind,:] .= row .- StatsBase.mean(row)./sum(row)
-    #    @show(data[ind,:]) 
-    #end
-    #data = data[:,:]./maximum(data[:,:])
-    #data = x ./ norm.(eachrow(x))'
     foreach(normalize!, eachcol(data'))
     return data
 end
@@ -133,8 +111,8 @@ function density(p, sym)
     p = @gif for t = 1:length(X)
         bar(c, ρ[:, t], leg = false, xlabel = string(sym), yaxis = ("p", extrema(ρ)))
     end
-    is_windows() && run(`powershell start $(p.filename)`)
-    is_unix() && run(`xdg-open $(p.filename)`)
+    #is_windows() && run(`powershell start $(p.filename)`)
+    #is_unix() && run(`xdg-open $(p.filename)`)
     p
 end
 

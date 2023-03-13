@@ -12,6 +12,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 Requires = "0.5, 1"
 UnPack = "1"

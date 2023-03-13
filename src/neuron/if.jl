@@ -49,6 +49,8 @@ function integrate!(p::IF, param::IFParameter, dt::Float32)
         ge[i] += dt * -ge[i] / τe
         gi[i] += dt * -gi[i] / τi
         fire[i] = v[i] > Vt
+    end
+    @inbounds for i = 1:N
         v[i] = ifelse(fire[i], Vr, v[i])
     end
 end

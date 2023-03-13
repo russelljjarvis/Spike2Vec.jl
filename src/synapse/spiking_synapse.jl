@@ -1,12 +1,3 @@
-#using Revise
-#using SpikingNeuralNetworks
-@snn_kw struct SpikingSynapseParameter16{FT=Float16}
-    τpre::FT = 20ms
-    τpost::FT = 20ms
-    Wmax::FT = 0.01
-    ΔApre::FT = 0.01 * Wmax
-    ΔApost::FT = -ΔApre * τpre / τpost * 1.05
-end
 
 @snn_kw struct SpikingSynapseParameter{FT=Float32}
     τpre::FT = 20ms
@@ -42,7 +33,7 @@ SpikingSynapse
 function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
     w = σ * sprand(post.N, pre.N, p)
     rowptr, colptr, I, J, index, W = dsparse(w)
-    @show(size(w))
+    #@show(size(w))
     fireI, fireJ = post.fire, pre.fire
     g = getfield(post, sym)
     SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
@@ -54,11 +45,11 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     cnte=0
     exc = Lee+Lei # total excitatory population
     cnti=0
-# count neurons which are being pre-synapses to something
+    # count neurons which are being pre-synapses to something
 
     for i in eachrow(inhib)
         if sum(i[:]) != 0.0
-            cnte+=1
+            cnti+=1
         end
     end
 
@@ -66,13 +57,32 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     # count neurons which are being pre-synapses to something
     for i in eachrow(exc)
         if sum(i[:]) != 0.0
-            cnti+=1
+            cnte+=1
         end
     end
     total = inhib+exc
+
+    pop_size=length(total)
     cnt = length(total)
-    Ipop = SNN.IF16(;N = cnti, param = SNN.IFParameter16())
-    Epop = SNN.IF16(;N = cnte, param = SNN.IFParameter16())
+    Ipop = SNN.IFNF(;N = pop_size, param = SNN.IFParameter())
+    Epop = SNN.IFNF(;N = pop_size, param = SNN.IFParameter())
+    Noisey = SNN.IF(;N = cnte, param = SNN.IFParameter())
+
+    σ, p = 60*0.27/10 , 0.02
+    wnoise = σ * sprand(cnte, cnte, p)
+    rowptr, colptr, I, J, index, W = dsparse(wnoise)
+    fireI, fireJ = Noisey.fire, Epop.fire    
+    g = getfield(Noisey, :ge)
+    NoisyInputSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
+    
+    σ, p = 60*0.27/10 , 0.02
+    wnoise = σ * sprand(cnte, cnte, p)
+    rowptr, colptr, I, J, index, W = dsparse(wnoise)
+    fireI, fireJ = Noisey.fire, Ipop.fire    
+    g = getfield(Noisey, :ge)
+    NoisyInputSynInh = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
 
     @assert maximum(Lii) <= 0.0
     @assert maximum(Lei) >= 0.0
@@ -83,19 +93,22 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     fireI, fireJ = Epop.fire, Epop.fire
     g = getfield(Epop, :ge)
     LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
     rowptr, colptr, I, J, index, W = dsparse(Lei)
     fireI, fireJ = Epop.fire, Ipop.fire
-    g = getfield(Epop, :ge)
+    g = getfield(Epop, :ge)    
     LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    
     rowptr, colptr, I, J, index, W = dsparse(Lii)
     fireI, fireJ = Ipop.fire, Ipop.fire
     g = getfield(Ipop, :gi)
     LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    
     rowptr, colptr, I, J, index, W = dsparse(Lie)
     fireI, fireJ = Ipop.fire, Epop.fire
     g = getfield(Ipop, :gi)
     LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
-    (LeeSyn,LeiSyn,LiiSyn,LieSyn,Epop,Ipop)
+    (NoisyInputSynInh,NoisyInputSyn,LeeSyn,LeiSyn,LiiSyn,LieSyn,Epop,Ipop,Noisey)
 end
 
 function forward!(c::SpikingSynapse, param::SpikingSynapseParameter)

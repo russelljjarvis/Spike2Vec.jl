@@ -33,6 +33,7 @@ end
 
 
 
+
 function record!(obj)
     for (key, val) in obj.records
         if isa(key, Tuple)
@@ -62,6 +63,19 @@ function monitor(objs::Array, keys)
 end
 
 
+function getrecord(p, sym)
+    key = sym
+    for (k,val) in p.records
+        isa(k, Tuple) && k[1] == sym && (key = k)
+    end
+    p.records[key]
+end
+
+function clear_records(obj)
+    for (key, val) in obj.records
+        empty!(val)
+    end
+end
 
 function record_spikes!(obj)
     push!(val, getindex(getfield(obj, :record_spikes),ind))

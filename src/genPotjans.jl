@@ -8,26 +8,6 @@ https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_
 """
 
 
-"""
-An optional container that is not even used yet.
-"""
-
-struct NetParameter 
-    syn_pol::Vector{Float32}
-    conn_probs::Matrix{Float32} 
-    cumulative::Dict{String, Vector{Int64}}
-    layer_names::Vector{String}
-    columns_conn_probs::SubArray{Float32, 1, Matrix{Float32}, Tuple{Base.Slice{Base.OneTo{Int64}}, Int64}, true}
-end
-
-
-"""
-The constructor for an optional container that is not even used yet.
-"""
-#function NetParameter()
-    #syn_pol,conn_probs,cumulative)
-    #return NetParameter(syn_pol,conn_probs,cumulative)
-#end
 
 """
 Hard coded Potjans parameters follow.
@@ -36,11 +16,11 @@ and then the function outputs adapted Potjans parameters.
 function potjans_params(ccu, scale=1.0::Float64)
     # a cummulative cell count
     cumulative = Dict{String, Vector{Int64}}()  
-    layer_names = SVector{String}(["23E","23I","4E","4I","5E", "5I", "6E", "6I"])    
+    layer_names = Vector{String}(["23E","23I","4E","4I","5E", "5I", "6E", "6I"])    
     # Probabilities for >=1 connection between neurons in the given populations. 
     # The first index is for the target population; the second for the source population
     #             2/3e      2/3i    4e      4i      5e      5i      6e      6i
-    conn_probs = SMatrix{Float32}([0.1009  0.1689 0.0437 0.0818 0.0323 0.0     0.0076 0.    
+    conn_probs = Matrix{Float32}([0.1009  0.1689 0.0437 0.0818 0.0323 0.0     0.0076 0.    
                                     0.1346   0.1371 0.0316 0.0515 0.0755 0.     0.0042 0.    
                                     0.0077   0.0059 0.0497 0.135  0.0067 0.0003 0.0453 0.    
                                     0.0691   0.0029 0.0794 0.1597 0.0033 0.     0.1057 0.    
@@ -64,10 +44,35 @@ function potjans_params(ccu, scale=1.0::Float64)
             syn_pol[i] = 0
         end
     end
-    syn_pol = SVector{Int64,(length(syn_pol))}(syn_pol)
+    syn_pol = Vector{Int64}(syn_pol)
     #net = NetParameter(syn_pol,conn_probs,cumulative,layer_names,columns_conn_probs)
     return (cumulative,ccu,layer_names,columns_conn_probs,conn_probs,syn_pol)
 end
+
+
+"""
+An optional container that is not even used yet.
+"""
+struct NetParameter 
+    syn_pol::Vector{Float32}
+    conn_probs::Matrix{Float32} 
+    cumulative::Dict{String, Vector{Int64}}
+    layer_names::Vector{String}
+    columns_conn_probs::SubArray{Float32, 1, Matrix{Float32}, Tuple{Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+    #function NetParameter()
+    #    (cumulative,ccu,layer_names,columns_conn_probs,conn_probs,syn_pol) = potjans_params(ccu, scale=1.0::Float64)
+    #    # = new()
+    #end
+end
+
+
+"""
+The constructor for an optional container that is not even used yet.
+"""
+#function NetParameter()
+    #syn_pol,conn_probs,cumulative)
+    #return NetParameter(syn_pol,conn_probs,cumulative)
+#end
 """
 This function contains synapse selection logic seperated from iteration logic for readability only.
 Used inside the nested iterator inside build_matrix.
@@ -123,8 +128,8 @@ function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matri
     ##
     #Threads.@threads for i = 1:10
     cumvalues = values(cumulative)
-    total_len = length(cumvalues)*length(cumvalues)*length(syn_pol)*length(syn_pol)
-    iter_item::Vector{NTuple{4, Int64}} = zeros(total_len)
+    #total_len = length(cumvalues)*length(cumvalues)*length(syn_pol)*length(syn_pol)
+    #iter_item::Vector{NTuple{4, Int64}} = zeros(total_len)
 
     @inbounds for (i,(syn0,v)) in enumerate(zip(syn_pol,cumvalues))
         @inbounds for src in v
@@ -142,30 +147,29 @@ function build_matrix(cumulative::Dict{String, Vector{Int64}}, conn_probs::Matri
             end
         end
     end
+    Lexc = Lee+Lei
+    Linh = Lie+Lii
 
     #map!(index_assignment!, item for iter_item)
     @assert maximum(Lexc[:])>=0.0
     @assert maximum(Linh[:])<=0.0
     return w0Weights,Lee,Lie,Lei,Lii
 end
+
 """
-Build the matrix from the Potjans parameters.
- The motivation for this approach is a lower memory footprint motivations.
- a sparse matrix can be stored as a smaller dense matrix.
- A 2D matrix should be stored as 1D matrix of srcs,tgts
- A 2D weight matrix should be stored as 1 matrix, which is redistributed in loops using 
- the 1D matrix of srcs,tgts.
+Build the matrix from the Potjans parameterpotjans_layers.
 
 """
 function potjans_weights(args)
-    _, _, _, _, _, ccu, scale = args
+    Ncells, g_strengths, ccu, scale = args
+    #(;Ncells,g_strengths,ccu,scale)
     (cumulative,ccu,layer_names,_,conn_probs,syn_pol) = potjans_params(ccu,scale)    
-    g_strengths = Vector{Float64}([jee,jie,jei,jii])
     w0Weights,Lee,Lie,Lei,Lii = build_matrix(cumulative,conn_probs,Ncells,g_strengths,syn_pol)
     w0Weights,Lee,Lie,Lei,Lii
 end
 
-function potjans_layer(scale=1.0::Float64)
+
+function auxil_potjans_param(scale=1.0::Float64)
 	ccu = Dict{String, Int32}("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
@@ -182,9 +186,9 @@ function potjans_layer(scale=1.0::Float64)
 
 end
 
-function potjans_layer()
-    scale = 1.0/40.0
-    Ncells,Ne,Ni, ccu = potjans_layer(scale)    
+function potjans_layer(scale)
+    
+    Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
     pree = 0.1
     K = round(Int, Ne*pree)
     sqrtK = sqrt(K)
@@ -196,22 +200,16 @@ function potjans_layer()
     jei = je 
     jie = -0.75ji 
     jii = -ji
-    genStaticWeights_args = (;Ncells,jee,jie,jei,jii,ccu,scale)
-    potjans_weights(genStaticWeights_args),Ne,Ni
-end
-"""
-Build the matrix from the Potjans parameters.
-
-"""
-function potjans_weights(args)
-    _, _, _, _, _, ccu, scale = args
-    (cumulative,ccu,layer_names,_,conn_probs,syn_pol) = potjans_params(ccu,scale)    
     g_strengths = Vector{Float64}([jee,jie,jei,jii])
-    w0Weights,Lee,Lie,Lei,Lii = build_matrix(cumulative,conn_probs,Ncells,g_strengths,syn_pol)
-    w0Weights,Lee,Lie,Lei,Lii
+
+    genStaticWeights_args = (;Ncells,g_strengths,ccu,scale)
+    potjans_weights(genStaticWeights_args),Ne,Ni
 end
 
 #=
+
+Hack to get spatial coordinates for neurons:
+How to get spatial coordinates for neurons.
 
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py
 
