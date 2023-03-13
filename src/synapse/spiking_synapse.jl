@@ -33,9 +33,8 @@ SpikingSynapse
 
 function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
     w = σ * sprand(post.N, pre.N, p)
-    #spy(w)
-    #savefig("random_wiring.png")
     rowptr, colptr, I, J, index, W = dsparse(w)
+    @show(size(w))
     fireI, fireJ = post.fire, pre.fire
     g = getfield(post, sym)
     SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)

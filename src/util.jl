@@ -31,6 +31,8 @@ function dsparse(A)
     rowptr, colptr, I, J, index, V
 end
 
+
+
 function record!(obj)
     for (key, val) in obj.records
         if isa(key, Tuple)
@@ -41,27 +43,6 @@ function record!(obj)
         end
     end
 end
-
-
-    #=
-    cellsa = Array{Union{Missing,Any}}(undef, 1, Int(findmax(y)[1]))
-    nac = Int(findmax(y)[1])
-    for (inx, cell_id) in enumerate(1:nac)
-        cellsa[inx] = []
-    end
-    @inbounds for cell_id in unique(y)
-        @inbounds for (time, cell) in collect(zip(x, y))
-            if Int(cell_id) == cell
-                append!(cellsa[Int(cell_id)], time)
-            end
-        end
-    end
-    cellsa
-
-end
-=#
-
-
 
 function monitor(obj, keys)
     for key in keys
@@ -74,12 +55,49 @@ function monitor(obj, keys)
         obj.records[key] = Vector{typ}()
     end
 end
-
 function monitor(objs::Array, keys)
     for obj in objs
         monitor(obj, keys)
     end
 end
+
+
+
+function record_spikes!(obj)
+    push!(val, getindex(getfield(obj, :record_spikes),ind))
+end
+function monitor_spikes(obj)
+    typ = typeof(getfield(obj, :fire))
+    obj.record_spikes = Vector{typ}()
+end
+
+function monitor_spikes(objs::Array)
+    for obj in objs
+        monitor_spikes(obj, :fire)
+    end
+end
+
+
+#=
+cellsa = Array{Union{Missing,Any}}(undef, 1, Int(findmax(y)[1]))
+nac = Int(findmax(y)[1])
+for (inx, cell_id) in enumerate(1:nac)
+    cellsa[inx] = []
+end
+@inbounds for cell_id in unique(y)
+    @inbounds for (time, cell) in collect(zip(x, y))
+        if Int(cell_id) == cell
+            append!(cellsa[Int(cell_id)], time)
+        end
+    end
+end
+cellsa
+
+end
+=#
+
+
+
 #=
 struct get_trains
     X = Float32[] 
