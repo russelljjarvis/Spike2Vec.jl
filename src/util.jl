@@ -112,12 +112,6 @@ end
 
 
 
-#=
-struct get_trains
-    X = Float32[] 
-    Y = Int32[]
-end
-=#
 
 function divide_epoch(nodes,times,duration)
     t1=[]
@@ -141,8 +135,6 @@ end
 function get_vector_coords()
     (t0,n0,t1,n1) = divide_epoch(nodes,times,duration)
     maxt = findmax(sort!(unique(vcat(spikes,ground_spikes))))[1]
-
-    #@show(times)
 
 end
 
@@ -178,12 +170,12 @@ function get_trains(P::Array)
         append!(X, x)
         append!(Y, y)
     end
-    print("fails here")
     return (X,Y)
-    #return get_trains(X,Y)
 end
-
-#get_trains = get_trains(P::Array)  
+function get_weights(C)
+    W = C.records[:W]
+    return W
+end
 
 function get_trains(p)
     fire = p.records[:fire]
