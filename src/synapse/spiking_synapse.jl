@@ -68,7 +68,7 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     Epop = SNN.IFNF(;N = pop_size, param = SNN.IFParameter())
     Noisey = SNN.IF(;N = cnte, param = SNN.IFParameter())
 
-    σ, p = 60*0.27/10 , 0.02
+    σ, p = 60*0.27/40 , 0.005
     wnoise = σ * sprand(cnte, cnte, p)
     rowptr, colptr, I, J, index, W = dsparse(wnoise)
     fireI, fireJ = Noisey.fire, Epop.fire    
@@ -76,7 +76,7 @@ function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCS
     NoisyInputSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
     
-    σ, p = 60*0.27/10 , 0.02
+    σ, p = 60*0.27/40 , 0.005
     wnoise = σ * sprand(cnte, cnte, p)
     rowptr, colptr, I, J, index, W = dsparse(wnoise)
     fireI, fireJ = Noisey.fire, Ipop.fire    

@@ -7,14 +7,14 @@ using OnlineStats
 using Plots
 
 function makeNetGetTimes()
-    scale = 1.0/10.0
+    scale = 1.0/20.0
     @time (_,Lee,Lie,Lei,Lii),Ne,Ni = SNN.potjans_layer(scale)
     @time (NoisyInputSynInh,NoisyInputSyn,LeeSyn,LeiSyn,LiiSyn,LieSyn,E,I,Noisy) = SNN.SpikingSynapse(Lee,Lei,Lii,Lie)
     print("wiring done")    
     P = [E,I,Noisy] # populations     
     C = [NoisyInputSynInh,NoisyInputSyn,LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
     SNN.monitor([E,I], [:fire])
-    @time SNN.sim!(P, C; duration = 2.0second)
+    @time SNN.sim!(P, C; duration = 0.2second)
     print("simulation done !")
     SNN.raster([E,I]) #|> display
     Plots.savefig("cheap_dirty_plot.png")
