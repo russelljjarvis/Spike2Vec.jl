@@ -24,7 +24,7 @@ struct IF <: AbstractIF
     fire::Vector{Bool}
     I::Vector{Float32}
     records::Dict
-    function IF(;N::Int64,param::SpikingNeuralNetworks.IFParameter)#,ge::Vector{Float32},gi::Vector{Float32},fire::Vector{Bool},I::Vector{Float32},records::Dict)
+    function IF(;N::Int64,param::SpikingNeuralNetworks.IFParameter)
         VFT = Vector{Float32}
         v::VFT = param.Vr .+ rand(N) .* (param.Vt - param.Vr)
         ge::VFT = zeros(N)
@@ -48,8 +48,6 @@ function integrate!(p::IF, param::IFParameter, dt::Float32)
         v[i] += dt * (ge[i] + gi[i] - (v[i] - El) + I[i]) / τm
         ge[i] += dt * -ge[i] / τe
         gi[i] += dt * -gi[i] / τi
-    end
-    @inbounds for i = 1:N
         fire[i] = v[i] > Vt
         v[i] = ifelse(fire[i], Vr, v[i])
     end
