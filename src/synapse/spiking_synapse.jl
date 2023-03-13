@@ -43,35 +43,61 @@ end
 
 function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)#,Lexc::SparseMatrixCSC{Float64, Int64},Linh::SparseMatrixCSC{Float64, Int64},; kwargs...)
 
+    inhib = Lii+Lie
+    #ierow = [x for (x,y,v) in zip(findnz(inhib)...) ]
+    cnt=0
+    for i in eachrow(inhib)
+        if sum(i[:]) != 0.0
+            cnt+=1
+        end
+    end
+
+    exc = Lee+Lei
+    #ierow = [x for (x,y,v) in zip(findnz(inhib)...) ]
+    cnt=0
+    for i in eachrow(exc)
+        if sum(i[:]) != 0.0
+            cnt+=1
+        end
+    end
+    total = inhib+exc
+    cnt = length(total)
+    Ipop = SNN.IF(;N = cnt, param = SNN.IFParameter())#;El = -49mV))
+    Epop = SNN.IF(;N = cnt, param = SNN.IFParameter())#;El = -49mV))
+    #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
+    #EI = SNN.SpikingSynapse(E, I, :ge; σ = 60*0.27/10, p = 0.02)
+    #IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/10, p = 0.02)
+    #II = SNN.SpikingSynapse(I, I, :gi; σ = -20*4.5/10, p = 0.02)
 
 
     @assert maximum(Lii) <= 0.0
     @assert maximum(Lei) >= 0.0
     @assert maximum(Lie) <= 0.0
     @assert maximum(Lee) >= 0.0
+    Lee = 0.001*Lee
 
     rowptr, colptr, I, J, index, W = dsparse(Lee)
-    fireI, fireJ = ee_src.fire, ee_tgt.fire
-    g = getfield(ee_src, :ge)
+    fireI, fireJ = Epop.fire, Epop.fire
+    g = getfield(Epop, :ge)
     LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
     rowptr, colptr, I, J, index, W = dsparse(Lei)
-    fireI, fireJ = ei_src.fire, ei_tgt.fire
-    g = getfield(ei_src, :ge)
+    fireI, fireJ = Epop.fire, Ipop.fire
+    g = getfield(Epop, :ge)
     LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
     rowptr, colptr, I, J, index, W = dsparse(Lii)
-    fireI, fireJ = ii_src.fire, ii_tgt.fire
-    g = getfield(ii_src, :gi)
+    fireI, fireJ = Ipop.fire, Ipop.fire
+    g = getfield(Ipop, :gi)
     LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
     rowptr, colptr, I, J, index, W = dsparse(Lie)
-    fireI, fireJ = ie_src.fire, ie_tgt.fire
-    g = getfield(ie_src, :gi)
+    fireI, fireJ = Ipop.fire, Epop.fire
+    g = getfield(Ipop, :gi)
     LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 
 
-    (LeeSyn,LeiSyn,LiiSyn,LieSyn)
+    (LeeSyn,LeiSyn,LiiSyn,LieSyn,Epop,Ipop)
 end
 
 

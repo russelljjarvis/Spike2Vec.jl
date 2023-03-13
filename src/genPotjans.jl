@@ -79,9 +79,12 @@ function index_assignment!(item::Tuple{Int64, Int64, String, String}, w0Weights:
     # original code by Tobias Potjans
     w_rel_234 = 0.05
     # Relative inhibitory synaptic weight
-    wig = -4.
+    wig = -20*4.5/10
     (src,tgt,k,k1) = item
-
+    #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
+    #EI = SNN.SpikingSynapse(E, I, :ge; σ = 60*0.27/10, p = 0.02)
+    #IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/10, p = 0.02)
+    #II = SNN.SpikingSynapse(I, I, :gi; σ = -20*4.5/10, p = 0.02)
     if occursin("E",k) 
         if occursin("E",k1)   
             

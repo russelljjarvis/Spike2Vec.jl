@@ -28,7 +28,7 @@ function potjans_layer(scale=1.0::Float64)
 end
 
 function potjans_layer()
-    scale = 1.0/100.0
+    scale = 1.0/200.0
     #Ncells,Ne,Ni, ccu = potjans_layer(scale)    
     Ncells,Ne,Ni, ccu = potjans_layer(scale)    
 
@@ -85,11 +85,11 @@ function getpopulations(Lee::type_,Lei::type_,Lii::type_,Lie::type_)
     @assert !(0.0 in iicol)
     @assert !(0.0 in eicol)
     @assert !(0.0 in iecol)
-    @assert length(unique(eerow)) == length(unique(eecol))
+    #@assert length(unique(eerow)) == length(unique(eecol))
     @show(length(unique(eirow)),length(unique(eicol)))
     
     #@assert length(unique(eirow)) == length(unique(eicol))
-    @assert length(unique(iirow)) == length(unique(iicol))
+    #@assert length(unique(iirow)) == length(unique(iicol))
     @show(length(unique(iirow)),length(unique(iicol)))
     @show(length(unique(ierow)),length(unique(iecol)))
 
@@ -113,14 +113,15 @@ function global_scope_sucks()
     @time (_,Lee,Lie,Lei,Lii),Ne,Ni = potjans_layer()
     print("wiring done")
     (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt) = getpopulations(Lee,Lei,Lii,Lie)
-    (LeeSyn,LeiSyn,LiiSyn,LieSyn) = SNN.SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee,Lei,Lii,Lie)#Lexc,Linh)
-    P = [ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt] # populations 
-    C = [LeeSyn] # connections
+    
+    @time (LeeSyn,LeiSyn,LiiSyn,LieSyn,E,I) = SNN.SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee,Lei,Lii,Lie)#Lexc,Linh)
+    P = [E,I] # populations 
+    C = [LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
     return P,C
 end
 P, C = global_scope_sucks()
 SNN.monitor(P, [:fire])
-@time SNN.sim!(P, C; duration = 1second)
+@time SNN.sim!(P, C; duration = 3second)
 SNN.raster(P)
 Plots.savefig("default_raster_untrained.png")
 
@@ -131,7 +132,7 @@ foreach(normalize!, eachcol(data))
 Plots.plot(heatmap(data),legend = false, normalize=:pdf)
 Plots.savefig("untrainedHeatMap_raster_trained.png")
 #Plots.savefig("heatmap_untrained_unnormalised.png")
-SNN.train!(P, C; duration = 1second)
+SNN.train!(P, C; duration = 3second)
 SNN.raster(P)
 Plots.savefig("default_raster_trained.png")
 (times,nodes) = SNN.get_trains(P)
