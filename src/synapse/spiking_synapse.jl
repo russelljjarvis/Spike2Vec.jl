@@ -1,5 +1,13 @@
 #using Revise
 #using SpikingNeuralNetworks
+@snn_kw struct SpikingSynapseParameter16{FT=Float16}
+    τpre::FT = 20ms
+    τpost::FT = 20ms
+    Wmax::FT = 0.01
+    ΔApre::FT = 0.01 * Wmax
+    ΔApost::FT = -ΔApre * τpre / τpost * 1.05
+end
+
 @snn_kw struct SpikingSynapseParameter{FT=Float32}
     τpre::FT = 20ms
     τpost::FT = 20ms
@@ -41,10 +49,8 @@ function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
 end
 
 
-function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)#,Lexc::SparseMatrixCSC{Float64, Int64},Linh::SparseMatrixCSC{Float64, Int64},; kwargs...)
-
+function SpikingSynapse(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)
     inhib = Lii+Lie
-    #ierow = [x for (x,y,v) in zip(findnz(inhib)...) ]
     cnt=0
     for i in eachrow(inhib)
         if sum(i[:]) != 0.0
@@ -53,7 +59,6 @@ function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,
     end
 
     exc = Lee+Lei
-    #ierow = [x for (x,y,v) in zip(findnz(inhib)...) ]
     cnt=0
     for i in eachrow(exc)
         if sum(i[:]) != 0.0
@@ -62,13 +67,8 @@ function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,
     end
     total = inhib+exc
     cnt = length(total)
-    Ipop = SNN.IF(;N = cnt, param = SNN.IFParameter())#;El = -49mV))
-    Epop = SNN.IF(;N = cnt, param = SNN.IFParameter())#;El = -49mV))
-    #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
-    #EI = SNN.SpikingSynapse(E, I, :ge; σ = 60*0.27/10, p = 0.02)
-    #IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/10, p = 0.02)
-    #II = SNN.SpikingSynapse(I, I, :gi; σ = -20*4.5/10, p = 0.02)
-
+    Ipop = SNN.IF16(;N = cnt, param = SNN.IFParameter16())
+    Epop = SNN.IF16(;N = cnt, param = SNN.IFParameter16())
 
     @assert maximum(Lii) <= 0.0
     @assert maximum(Lei) >= 0.0
@@ -139,3 +139,4 @@ function plasticity!(c::SpikingSynapse, param::SpikingSynapseParameter, dt::Floa
         end
     end
 end
+#plasticity16!(c::SpikingSynapse, param::SpikingSynapseParameter, dt::Float16, t::Float32) = plasticity!(c::SpikingSynapse, param::SpikingSynapseParameter, dt::Float32, t::Float32)

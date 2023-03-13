@@ -28,11 +28,8 @@ function potjans_layer(scale=1.0::Float64)
 end
 
 function potjans_layer()
-    scale = 1.0/200.0
-    #Ncells,Ne,Ni, ccu = potjans_layer(scale)    
+    scale = 1.0/1.0
     Ncells,Ne,Ni, ccu = potjans_layer(scale)    
-
-     #profile_test(1)  # run once to trigger compilation (ignore this one)
     pree = prie = prei = prii = 0.1
     K = round(Int, Ne*pree)
     sqrtK = sqrt(K)
@@ -62,70 +59,25 @@ end
 =#
 #type_ = SpikingNeuralNetworks.IF{Vector{Float32}, Vector{Bool}}
 #@show(type)
-type_ = SparseMatrixCSC{Float32, Int64}
-function getpopulations(Lee::type_,Lei::type_,Lii::type_,Lie::type_)
-    eerow = [x for (x,y,v) in zip(findnz(Lee)...) ]
-    iirow = [x for (x,y,v) in zip(findnz(Lii)...) ]
-    eirow = [x for (x,y,v) in zip(findnz(Lei)...) ]
-    ierow = [x for (x,y,v) in zip(findnz(Lie)...) ]
-    eecol = [y for (x,y,v) in zip(findnz(Lee)...) ]
-    iicol = [y for (x,y,v) in zip(findnz(Lii)...) ]
-    eicol = [y for (x,y,v) in zip(findnz(Lei)...) ]
-    iecol = [y for (x,y,v) in zip(findnz(Lie)...) ]
-    @assert length(eecol) == length(eerow) 
-    @assert length(iicol) == length(iirow) 
-    @assert length(eicol) == length(eirow) 
-    @assert length(iecol) == length(ierow) 
-
-    @assert !(0.0 in ierow)
-    @assert !(0.0 in eirow)
-    @assert !(0 in iirow)
-    @assert !(0 in eerow)
-    @assert !(0.0 in eecol)
-    @assert !(0.0 in iicol)
-    @assert !(0.0 in eicol)
-    @assert !(0.0 in iecol)
-    #@assert length(unique(eerow)) == length(unique(eecol))
-    @show(length(unique(eirow)),length(unique(eicol)))
-    
-    #@assert length(unique(eirow)) == length(unique(eicol))
-    #@assert length(unique(iirow)) == length(unique(iicol))
-    @show(length(unique(iirow)),length(unique(iicol)))
-    @show(length(unique(ierow)),length(unique(iecol)))
-
-    #@assert length(unique(ierow)) == length(unique(iecol))
-    
-    ee_src = SNN.IF(;N = length(eerow), param = SNN.IFParameter())#;El = -49mV))
-    ii_src = SNN.IF(;N = length(iirow), param = SNN.IFParameter())#;El = -49mV))
-    ei_src = SNN.IF(;N = length(eirow), param = SNN.IFParameter())#;El = -49mV))
-    ie_src = SNN.IF(;N = length(ierow), param = SNN.IFParameter())#;El = -49mV))
-    ee_tgt = SNN.IF(;N = length(eecol), param = SNN.IFParameter())#;El = -49mV))
-    ii_tgt = SNN.IF(;N = length(iicol), param = SNN.IFParameter())#;El = -49mV))
-    ei_tgt = SNN.IF(;N = length(eicol), param = SNN.IFParameter())#;El = -49mV))
-    ie_tgt = SNN.IF(;N = length(iecol), param = SNN.IFParameter())#;El = -49mV))
-
-    #new_weight = Lee+Lei+Lie+Lii
-    #ww = unique([x for (x,y,v) in zip(findnz(new_weight)...) ])
-    return (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt)
-end
 
 function global_scope_sucks()
     @time (_,Lee,Lie,Lei,Lii),Ne,Ni = potjans_layer()
     print("wiring done")
-    (ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt) = getpopulations(Lee,Lei,Lii,Lie)
+    #(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt) = getpopulations(Lee,Lei,Lii,Lie)
     
-    @time (LeeSyn,LeiSyn,LiiSyn,LieSyn,E,I) = SNN.SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee,Lei,Lii,Lie)#Lexc,Linh)
+    @time (LeeSyn,LeiSyn,LiiSyn,LieSyn,E,I) = SNN.SpikingSynapse(Lee,Lei,Lii,Lie)#Lexc,Linh)
     P = [E,I] # populations 
     C = [LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
-    return P,C
-end
-P, C = global_scope_sucks()
-SNN.monitor(P, [:fire])
-@time SNN.sim!(P, C; duration = 3second)
-SNN.raster(P)
-Plots.savefig("default_raster_untrained.png")
+    SNN.monitor(P, [:fire])
+    @time SNN.sim!(P, C; duration = 0.5second)
+    SNN.raster(P)
+    Plots.savefig("default_raster_untrained.png")
 
-(times,nodes) = SNN.get_trains(P)
+    (times,nodes) = SNN.get_trains(P)
+    return (P,C,times,nodes)
+end
+(P,C,times,nodes) = global_scope_sucks()
+
 nbins = 525
 data = SNN.bespoke_2dhist(nbins,times,nodes)
 foreach(normalize!, eachcol(data))
