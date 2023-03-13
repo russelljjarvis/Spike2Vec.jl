@@ -1,3 +1,5 @@
+#using Revise
+#using SpikingNeuralNetworks
 @snn_kw struct SpikingSynapseParameter{FT=Float32}
     τpre::FT = 20ms
     τpost::FT = 20ms
@@ -32,10 +34,46 @@ SpikingSynapse
 function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0, kwargs...)
     w = σ * sprand(post.N, pre.N, p)
     rowptr, colptr, I, J, index, W = dsparse(w)
+    @show(size(w))
     fireI, fireJ = post.fire, pre.fire
     g = getfield(post, sym)
     SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 end
+
+
+function SpikingSynapse(ee_src,ii_src,ei_src,ie_src,ee_tgt,ii_tgt,ei_tgt,ie_tgt,Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64}, kwargs...)#,Lexc::SparseMatrixCSC{Float64, Int64},Linh::SparseMatrixCSC{Float64, Int64},; kwargs...)
+
+
+
+    @assert maximum(Lii) <= 0.0
+    @assert maximum(Lei) >= 0.0
+    @assert maximum(Lie) <= 0.0
+    @assert maximum(Lee) >= 0.0
+
+    rowptr, colptr, I, J, index, W = dsparse(Lee)
+    fireI, fireJ = ee_src.fire, ee_tgt.fire
+    g = getfield(ee_src, :ge)
+    LeeSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
+    rowptr, colptr, I, J, index, W = dsparse(Lei)
+    fireI, fireJ = ei_src.fire, ei_tgt.fire
+    g = getfield(ei_src, :ge)
+    LeiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
+    rowptr, colptr, I, J, index, W = dsparse(Lii)
+    fireI, fireJ = ii_src.fire, ii_tgt.fire
+    g = getfield(ii_src, :gi)
+    LiiSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
+    rowptr, colptr, I, J, index, W = dsparse(Lie)
+    fireI, fireJ = ie_src.fire, ie_tgt.fire
+    g = getfield(ie_src, :gi)
+    LieSyn = SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+
+
+    (LeeSyn,LeiSyn,LiiSyn,LieSyn)
+end
+
 
 function forward!(c::SpikingSynapse, param::SpikingSynapseParameter)
     @unpack colptr, I, W, fireJ, g = c

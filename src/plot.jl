@@ -1,5 +1,77 @@
 using .Plots
+#using Plots
 # FIXME: using StatsBase
+using StatsPlots
+using StatsBase
+
+function bespoke_2dhist(nbins::Int64,times::Vector{Float32},nodes::Vector{Int64},fname=nothing)
+
+    stimes = sort(times)
+    ns = maximum(unique(nodes))    
+    stride_length = Float64(maximum(stimes)/nbins)
+    temp_vec = collect(0:stride_length:maximum(stimes))
+    templ = []
+    for (cnt,n) in enumerate(collect(1:maximum(nodes)+1))
+        push!(templ,[])
+    end
+    for (cnt,n) in enumerate(nodes)
+
+        push!(templ[n+1],times[cnt])    
+        #@show(templ[n+1])
+    end
+    list_of_artifact_rows = []
+    #data = Matrix{Float64}(undef, ns+1, Int(length(temp_vec)-1))
+    for (ind,t) in enumerate(templ)
+        psth = fit(Histogram,t,temp_vec)
+        #data[ind,:] = psth.weights[:]
+        if sum(psth.weights[:]) == 0.0
+            append!(list_of_artifact_rows,ind)
+        end
+    end
+    #@show(list_of_artifact_rows)
+    adjusted_length = ns+1-length(list_of_artifact_rows)
+    data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)-1))
+    cnt = 1
+    for t in templ
+        psth = fit(Histogram,t,temp_vec)        
+        if sum(psth.weights[:]) != 0.0
+            data[cnt,:] = psth.weights[:]
+            @assert sum(data[cnt,:])!=0
+            cnt +=1
+        end
+    end
+
+    ##
+    #
+    ##
+    #data = view(data, vec(mapslices(col -> any(col .!= 0), data, dims = 2)), :)[:]
+    #@show(first(data[:]))
+    #@show(last(data[:]))
+    ##
+    # All neuron s are block normalised according to a global mean/std rate
+    ##
+
+    #data .= (data .- StatsBase.mean(data))./StatsBase.std(data)
+    #@show(size(data))
+    return data
+end
+
+
+function normalised_2dhist(data)
+    ##
+    # Each neuron is indipendently normalised according to its own rate
+    ##
+    
+    #for (ind,row) in enumerate(eachrow(data))
+    #    data[ind,:] .= row .- StatsBase.mean(row)./sum(row)
+    #    @show(data[ind,:]) 
+    #end
+    #data = data[:,:]./maximum(data[:,:])
+    #data = x ./ norm.(eachrow(x))'
+    foreach(normalize!, eachcol(data'))
+    return data
+end
+
 
 function raster(p)
     fire = p.records[:fire]
