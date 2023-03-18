@@ -12,13 +12,13 @@ using StatsPlots
 #using Plots
 
 #using StaticArrays
-include("genPotjans.jl")
+#include("genPotjans.jl")
 
 include("unit.jl")
 include("main.jl")
 include("util.jl")
 #include("plot.jl")
-include("neuron/if.jl")
+#include("neuron/if.jl")
 include("neuron/noise_free_lif.jl")
 include("neuron/16bit_if.jl")
 include("neuron/if2.jl")

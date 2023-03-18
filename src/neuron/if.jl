@@ -1,20 +1,4 @@
 
-abstract type AbstractIFParameter end
-struct IFParameter# <: AbstractIFParameter
-    τm::Float32# = 20ms
-    τe::Float32# = 5ms
-    τi::Float32# = 10ms
-    Vt::Float32# = -50mV
-    Vr::Float32# = -60mV
-    El::Float32# = Vr
-    function IFParameter()
-        new(20.0,5.0,10.0,-50.0,-60.0,-35.0)
-    end
-
-end
-
-abstract type AbstractIF end
-
 struct IF <: AbstractIF
     param::IFParameter
     N::Int32
@@ -24,7 +8,7 @@ struct IF <: AbstractIF
     fire::Vector{Bool}
     I::Vector{Float32}
     records::Dict
-    function IF(;N::Int64,param::SpikingNeuralNetworks.IFParameter)
+    function IF(;N::Int64,param::SpikingNeuralNetworks.IFParameter,I::Vector{Float32})
         VFT = Vector{Float32}
         v::VFT = param.Vr .+ rand(N) .* (param.Vt - param.Vr)
         ge::VFT = zeros(N)
@@ -43,9 +27,10 @@ IF
 
 function integrate!(p::IF, param::IFParameter, dt::Float32)
     @unpack N, v, ge, gi, fire, I = p
-    @unpack τm, τe, τi, Vt, Vr, El = param
+    @unpack τm, τe, τi, Vt, Vr, El, gL = param
+    vtemp = v
     @inbounds for i = 1:N
-        v[i] += dt * (ge[i] + gi[i] - (v[i] - El) + I[i]) / τm
+        v[i] += dt * (ge[i] + gi[i] - (v[i] - El) + I[i]) /gL* τm
         ge[i] += dt * -ge[i] / τe
         gi[i] += dt * -gi[i] / τi
         fire[i] = v[i] > Vt
@@ -53,4 +38,5 @@ function integrate!(p::IF, param::IFParameter, dt::Float32)
     @inbounds for i = 1:N
         v[i] = ifelse(fire[i], Vr, v[i])
     end
+    
 end

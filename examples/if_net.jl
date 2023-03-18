@@ -16,7 +16,7 @@ function makeNetGetTimes()
     C = [NoisyInputSynInh,NoisyInputSyn,LeeSyn,LeiSyn,LiiSyn,LieSyn] # connections
     cnt_synapses=0
 
-    cnt_synapses=0
+    #cnt_synapses=0
     for sparse_connections in C
         cnt_synapses+=length(sparse_connections.W)
         #UnicodePlots.spy(C.W) |> display
@@ -34,9 +34,9 @@ function makeNetGetTimes()
     #plot(o1, marginals=false, legend=true) #|>display 
     #Plots.savefig("default_heatmap.png")
 
-    SNN.monitor([E,I], [:fire])
+    #SNN.monitor([E,I], [:fire])
 
-    @time SNN.train!(P, C; duration = 0.25second)
+    #@time SNN.train!(P, C; duration = 0.25second)
     
     
     (times,nodes) = SNN.get_trains([E,I])

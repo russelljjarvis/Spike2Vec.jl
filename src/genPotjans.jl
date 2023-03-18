@@ -20,14 +20,14 @@ function potjans_params(ccu, scale=1.0::Float64)
     # Probabilities for >=1 connection between neurons in the given populations. 
     # The first index is for the target population; the second for the source population
     #             2/3e      2/3i    4e      4i      5e      5i      6e      6i
-    conn_probs = Matrix{Float32}([0.1009  0.1689 0.0437 0.0818 0.0323 0.0     0.0076 0.    
+    conn_probs = @SMatrix [0.1009  0.1689 0.0437 0.0818 0.0323 0.0     0.0076 0.    
                                     0.1346   0.1371 0.0316 0.0515 0.0755 0.     0.0042 0.    
                                     0.0077   0.0059 0.0497 0.135  0.0067 0.0003 0.0453 0.    
                                     0.0691   0.0029 0.0794 0.1597 0.0033 0.     0.1057 0.    
                                     0.1004   0.0622 0.0505 0.0057 0.0831 0.3726 0.0204 0.    
                                     0.0548   0.0269 0.0257 0.0022 0.06   0.3158 0.0086 0.    
                                     0.0156   0.0066 0.0211 0.0166 0.0572 0.0197 0.0396 0.2252
-                                    0.0364   0.001  0.0034 0.0005 0.0277 0.008  0.0658 0.1443 ])
+                                    0.0364   0.001  0.0034 0.0005 0.0277 0.008  0.0658 0.1443 ]
     # hard coded stuff is manipulated below:
     columns_conn_probs = [col for col in eachcol(conn_probs)][1]    
     v_old=1
@@ -36,7 +36,9 @@ function potjans_params(ccu, scale=1.0::Float64)
         cumulative[k]=collect(v_old:v+v_old)
         v_old=v+v_old
     end    
-    syn_pol = Vector{Int64}(zeros(length(ccu)))
+    syn_pol = @SVector Int64(zeros(length(ccu)))
+
+    
     for (i,(k,v)) in enumerate(pairs(ccu))
         if occursin("E",k) 
             syn_pol[i] = 1

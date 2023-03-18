@@ -56,7 +56,10 @@ struct SpikingSynapse
     #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
     function SpikingSynapse(rowptr, colptr, I, J, index, w)#, fireI, fireJ, g)#::Int64,param::SpikingNeuralNetworks.IFParameter)
         param::SpikingSynapseParameter = SpikingSynapseParameter()
+        w[diagind(w)] .= 0.0
+
         rowptr, colptr, I, J, index, W = dsparse(w.nzval)
+
         tpre::VFT = zero(W) # presynaptic spiking time
         tpost::VFT = zero(W) # postsynaptic spiking time
         Apre::VFT = zero(W) # presynaptic trace
@@ -73,7 +76,9 @@ struct SpikingSynapse
     #EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/10, p = 0.02)
 
     function SpikingSynapse(pre, post, sym; σ = 0.0, p = 0.0)#, kwargs...)
-        w = σ * sprand(post.N, pre.N, p)
+        w = σ * sprand(post.N, pre.N, p) 
+        #w .- diag(w)
+        w[diagind(w)] .= 0.0
         rowptr, colptr, I, J, index, W = dsparse(w)
         fireI, fireJ = post.fire, pre.fire
         g = getfield(post, sym)

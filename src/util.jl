@@ -172,11 +172,13 @@ function get_trains(P::Array)
     end
     return (X,Y)
 end
+
+#=
 function get_weights(C)
     W = C.records[:W]
     return W
 end
-
+=#
 function get_trains(p)
     fire = p.records[:fire]
     x, y = Float32[], Int64[]
@@ -189,20 +191,6 @@ function get_trains(p)
     return (x,y)
 end
 #get_trains = get_trains(p)  
-
-function getrecord(p, sym)
-    key = sym
-    for (k,val) in p.records
-        isa(k, Tuple) && k[1] == sym && (key = k)
-    end
-    p.records[key]
-end
-
-function clear_records(obj)
-    for (key, val) in obj.records
-        empty!(val)
-    end
-end
 
 @inline function exp32(x::Float32)
     x = ifelse(x < -10f0, -32f0, x)
