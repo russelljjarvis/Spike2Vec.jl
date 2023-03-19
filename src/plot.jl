@@ -54,7 +54,11 @@ end
 function raster(p)
     fire = p.records[:fire]
     x, y = Float32[], Float32[]
+    @show(typeof(fire))
+    #fire = convert(Array{Any},fire)
     for t = eachindex(fire)
+        fire[t] = convert(Vector{Float32},fire[t])
+
         for n in findall(fire[t])
             push!(x, t)
             push!(y, n)

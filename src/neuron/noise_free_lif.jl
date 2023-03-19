@@ -148,14 +148,14 @@ end
 #integrate!(::Int64, ::CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}, ::CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}, ::CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}, ::CuArray{Bool, 1, CUDA.Mem.DeviceBuffer}, ::CuArray{Float32, 1, CUDA.Mem.DeviceBuffer})
 
 function integrate!(N::Int64,v::CuArray{Float32} ,dt::Float32,ge::CuVector{Float32},gi::CuVector{Float32},fire::CuArray{Bool},I::CuVector{Float32})
-    kernel = @cuda launch=false lif_kernel(N, v, ge, gi, fire,I,dt)
+    kernel = @cuda launch=false lif_kernel!(N, v, ge, gi, fire,I,dt)
     config = launch_configuration(kernel.fun)
     xthreads = min(32, N)
     xblocks = min(config.blocks, cld(N, xthreads))
     kernel(N, v, ge, gi, fire, I,dt;threads=(xthreads), blocks=(xblocks<<2))
 
 end
-
+#=
 
 function integrate!(N::Float32,v::Vector{Float32},dt::Float32,ge::Vector{Float32},gi::Vector{Float32},fire::Vector{Bool},I::Vector{Float32})
 
@@ -174,8 +174,8 @@ function integrate!(N::Float32,v::Vector{Float32},dt::Float32,ge::Vector{Float32
         
     end
 end
-
-function lif_kernel(N, v, ge, gi, fire, I,dt)
+=#
+function lif_kernel!(N, v, ge, gi, fire, I,dt)
     τm, τe, τi, Vt, Vr, El, gL = (100.0,5.0,10.0,0.2,0.0,-60.0,10.0)
     R = 1.75
     i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x

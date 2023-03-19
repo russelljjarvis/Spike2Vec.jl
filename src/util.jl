@@ -1,4 +1,4 @@
-
+#using CUDA
 function connect!(c, j, i, σ = 1e-6)
     W = sparse(c.I, c.J, c.W, length(c.rowptr) - 1, length(c.colptr) - 1)
     W[i, j] = σ * randn(Float32)
@@ -27,6 +27,9 @@ function dsparse(A)
             coldown[j] += 1
         end
     end
+    #V = convert(CuArray{Float32},V)
+    #I = convert(CuArray{Int32},I)
+
     # Test.@test At.nzval == A.nzval[index]
     rowptr, colptr, I, J, index, V
 end

@@ -1,7 +1,9 @@
 
 import Plots.heatmap
 using Plots
-
+using CUDA
+using SparseArrays
+CUDA.allowscalar(false)
 FT=Float32
 struct SpikingSynapseParameter
     τpre::FT # = 20ms
@@ -30,11 +32,12 @@ SpikingSynapse
 VIT=Vector{Int32}
 VFT=Vector{Float32}
 VBT=Vector{Bool}
-
+CUB=CuArray{Bool}
+CUV=CuArray{Float32}
 mutable struct SpikingSynapse
     param::SpikingSynapseParameter # = SpikingSynapseParameter()
-    rowptr::VIT # row pointer of sparse W
-    colptr::VIT # column pointer of sparse W
+    rowptr::CUV # row pointer of sparse W
+    colptr::CUV # column pointer of sparse W
     I::VIT      # postsynaptic index of W
     J::VIT      # presynaptic index of W
     index::VIT  # index mapping: W[index[i]] = Wt[i], Wt = sparse(dense(W)')
@@ -43,9 +46,9 @@ mutable struct SpikingSynapse
     tpost::VFT # = zero(W) # postsynaptic spiking time
     Apre::VFT # = zero(W) # presynaptic trace
     Apost::VFT # = zero(W) # postsynaptic trace
-    fireI::VBT # postsynaptic firing
-    fireJ::VBT # presynaptic firing
-    g::VFT # postsynaptic conductance
+    fireI::CUB # postsynaptic firing
+    fireJ::CUB # presynaptic firing
+    g::CUV # postsynaptic conductance
     records::Dict # = Dict()
     wx::SparseMatrixCSC # postsynaptic conductance
 
@@ -133,7 +136,7 @@ mutable struct SpikingSynapse
     end
 
 end
-
+#=
 
 function forward!(colptr, I, W, fireI,fireJ, g,wx)
     @inbounds for j in 1:(length(colptr) - 1)
@@ -145,8 +148,8 @@ function forward!(colptr, I, W, fireI,fireJ, g,wx)
         end
     end
 end
-
 function forward!(colptr, I, W, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray{Float32},wx)
+    println("hit")
     @inbounds for j in 1:(length(colptr) - 1)
         if fireJ[j]
             @inbounds for s in colptr[j]:(colptr[j+1] - 1)
@@ -156,17 +159,18 @@ function forward!(colptr, I, W, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::Cu
         end
     end
 end
-
+=#
 function forward!(c::SpikingSynapse)
-    @unpack colptr, I, W, fireI,fireJ, g,wx = c
-    forward!(colptr, I, W, fireI,fireJ, g,wx)
-
+    @unpack colptr, I, W, fireI,fireJ, g = c
+    forward!(colptr, I, W, fireI,fireJ, g)
 end
 
-function syn_kernel(colptr, I, W, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray{Float32},wx)
+#=
+function syn_kernel(colptr, I, W, fireJ, g)
     i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     stride = blockDim().x
-    @inbounds for j=i0:stride:length(colptr)
+    #x = (blockIdx().x - 1) * blockDim().x + threadIdx().x 
+    @inbounds for j=i0:stride:(length(colptr) - 1)
         if fireJ[j]
             @inbounds for s in colptr[j]:(colptr[j+1] - 1)
                 g[I[s]] += W[s]
@@ -175,15 +179,53 @@ function syn_kernel(colptr, I, W, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::
     end
     nothing
 end
-function forward!(colptr, I, W, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray{Float32},wx)
-    kernel = @cuda launch=false syn_kernel(colptr, I, W, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray{Float32},wx)
-    config = launch_configuration(kernel.fun)
-    xthreads = min(32, N)
-    xblocks = min(config.blocks, cld(N, xthreads))
-    kernel(N, v, ge, gi, fire, I,dt;threads=(xthreads), blocks=(xblocks<<2))
+=#
+#=
+function syn_kernel!(colptr, I, W, fireJ, g)
+    j = (blockIdx()) * (blockDim().x-1) + threadIdx().x
+    @cuprintln(j)
+    @cushow(fireJ)
+    @inbounds if j <= length(colptr)
+        if fireJ[j]
+            @cushow(fireJ[j])
+            s = colptr[j]:(colptr[j+1] - 1)
+            g[I[s]] += W[s]
+        end
+    end
+    return nothing
+end
+=#
+function syn_kernel!(colptr, fireJ,g,I,W)
+    index = threadIdx().x    # this example only requires linear indexing, so just use `x`
+    stride = blockDim().x
+    for i = index:stride:(length(colptr)-1)
+        if fireJ[i]
+            for x in colptr[i]:(colptr[i+1]-1)
+                g[I[x]] += W[x]
 
+            end                
+        end
+    end
+    return nothing
 end
 
+
+function forward!(colptr::CuArray{Float32}, I::Vector{Int32}, W::Vector{Float32}, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray{Float32})
+    W = convert(CuArray{Float32},W)
+    I = convert(CuArray{Int32},I)
+    colptr = convert(CuArray{Int32},colptr)
+    kernel = @cuda launch=false syn_kernel!(colptr, fireJ,g,I,W)
+    config = launch_configuration(kernel.fun)
+    xthreads = min(32, length(colptr))
+    xblocks = min(config.blocks, cld(length(colptr), xthreads))
+    kernel(colptr, fireJ,g,I,W;threads=(xthreads), blocks=(xblocks<<2))
+
+end
+#using Cthulhu
+#@code_typed(err; interactive = true)
+
+
+#Hint: catch this exception as `err` and call `code_typed(err; interactive = true)` to introspect the erronous code with Cthulhu.jl
 
 function plasticity!(c::SpikingSynapse, param::SpikingSynapseParameter, dt::Float32, t::Float32)
     @unpack rowptr, colptr, I, J, index, W, tpre, tpost, Apre, Apost, fireI, fireJ, g = c

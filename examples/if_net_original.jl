@@ -18,13 +18,10 @@ using CUDA
 #print("\u001B[?25h") # visible cursor
 #@allowscalar
 function main(current)
-    pop_sizes=1220
+    pop_sizes=20000
     current = CUDA.CuArray{Float32}([0.001 for i in 0:1ms:1.25second])
-
-
     E = SNN.IFNF(;N=pop_sizes, I=current)
-    I = SNN.IFNF(;N=pop_sizes,pop_indexs=pop_sizes,I=current)#,PT=::CuArray{Float32})#;El = -49mV))
-
+    I = SNN.IFNF(;N=pop_sizes,pop_indexs=pop_sizes,I=current)
     EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/1, p = 0.02)
     EI = SNN.SpikingSynapse(E, I, :ge; σ = 60*0.27/1, p = 0.02)
     IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/1, p = 0.03)
@@ -33,17 +30,14 @@ function main(current)
     C = [EE, EI, IE, II]
 
 
-    #=
     cnt_synapses=0
     weights_for_movie=sparse(C[1].I,C[1].J, C[1].index)
     for sparse_connections in C
-        #display(C.g)
         cnt_synapses+=length(sparse_connections.W)
         sp=sparse(sparse_connections.I,sparse_connections.J, sparse_connections.index)
         weights_for_movie+=sp
     end
     println("synapses simulated: ",cnt_synapses)
-    =#
     SNN.monitor([E,I], [:fire])
     @time SNN.sim!(P, C; duration = 1.5second)
     display(SNN.raster([E,I]))
