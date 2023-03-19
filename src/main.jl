@@ -2,10 +2,24 @@ function sim!(P, C, dt)
     for p in P
         integrate!(p, Float32(dt))
         record!(p)
+        #if sum(p.fire)  > 0
+
+        #    @show(p.fire)
+        #end
     end
-    for c in C
-        forward!(c, c.param)
+    for (ind,c) in enumerate(C)
+        if ind <3 
+            c.fireJ = P[1].fire
+            
+        else
+            c.fireJ = P[2].fire
+        end
+        forward!(c)#, c.param)
         record!(c)
+        #if sum(c.fireJ)> 0
+        #    @show(c.fireJ)
+        #    @show(c.fireI)
+       # end
     end
 end
 

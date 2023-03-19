@@ -7,6 +7,8 @@ using LinearAlgebra
 using SparseArrays
 using Requires
 using UnPack
+using CUDA
+
 using StatsPlots
 #using StatsBase
 #using Plots
@@ -21,8 +23,8 @@ include("util.jl")
 #include("neuron/if.jl")
 include("neuron/noise_free_lif.jl")
 include("neuron/16bit_if.jl")
-include("neuron/if2.jl")
-include("neuron/noisy_if.jl")
+#include("neuron/if2.jl")
+#include("neuron/noisy_if.jl")
 include("neuron/poisson.jl")
 include("neuron/iz.jl")
 include("neuron/hh.jl")
@@ -34,10 +36,10 @@ include("synapse/fl_synapse.jl")
 include("synapse/fl_sparse_synapse.jl")
 include("synapse/pinning_synapse.jl")
 include("synapse/pinning_sparse_synapse.jl")
-#include("plot.jl")
+include("plot.jl")
 
-function __init__()
-    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plot.jl")
-end
+#function __init__()
+#    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plot.jl")
+#end
 
 end

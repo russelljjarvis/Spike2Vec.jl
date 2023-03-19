@@ -12,37 +12,41 @@ import Plots.heatmap
 #unicodeplots();
 #using Plots
 
-using ImageView
+#using ImageView
 SNN.@load_units
+using CUDA
 #print("\u001B[?25h") # visible cursor
-current = Float32[0.001 for i in 0:0.1ms:1000ms]
-
+#@allowscalar
 function main(current)
-    pop_sizes=400
+    pop_sizes=1220
+    current = CUDA.CuArray{Float32}([0.001 for i in 0:1ms:1.25second])
 
 
-    E = SNN.IFNF(;N = pop_sizes, param = SNN.IFParameter(),I=current)#;El = -49mV))
-    I = SNN.IFNF(;N = pop_sizes, param = SNN.IFParameter(),I=current)#;El = -49mV))
+    E = SNN.IFNF(;N=pop_sizes, I=current)
+    I = SNN.IFNF(;N=pop_sizes,pop_indexs=pop_sizes,I=current)#,PT=::CuArray{Float32})#;El = -49mV))
+
     EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/1, p = 0.02)
     EI = SNN.SpikingSynapse(E, I, :ge; σ = 60*0.27/1, p = 0.02)
-    IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/10, p = 0.2)
-    II = SNN.SpikingSynapse(I, I, :gi; σ = -20*4.5/10, p = 0.02)
+    IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/1, p = 0.03)
+    II = SNN.SpikingSynapse(I, I, :gi; σ = -20*4.5/1, p = 0.03)
     P = [E, I]
     C = [EE, EI, IE, II]
 
-    #E = SNN.IFNF(;N = 1, param = SNN.IFParameter(), I=current)#, I=Float32[0])#;El = -49mV))
 
-
+    #=
     cnt_synapses=0
     weights_for_movie=sparse(C[1].I,C[1].J, C[1].index)
     for sparse_connections in C
+        #display(C.g)
         cnt_synapses+=length(sparse_connections.W)
         sp=sparse(sparse_connections.I,sparse_connections.J, sparse_connections.index)
         weights_for_movie+=sp
     end
     println("synapses simulated: ",cnt_synapses)
+    =#
     SNN.monitor([E,I], [:fire])
-    @time SNN.sim!(P, C; duration = 2.25second)
+    @time SNN.sim!(P, C; duration = 1.5second)
+    display(SNN.raster([E,I]))
     print("simulation done !")
     (times,nodes) = SNN.get_trains([E,I])
 
@@ -59,21 +63,8 @@ function analyse_results1()
 end
 
 
-function nonunique1(x::AbstractArray{T}) where T
-    uniqueset = Set{T}()
-    duplicatedset = Set{T}()
-    for i in x
-        if(i in uniqueset)
-            push!(duplicatedset, i)
-        else
-            push!(uniqueset, i)
-        end
-    end
-    collect(duplicatedset)
-end
-
 function analyse_results(current)
-    weights_for_movie,pop_sizes,_,_,times,nodes = main(current)
+    weights_for_movie,pop_sizes,E,I,times,nodes = main(current)
     temp_rows = Vector{Int64}([])
     print("\33[2J")
     w = zeros(pop_sizes,pop_sizes)#.*0.00001
@@ -81,21 +72,29 @@ function analyse_results(current)
     for (ind,n) in enumerate(nodes)
         println("\33[H")
         append!(temp_rows,n)
-        if ind%10==0    
+        if ind%20==0    
             w[:,temp_rows] .= weights_for_movie[:,temp_rows] 
             pst=[]
             for (x,tt) in enumerate(w[:,temp_rows])
-                tt = tt +1.0*exp(tt)
+                tt_ = tt +1.0*exp(tt)
+                if tt_== Inf
+                    tt_ = tt +tt
+
+                    #tt_ =tt
+                end
                 #end
-                append!(pst,tt)
+                append!(pst,tt_)
                 
             end
             wm[:,temp_rows] = pst
+
             for (x,y,v) in zip(findnz(wm)...)
                 w[x,y] = wm[x,y]
             end
             temp_rows=[]
             replace!(w, -Inf=>0.0)
+            replace!(wm, Inf=>0.0)
+            
             tit = times[ind]
             display(heatmap(w,normalizee=:pdf, interpolate = true,color=:viridis,title="time = $tit")) #|>display
             for (x,y,v) in zip(findnz(wm)...)
@@ -103,19 +102,29 @@ function analyse_results(current)
                     wm[x,y] = 0.0
                 end
                 if v>0.0
-                    wm[x,y] = abs(wm[x,y]-exp(v))
+
+                    if abs(wm[x,y]-exp(v))== -Inf
+                        wm[x,y] = abs(wm[x,y]-v)
+                    
+                    else
+                        wm[x,y] = abs(wm[x,y]-exp(v))
+
+                    end
 
                 end
-                w[x,y] = wm[x,y]
+                # = wm[x,y]
             end
         end
     end
-    times,nodes
+    times,nodes,E,I
 end   
-times,nodes = analyse_results(current)
-o1 = HeatMap(zip(minimum(times):maximum(times)/1000.0:maximum(times),minimum(nodes):1:maximum(nodes)) )
-fit!(o1,zip(times,convert(Vector{Float64},nodes)))
-plot(o1, marginals=false, legend=true) |>display 
+weights_for_movie,pop_sizes,E,I,times,nodes = main(current)
+
+#times,nodes,E,I = analyse_results(current)
+#o1 = HeatMap(zip(minimum(times):maximum(times)/1000.0:maximum(times),minimum(nodes):1:maximum(nodes)) )
+#fit!(o1,zip(times,convert(Vector{Float64},nodes)))
+#plot(o1, marginals=false, legend=true) |>display 
+SNN.raster([E,I])#, [:fire])
 
 
 #=
