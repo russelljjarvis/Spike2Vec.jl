@@ -1,24 +1,43 @@
+using ProgressMeter
+
+function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
+    container.fireJ[] = new_values[] # "reassign" different array to Ref
+end
+
+
 function sim!(P, C, dt)
     for p in P
-        integrate!(p, Float32(dt))
-        record!(p)
+        integrate!(p, dt)
 
+        record!(p)
     end
     for (ind,c) in enumerate(C)
-        if ind <3 
-            c.fireJ = P[1].fire
+        if ind <=2 
+            set_syn_values!(c, P[1].fire)
             
         else
-            c.fireJ = P[2].fire
+            set_syn_values!(c, P[2].fire)
         end
+  
         forward!(c)
         record!(c)
     end
 end
 
 function sim!(P, C; dt = 0.1ms, duration = 10ms)
-    for t = 0ms:dt:(duration - dt)
-        sim!(P, C, dt)
+    @showprogress for t = 0ms:dt:(duration - dt)
+        sim!(P, C, Float32(dt))
+                ##
+        # Throttle maximum firing rate
+        ##
+        #for p in P
+
+        #    if sum(p.fire)>10
+        #        @show(sum(p.fire))
+        #        temp = zeros(Bool, p.N)
+        #        set_syn_values!(P[1].fire,temp)
+        #    end
+        #end
     end
 end
 

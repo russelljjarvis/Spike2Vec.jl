@@ -1,8 +1,9 @@
-using Plots
+#using Plots
 using SpikingNeuralNetworks
 using OnlineStats
 using SparseArrays
-import Plots.heatmap
+#import Plots.heatmap
+
 #import Plots.density
 #import UnicodePlots.DotCanvas
 #import UnicodePlots.BrailleCanvas
@@ -17,34 +18,46 @@ SNN.@load_units
 using CUDA
 #print("\u001B[?25h") # visible cursor
 #@allowscalar
-function main(current)
-    pop_sizes=20000
-    current = CUDA.CuArray{Float32}([0.001 for i in 0:1ms:1.25second])
+using Cthulhu
+    
+using Traceur
+using ProfileView
+
+using Pkg
+using FileIO
+using FlameGraphs
+function main()
+    pop_sizes=10000
+    current = CUDA.CuArray{Float32}([0.009 for i in 0:1ms:400ms])
+
     E = SNN.IFNF(;N=pop_sizes, I=current)
-    I = SNN.IFNF(;N=pop_sizes,pop_indexs=pop_sizes,I=current)
-    EE = SNN.SpikingSynapse(E, E, :ge; σ = 60*0.27/1, p = 0.02)
-    EI = SNN.SpikingSynapse(E, I, :ge; σ = 60*0.27/1, p = 0.02)
-    IE = SNN.SpikingSynapse(I, E, :gi; σ = -20*4.5/1, p = 0.03)
-    II = SNN.SpikingSynapse(I, I, :gi; σ = -20*4.5/1, p = 0.03)
+    current = CUDA.CuArray{Float32}([0.009 for i in 0:1ms:400ms])
+
+    I = SNN.IFNF(;N=pop_sizes, I=current)
+    sim_type = CuArray{Float32}(zeros(1))
+
+    EE = SNN.SpikingSynapse(E, E,sim_type; σ = 60*0.27/1, p = 0.04)
+    EI = SNN.SpikingSynapse(E, I,sim_type; σ = 60*0.27/1, p = 0.04)
+    IE = SNN.SpikingSynapse(I, E,sim_type; σ = -20*4.5/1, p = 0.04)
+    II = SNN.SpikingSynapse(I, I,sim_type; σ = -20*4.5/1, p = 0.04)
     P = [E, I]
     C = [EE, EI, IE, II]
+    SNN.sim!(P, C; duration = 0.01ms)
 
-
-    cnt_synapses=0
-    weights_for_movie=sparse(C[1].I,C[1].J, C[1].index)
-    for sparse_connections in C
-        cnt_synapses+=length(sparse_connections.W)
-        sp=sparse(sparse_connections.I,sparse_connections.J, sparse_connections.index)
-        weights_for_movie+=sp
-    end
-    println("synapses simulated: ",cnt_synapses)
+    #println("synapses simulated: ",cnt_synapses)
     SNN.monitor([E,I], [:fire])
-    @time SNN.sim!(P, C; duration = 1.5second)
-    display(SNN.raster([E,I]))
-    print("simulation done !")
-    (times,nodes) = SNN.get_trains([E,I])
+    #@descend_code_warntype 
 
-    Matrix(weights_for_movie),pop_sizes,E,I,times,nodes
+    SNN.sim!(P, C; duration = 700ms)
+    print("simulation done !")
+
+    #@profview SNN.sim!(P, C; duration = 2.5second)
+    #save("myprof.jlprof", Profile.retrieve()...)
+    display(SNN.raster([E,I]))
+    #(times,nodes) = SNN.get_trains([E,I])
+
+    #Matrix(weights_for_movie),
+    #pop_sizes,E,I,times,nodes
 
 end
 
@@ -73,22 +86,17 @@ function analyse_results(current)
                 tt_ = tt +1.0*exp(tt)
                 if tt_== Inf
                     tt_ = tt +tt
-
-                    #tt_ =tt
                 end
-                #end
-                append!(pst,tt_)
-                
+                append!(pst,tt_)                
             end
             wm[:,temp_rows] = pst
-
             for (x,y,v) in zip(findnz(wm)...)
                 w[x,y] = wm[x,y]
             end
             temp_rows=[]
             replace!(w, -Inf=>0.0)
             replace!(wm, Inf=>0.0)
-            
+        
             tit = times[ind]
             display(heatmap(w,normalizee=:pdf, interpolate = true,color=:viridis,title="time = $tit")) #|>display
             for (x,y,v) in zip(findnz(wm)...)
@@ -96,29 +104,32 @@ function analyse_results(current)
                     wm[x,y] = 0.0
                 end
                 if v>0.0
-
                     if abs(wm[x,y]-exp(v))== -Inf
                         wm[x,y] = abs(wm[x,y]-v)
-                    
+    
                     else
                         wm[x,y] = abs(wm[x,y]-exp(v))
-
                     end
-
-                end
-                # = wm[x,y]
+                end    
             end
         end
     end
     times,nodes,E,I
 end   
-weights_for_movie,pop_sizes,E,I,times,nodes = main(current)
+
+#current = CUDA.CuArray{Float32}([0.001 for i in 0:1ms:0.2second])
+
+#weights_for_movie,
+#pop_sizes,E,I,times,nodes = 
+main()
+
+#SNN.raster([E,I])#, [:fire])
+
 
 #times,nodes,E,I = analyse_results(current)
 #o1 = HeatMap(zip(minimum(times):maximum(times)/1000.0:maximum(times),minimum(nodes):1:maximum(nodes)) )
 #fit!(o1,zip(times,convert(Vector{Float64},nodes)))
 #plot(o1, marginals=false, legend=true) |>display 
-SNN.raster([E,I])#, [:fire])
 
 
 #=

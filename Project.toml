@@ -3,6 +3,7 @@ uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
 version = "0.1.1"
 
 [deps]
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
