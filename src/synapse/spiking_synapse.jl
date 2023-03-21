@@ -4,7 +4,6 @@ using Plots
 using CUDA
 using SparseArrays
 CUDA.allowscalar(false)
-FT=Float32
 
 
 
@@ -14,7 +13,7 @@ FT=Float32
 SpikingSynapse
 
 
-struct SpikingSynapse{T<:AbstractArray{Float32},S<:AbstractArray{Int32},Q<:AbstractArray{Bool}}
+struct SpikingSynapse{T,S,Q}
     rowptr::T # row pointer of sparse W
     colptr::S  # column pointer of sparse W
     I::S      # postsynaptic index of W
@@ -34,25 +33,32 @@ struct SpikingSynapse{T<:AbstractArray{Float32},S<:AbstractArray{Int32},Q<:Abstr
     end
 
 
-    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::CuArray{Float32},rowptr, colptr, I, J, index, w)
-        g = CuArray{Float32}(w[:]).*sign.(minimum(w[:,1]))   
+    
+    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w)
+        g = ones(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
         SpikingSynapse(rowptr,colptr,I,J,index,w,g,pre,post)
     end
 
     
-    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Vector{Float32},rowptr, colptr, I, J, index, w)
-        g = Vector{Float32}(ones(pre.N))*sign.(minimum(w[:,1]))
-        SpikingSynapse(rowptr,colptr,I,J,index,w,g,pre,post)
-    end
-
-    
-    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::CuArray{Float32}; σ = 0.0, p = 0.0)
+    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Any; σ = 0.0, p = 0.0)
         w = σ * sprand(post.N, pre.N, p) 
         w[diagind(w)] .= 0.0
-        rowptr, colptr, I, J, index, w_ = dsparse(w)
-        g = typeof(sim_type)(w[:]).*sign.(minimum(w[:,1]))   
-        SpikingSynapse(rowptr,colptr,I,J,index,w_,g,pre,post)
+        rowptr, colptr, I, J, index,V = dsparse(w,sim_type)
+        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+        V::typeof(sim_type) = convert(typeof(sim_type),V)
+        SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)
     end
+    #=
+    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array; σ = 0.0, p = 0.0)
+        w = σ * sprand(post.N, pre.N, p) 
+        w[diagind(w)] .= 0.0
+        rowptr, colptr, I, J, index,V = dsparse(w,sim_type)
+        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+        V::typeof(sim_type) = convert(typeof(sim_type),V)
+        SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)
+    end
+    =#
+
 end
 
 
@@ -60,7 +66,9 @@ end
 Boost synaptic conductances according to weight values.
 
 """
-function forward!(colptr::Vector{Int32}, I, W, fireI::Vector{Bool},fireJ::Vector{Bool},g::Vector{Float32})
+#forward!(::Vector{Int32}, ::Vector{Int32}, ::Vector{Float16}, ::Vector{Bool}, ::Vector{Bool}, ::Vector{Float16})
+
+function forward!(colptr::Vector{<:Real}, I, W, fireI::Vector{Bool},fireJ::Vector{Bool},g::Vector)
     @inbounds for j in 1:(length(colptr) - 1)
         if fireJ[j]
             @inbounds for s in colptr[j]:(colptr[j+1] - 1)
@@ -74,12 +82,21 @@ function forward!(c::SpikingSynapse)
     @unpack colptr, I, W, fireI,fireJ, g = c
     forward!(colptr, I, W, fireI,fireJ, g)
 end
+function forward!(colptr::CuArray, I::CuArray, W::CuArray, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray)
 
+    ###
+    #CUDA.Const(fireJ::CuDeviceArray{Bool})#, CUDA.Mem.DeviceBuffer})
+    #CUDA.Const(colptr::CuDeviceArray{Float32})#, CUDA.Mem.DeviceBuffer})
+    ###
+    kernel = @cuda launch=false syn_kernel!(colptr, fireJ,g,I,W)
+    config = launch_configuration(kernel.fun)
+    xthreads = min(32, length(colptr))
+    xblocks = min(config.blocks, cld(length(colptr), xthreads))
 
-#function forward!(c::Array)
-#    @unpack colptr, I, W, fireI,fireJ, g = c
-#    forward!(colptr, I, W, fireI,fireJ, g)
-#end
+    kernel(colptr, fireJ,g,I,W;threads=(xthreads), blocks=(xblocks<<2))
+
+end
+
 
 
 function syn_kernel!(colptr, fireJ,g,I,W)
@@ -127,53 +144,3 @@ function forward_all_kernel!(N, v, ge, gi, fire, u,dt,colptr, fireJ,g,I,W)
 
     return nothing
 end
-
-
-function forward!(colptr::CuArray{Int32}, I::CuArray{Int32}, W::CuArray{Float32}, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray{Float32})
-    ###
-    #CUDA.Const(fireJ::CuDeviceArray{Bool})#, CUDA.Mem.DeviceBuffer})
-    #CUDA.Const(colptr::CuDeviceArray{Float32})#, CUDA.Mem.DeviceBuffer})
-    ###
-    kernel = @cuda launch=false syn_kernel!(colptr, fireJ,g,I,W)
-    config = launch_configuration(kernel.fun)
-    xthreads = min(32, length(colptr))
-    xblocks = min(config.blocks, cld(length(colptr), xthreads))
-
-    kernel(colptr, fireJ,g,I,W;threads=(xthreads), blocks=(xblocks<<2))
-
-end
-#using Cthulhu
-#@code_typed(err; interactive = true)
-
-
-#Hint: catch this exception as `err` and call `code_typed(err; interactive = true)` to introspect the erronous code with Cthulhu.jl
-
-
-#plasticity16!(c::SpikingSynapse, param::SpikingSynapseParameter, dt::Float16, t::Float32) = plasticity!(c::SpikingSynapse, param::SpikingSynapseParameter, dt::Float32, t::Float32)
-
-#=
-struct EPSP{IT<:Integer, VT<:Real} <: AbstractSynapse
-    spikes::CircularBuffer{VT}
-    ϵ₀::VT
-    τm::VT
-    τs::VT
-end
-
-"""
-    EPSP{IT, VT}(;ϵ₀::Real = 1, τm::Real = 1, τs::Real = 1, N = 100)
-    EPSP(;ϵ₀::Real = 1, τm::Real = 1, τs::Real = 1, N = 100)
-Create an EPSP synapse with amplitude `ϵ₀`, rise time `τs`, and fall time `τm`.
-Specify `N` to adjust how many pre-synaptic spikes are remembered between post-synaptic spikes.
-"""
-EPSP{IT, VT}(;ϵ₀::Real = 1, τm::Real = 1, τs::Real = 1, N = 100) where {IT<:Integer, VT<:Real} =
-    EPSP{IT, VT}(fill!(CircularBuffer{VT}(N), -Inf), ϵ₀, τm, τs)
-EPSP(;ϵ₀::Real = 1, τm::Real = 1, τs::Real = 1, N = 100) = EPSP{Int, Float32}(ϵ₀ = ϵ₀, τm = τm, τs = τs, N = N)
-
-"""
-    excite!(synapse::EPSP, spike::Integer)
-    excite!(synapses::AbstractArray{<:EPSP}, spike::Integer)
-Excite `synapse` with a `spike` (`spike` == time step of spike).
-"""
-excite!(synapse::EPSP, spike::Integer) = (spike > 0) && push!(synapse.spikes, spike)
-excite!(synapses::T, spike::Integer) where T<:AbstractArray{<:EPSP} = (spike > 0) && push!.(synapses.spikes, spike)
-=#

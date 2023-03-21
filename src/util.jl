@@ -9,7 +9,71 @@ function connect!(c, j, i, σ = 1e-6)
     return nothing
 end
 
-function anytype(A,I,J,V,At,rowptr)
+function anytype(A,I,J,V,At,rowptr,colptr,coldown,index,return_type::CuArray)
+    for j in 1:(length(colptr) - 1)
+        J[colptr[j]:(colptr[j+1] - 1)] .= j
+    end
+    for i in 1:(length(rowptr) - 1)
+        for st in rowptr[i]:(rowptr[i+1] - 1)
+            j = At.rowval[st]
+            index[st] = colptr[j] + coldown[j]
+            coldown[j] += 1
+        end
+    end
+    rowptr=convert(typeof(return_type),rowptr)
+    colptr=convert(CuArray{Int32},colptr)
+    I=convert(CuArray{Int32},I)
+    J=convert(typeof(return_type),J)
+    index=convert(CuArray{Int32},index)
+    rowptr,colptr,I,J,index,V
+end
+
+
+function anytype(A,I,J,V,At,rowptr,colptr,coldown,index,return_type::Array)
+    for j in 1:(length(colptr) - 1)
+        J[colptr[j]:(colptr[j+1] - 1)] .= j
+    end
+    for i in 1:(length(rowptr) - 1)
+        for st in rowptr[i]:(rowptr[i+1] - 1)
+            j = At.rowval[st]
+            index[st] = colptr[j] + coldown[j]
+            coldown[j] += 1
+        end
+    end
+    rowptr=convert(typeof(return_type),rowptr)
+    colptr=convert(Array{Int32},colptr)
+    I=convert(Array{Int32},I)
+    J=convert(typeof(return_type),J)
+    index=convert(Array{Int32},index)
+    rowptr,colptr,I,J,index,V
+
+
+end
+
+
+function dsparse(A,return_type)        
+        At = sparse(A')
+        colptr = A.colptr
+        rowptr = At.colptr
+        I = rowvals(A)
+        V = nonzeros(A)
+        J = zero(I)
+        index = zeros(size(I))
+        coldown = zeros(eltype(index), length(colptr) - 1)
+        rowptr,colptr,I,J,index,V = anytype(A,I,J,V,At,rowptr,colptr,coldown,index,return_type)
+    
+    return rowptr,colptr,I,J,index,V
+end
+
+
+function dsparse(A)
+    At = sparse(A')
+    colptr = A.colptr
+    rowptr = At.colptr
+    I = rowvals(A)
+    V = nonzeros(A)
+    J = zero(I)
+    # FIXME: Breaks when A is empty
     for j in 1:(length(colptr) - 1)
         J[colptr[j]:(colptr[j+1] - 1)] .= j
     end
@@ -22,33 +86,9 @@ function anytype(A,I,J,V,At,rowptr)
             coldown[j] += 1
         end
     end
-    rowptr,colptr,I,J,index,V
-
-end
-function dsparse(A,return_type::CuArray)
-        At = sparse(A')
-
-        colptr = CuArray{Int32}(A.colptr)
-        rowptr = CuArray{Int32}(At.colptr)
-        I = CuArray{Int32}(rowvals(A))
-        V = CuArray{Float32}(nonzeros(A))
-        J = CuArray(zero(I))
-        rowptr,colptr,I,J,index,V = anytype(A,I,J,V,At,rowptr)
-    
-    return rowptr,colptr,I,J,index,V
+    rowptr, colptr, I, J, index, V
 end
 
-function dsparse(A,return_type::Vector)
-    At = sparse(A')
-    colptr = Vector{Int32}(A.colptr)
-    rowptr = Vector{Int32}(At.colptr)
-    I = Vector{Int32}(rowvals(A))
-    V = Vector{Float32}(nonzeros(A))
-    J = zero(I)
-    rowptr,colptr,I,J,index,V = anytype(A,I,J,V,At,rowptr)
-
-    return rowptr,colptr,I,J,index,V
-end
 
 
 
@@ -73,6 +113,9 @@ function monitor(obj, keys)
             sym = key
         end
         typ = typeof(getfield(obj, sym))
+        ##
+        # bad performance line
+        ##
         obj.records[key] = Vector{typ}()
     end
 end
@@ -184,21 +227,17 @@ end
 
 function get_trains(P::Array)    
     X = Float32[]
-    Y = Int64[]
+    y0 = UInt32[0]
+    Y = UInt32[]
     for p in P
         x, y = get_trains(p)
         append!(X, x)
-        append!(Y, y)
+        append!(Y, y .+ sum(y0))
+        push!(y0, p.N)
     end
     return (X,Y)
 end
 
-#=
-function get_weights(C)
-    W = C.records[:W]
-    return W
-end
-=#
 function get_trains(p)
     fire = p.records[:fire]
     x, y = Float32[], Int64[]

@@ -1,14 +1,21 @@
-struct RateParameter
-end
 
-@snn_kw mutable struct Rate{VFT=Vector{Float32}}
-    param::RateParameter = RateParameter()
-    N::Int32 = 100
-    x::VFT = 0.5randn(N)
-    r::VFT = tanh.(x)
-    g::VFT = zeros(N)
-    I::VFT = zeros(N)
-    records::Dict = Dict()
+
+struct Rate{X<:Number}
+    N::Int32 # = 100
+    x::X # = # 0.5randn(N)
+    r::X # = #  tanh.(x)
+    g::X # = #zeros(N)
+    I::X # = zeros(N)
+    records::Dict # = Dict()
+    
+    function Rate(N)
+        x = 0.5randn(N)
+        r = tanh.(x)
+        g = zeros(N)
+        I = zeros(N)  
+        dict = Dict()  
+        new{typof(x)}(N,x,r,g,I,dict)
+    end
 end
 
 """
@@ -16,7 +23,7 @@ end
 """
 Rate
 
-function integrate!(p::Rate, param::RateParameter, dt::Float32)
+function integrate!(p::Rate, dt::Float32)
     @unpack N, x, r, g, I = p
     @inbounds for i = 1:N
         x[i] += dt * (-x[i] + g[i] + I[i])

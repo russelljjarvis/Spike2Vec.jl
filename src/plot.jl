@@ -51,13 +51,21 @@ function normalised_2dhist(data)
 end
 
 
-function raster(p)
+#function raster(p::IFNF)
+#    
+#    x,y = raster(fire)
+#    x,y
+#end
+
+function raster(p::IFNF)
     fire = p.records[:fire]
-    x, y = Float32[], Float32[]
-    @show(typeof(fire))
-    #fire = convert(Array{Any},fire)
+    if typeof(fire) == CuArray{Bool}
+        fire = convert(Vector{Bool},fire)
+    end
+
+    
+    x, y = Float32[], UInt32[]
     for t = eachindex(fire)
-        fire[t] = convert(Vector{Float32},fire[t])
 
         for n in findall(fire[t])
             push!(x, t)
@@ -65,23 +73,29 @@ function raster(p)
         end
     end
     x, y
+ 
 end
 
-function raster(P::Array)
-    y0 = Int32[0]
-    X = Float32[]; Y = Float32[]
+#raster(::Vector{SpikingNeuralNetworks.IFNF{UInt64, Vector{Bool}, Vector{Float16}}})
+#                        ::SpikingNeuralNetworks.IFNF{UInt64, Vector{Bool}, Vector{Float16}}
+function raster(P::Vector)
+    y0 = UInt64[0]
+    X = Float32[]; Y = UInt64[]
     for p in P
         x, y = raster(p)
+
         append!(X, x)
         append!(Y, y .+ sum(y0))
         push!(y0, p.N)
     end
-    plt = scatter(X, Y, m = (1, :black), leg = :none,
+    plt = scatter(X, Y, m = (0.02, :black), leg = :none,
                   xaxis=("t", (0, Inf)), yaxis = ("neuron",))
     y0 = y0[2:end-1]
     !isempty(y0) && hline!(plt, cumsum(y0), linecolor = :red)
     return plt
 end
+
+
 
 function vecplot(p, sym)
     v = getrecord(p, sym)
