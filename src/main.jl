@@ -1,6 +1,6 @@
 using ProgressMeter
-function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
-    container.fireJ[] = new_values[] # "reassign" different array to Ref
+function set_syn_values!(container::SpikingSynapse, new_values::Array{Bool})
+    container.fireJ[] = new_values[] 
 end
 
 function count_syn(C)
@@ -17,12 +17,13 @@ function sim!(P, C, dt)
         record!(p)
     end
     ##
+    # Necessary to update the firing state of used synapses
+    # Synaptic gain is updated as the states of these variables change.
     # scalar indexing slow down
     ##
     for (ind,c) in enumerate(C)
         if ind <=2 
             set_syn_values!(c, P[1].fire)
-            
         else
             set_syn_values!(c, P[2].fire)
         end
@@ -37,7 +38,8 @@ function sim!(P, C; dt = 0.1ms, duration = 10ms)
     @showprogress for t = 0ms:dt:(duration - dt)
         sim!(P, C, Float32(dt))
                 ##
-        # Throttle maximum firing rate
+        # TODO Throttle maximum firing rate
+        # at physiologically plausible levels
     end
 end
 
