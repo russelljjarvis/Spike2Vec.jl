@@ -1,6 +1,6 @@
 
 
-struct Rate{X<:Number}
+struct Rate{X<:AbstractArray}
     N::Int32 # = 100
     x::X # = # 0.5randn(N)
     r::X # = #  tanh.(x)
@@ -14,7 +14,7 @@ struct Rate{X<:Number}
         g = zeros(N)
         I = zeros(N)  
         dict = Dict()  
-        new{typof(x)}(N,x,r,g,I,dict)
+        new{typeof(x)}(N,x,r,g,I,dict)
     end
 end
 

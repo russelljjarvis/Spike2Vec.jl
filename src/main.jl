@@ -1,16 +1,27 @@
-using ProgressMeter
-function set_syn_values!(container::SpikingSynapse, new_values::Array{Bool})
-    container.fireJ[] = new_values[] 
+
+function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
+    @set  container.fireJ = new_values
 end
 
-function count_syn(C)
+function set_syn_values!(container::SpikingSynapse, new_values::Array{Bool})
+    @set  container.fireJ = new_values
+end
+
+function count_syn(C::Vector{SpikingSynapse},testval::SpikingNeuralNetworks.SpikingSynapse{SparseMatrixCSC})
+    cnt_synapses=0
+    for sparse_connections in C
+        cnt_synapses+=length(sparse_connections.W.nzval)
+    end    
+    println("synapses to be simulated: ",cnt_synapses)
+end
+
+function count_syn(C,testval::SpikingNeuralNetworks.SpikingSynapse{CuArray})
     cnt_synapses=0
     for sparse_connections in C
         cnt_synapses+=length(sparse_connections.W)
     end    
     println("synapses to be simulated: ",cnt_synapses)
 end
-
 function sim!(P, C, dt)
     for p in P
         integrate!(p, dt)
@@ -34,7 +45,7 @@ function sim!(P, C, dt)
 end
 
 function sim!(P, C; dt = 0.1ms, duration = 10ms)
-    count_syn(C)
+    #count_syn(C,C[1])
     @showprogress for t = 0ms:dt:(duration - dt)
         sim!(P, C, Float32(dt))
                 ##

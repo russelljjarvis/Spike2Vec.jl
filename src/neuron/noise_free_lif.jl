@@ -1,6 +1,10 @@
 
-using CUDA
-CUDA.allowscalar(false)
+#using CUDA
+#CUDA.allowscalar(false)
+
+using KernelAbstractions
+using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+#include(joinpath(dirname(pathof(KernelAbstractions)), "../examples/utils.jl")) # Load backend
 
 abstract type AbstractIFNF end
 
@@ -12,14 +16,16 @@ struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: 
     gi::L
     fire::Q 
     u::L
+    g::L
     records::Dict
     function IFNF(N,fire,u,sim_type)
         v = typeof(sim_type)(zeros(N)) 
         g = similar(v)
         ge = similar(v)
-        gi = similar(v)        
+        gi = similar(v)       
+        g = similar(v)       
         records::Dict = Dict()
-        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,records)
+        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,g,records)
     end 
  
     function IFNF(N,sim_type::CuArray,u)
@@ -46,14 +52,14 @@ end
 IFNF
 
 function integrate!(p::IFNF, dt::Float32)
-    @unpack N, v, ge, gi, fire, u = p
-    integrate!(N, v, dt, ge, gi, fire, u)
+    @unpack N, v, ge, gi, fire, u, g = p
+    integrate!(N, v, dt, ge, gi, fire, u, g)
 
 end
 
 
-function integrate!(N::Integer,v::CuArray,dt::Real,ge::CuVector,gi::CuVector,fire::CuArray{Bool},u::CuVector)
-    kernel = @cuda launch=false lif_kernel!(N, v, ge, gi, fire,u,dt)
+function integrate!(N::Integer,v::CuArray,dt::Real,ge::CuVector,gi::CuVector,fire::CuArray{Bool},u::CuVector,g::CuVector)
+    kernel = @cuda launch=false lif_kernel!(N, v, ge, gi, fire,u,dt,g)
     config = launch_configuration(kernel.fun)
     xthreads = min(32, N)
     xblocks = min(config.blocks, cld(N, xthreads))
@@ -63,13 +69,16 @@ end
 
 #integrate!(::UInt32, ::Vector{Float16}, ::Float32, ::Vector{Float16}, ::Vector{Float16}, ::Vector{Bool}, ::Vector{Float16})
 
-function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real})
+function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},g::Vector)
     τm, τe, τi, Vt, Vr, El, gL = (100.0,5.0,10.0,0.2,0.0,-60.0,10.0)    
     R = 1.75
+    g = g + (ge + gi)
+
     @inbounds for i = 1:N
-        X = ge[i] + gi[i]
-        v[i] = v[i] .* exp(-dt /τm) + Vr +X+u[i]        
-        v[i] += (u[i].+X) * (R/ τm)
+        #g[i] .+= (ge[i] + gi[i])
+        
+        v[i] = v[i] .* exp(-dt /τm) + Vr +g[i]+u[i]        
+        v[i] += (u[i]+g[i]) * (R/ τm)
         ge[i] += dt .* -ge[i] ./ τe
         gi[i] += dt .* -gi[i] ./ τi
         fire[i] = v[i] > Vt
@@ -78,16 +87,18 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
     end
 
 end
-function lif_kernel!(N, v, ge, gi, fire, u,dt)
+function lif_kernel!(N, v, ge, gi, fire, u,dt,g)
     τm, τe, τi, Vt, Vr, El, gL = (100.0,5.0,10.0,0.2,0.0,-60.0,10.0)
     R = 1.75
     i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     stride = blockDim().x
+    g = g + (ge + gi)
+    
     @inbounds for i=i0:stride:N
-        X = ge[i] + gi[i]
-        u = u[i]
-        v[i] = v[i] * exp(-dt /τm) + Vr +X+u        
-        v[i] += (u[i]+X) * (R/ τm)
+        #X = ge[i] + gi[i]
+        #u = u[i]
+        v[i] = v[i] * exp(-dt /τm) + Vr +X+g[i]+u[i]        
+        v[i] += (u[i]+g[i]) * (R/ τm)
         ge[i] += dt * -ge[i] / τe
         gi[i] += dt * -gi[i] / τi
         fire[i] = v[i] > Vt

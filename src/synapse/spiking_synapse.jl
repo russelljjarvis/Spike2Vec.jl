@@ -1,19 +1,23 @@
 
-import Plots.heatmap
-using Plots
-using CUDA
-using SparseArrays
-CUDA.allowscalar(false)
+#import Plots.heatmap
+#using Plots
+#using CUDA
+#using SparseArrays
+#CUDA.allowscalar(false)
+using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
+using KernelAbstractions
 
 
+abstract type AbstractSpikingSynapse end
 
 """
 [Spking Synapse](https://brian2.readthedocs.io/en/2.0b4/resources/tutorials/2-intro-to-brian-synapses.html)
 """
-SpikingSynapse
 
 
-struct SpikingSynapse{T,S,Q}
+
+
+struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
     rowptr::T # row pointer of sparse W
     colptr::S  # column pointer of sparse W
     I::S      # postsynaptic index of W
@@ -25,11 +29,14 @@ struct SpikingSynapse{T,S,Q}
     g::T # postsynaptic conductance
     records::Dict # = Dict()
 
+    #(::Vector{Float16}, ::Vector{Int32}, ::Vector{Int32}, ::Vector{Float16}, ::Vector{Int32}, ::Vector{Float16}, ::Vector{Float16}, ::SpikingNeuralNetworks.IFNF{UInt64, Vector{Bool}, Vector{Float16}}, ::SpikingNeuralNetworks.IFNF{UInt64, Vector{Bool}, Vector{Float16}})
+
 
     function SpikingSynapse(rowptr, colptr, I, J, index, w,g,pre,post)
         fireI, fireJ = post.fire, pre.fire
         records::Dict  = Dict()
-        new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records)
+        SpikingSynapse(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records)
+        #new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records)
     end
 
 
@@ -47,6 +54,10 @@ struct SpikingSynapse{T,S,Q}
         g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
         V::typeof(sim_type) = convert(typeof(sim_type),V)
         SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)
+    end
+
+    function SpikingSynapse(rowptr, colptr, I, J, index, w,fireI,fireJ, g, records)
+        new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records)
     end
     #=
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array; σ = 0.0, p = 0.0)
@@ -69,11 +80,19 @@ Boost synaptic conductances according to weight values.
 #forward!(::Vector{Int32}, ::Vector{Int32}, ::Vector{Float16}, ::Vector{Bool}, ::Vector{Bool}, ::Vector{Float16})
 
 function forward!(colptr::Vector{<:Real}, I, W, fireI::Vector{Bool},fireJ::Vector{Bool},g::Vector)
+
+    #@inbounds for j in 1:length(g)
+    #    g[j] = 0.0
+    #end
+    g .= 0.0
+    #@inbounds for j in colptr[fireJ]
+    #    s = colptr[j]:(colptr[j+1] - 1)
+    #    g[I[s]] += W[s]
+    #end
     @inbounds for j in 1:(length(colptr) - 1)
         if fireJ[j]
-            @inbounds for s in colptr[j]:(colptr[j+1] - 1)
-                g[I[s]] += W[s]
-            end
+            s = colptr[j]:(colptr[j+1] - 1)
+            g[I[s]] += W[s]
         end
     end
 end
@@ -83,7 +102,7 @@ function forward!(c::SpikingSynapse)
     forward!(colptr, I, W, fireI,fireJ, g)
 end
 function forward!(colptr::CuArray, I::CuArray, W::CuArray, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray)
-
+    g .= 0.0
     ###
     #CUDA.Const(fireJ::CuDeviceArray{Bool})#, CUDA.Mem.DeviceBuffer})
     #CUDA.Const(colptr::CuDeviceArray{Float32})#, CUDA.Mem.DeviceBuffer})
@@ -104,17 +123,15 @@ function syn_kernel!(colptr, fireJ,g,I,W)
     stride = blockDim().x
     for i = index:stride:(length(colptr)-1)
         if fireJ[i]
-            for x in colptr[i]:(colptr[i+1]-1)
-                g[I[x]] += W[x]  
-                              
-
-            end                
+            s = colptr[i]:(colptr[i+1]-1)
+            g[I[s]] += W[s]  
+                                
         end
     end
 
     return nothing
 end
-
+#=
 function forward_all_kernel!(N, v, ge, gi, fire, u,dt,colptr, fireJ,g,I,W)
     index = threadIdx().x    # this example only requires linear indexing, so just use `x`
     stride = blockDim().x
@@ -144,3 +161,4 @@ function forward_all_kernel!(N, v, ge, gi, fire, u,dt,colptr, fireJ,g,I,W)
 
     return nothing
 end
+=#

@@ -1,9 +1,9 @@
-FT=Float32
+#FT=Float32
 
-struct Poisson{X<:Bool,Y:<Array{Number}}
+struct Poisson{X<:Array{Bool},Y<:Array{Number}}
     N # ::Int32 = 100
-    randcache # ::VFT = rand(N)
-    fire # ::VBT = zeros(Bool, N)
+    randcache::Y # ::VFT = rand(N)
+    fire::X# ::VBT = zeros(Bool, N)
     records #::Dict = Dict()
 
     function Poisson(N)

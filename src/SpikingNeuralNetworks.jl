@@ -8,6 +8,8 @@ using SparseArrays
 using Requires
 using UnPack
 using CUDA
+using ProgressMeter
+using Setfield
 
 using StatsPlots
 #using StatsBase
@@ -30,13 +32,13 @@ include("synapse/spiking_synapse.jl")
 include("main.jl")
 include("neuron/rate.jl")
 include("neuron/poisson.jl")
+include("synapse/rate_synapse.jl")
 
 #=
 include("neuron/iz.jl")
 include("neuron/hh.jl")
 
 
-include("synapse/rate_synapse.jl")
 include("synapse/fl_synapse.jl")
 include("synapse/fl_sparse_synapse.jl")
 include("synapse/pinning_synapse.jl")
