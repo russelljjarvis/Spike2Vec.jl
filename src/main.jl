@@ -33,12 +33,13 @@ function sim!(P, C, dt)
     # scalar indexing slow down
     ##
     for (ind,c) in enumerate(C)
-        if ind <=2 
-            set_syn_values!(c, P[1].fire)
-        else
-            set_syn_values!(c, P[2].fire)
+        if ind <=4
+            if ind <=2 
+                set_syn_values!(c, P[1].fire)
+            else
+                set_syn_values!(c, P[2].fire)
+            end
         end
-  
         forward!(c)
         record!(c)
     end

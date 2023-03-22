@@ -27,11 +27,12 @@ include("unit.jl")
 
 include("util.jl")
 include("neuron/noise_free_lif.jl")
+include("neuron/poisson.jl")
+
 include("synapse/spiking_synapse.jl")
 
 include("main.jl")
 include("neuron/rate.jl")
-include("neuron/poisson.jl")
 include("synapse/rate_synapse.jl")
 
 #=

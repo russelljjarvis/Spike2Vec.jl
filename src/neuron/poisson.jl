@@ -1,17 +1,18 @@
 #FT=Float32
+abstract type AbstractPoisson end
 
-struct Poisson{X<:Array{Bool},Y<:Array{Number}}
-    N # ::Int32 = 100
+struct Poisson{X<:Array{Bool},Y<:Array{<:Any}}
+    N::Int # ::Int32 = 100
     randcache::Y # ::VFT = rand(N)
-    fire::X# ::VBT = zeros(Bool, N)
-    records #::Dict = Dict()
+    fire::X # ::VBT = zeros(Bool, N)
+    records::Dict #::Dict = Dict()
 
-    function Poisson(N)
+    function Poisson(N,x)
         r = tanh.(x)
         randcache ::Vector{Float32} = rand(N)
-        fire ::VBT = zeros(Bool, N)
+        fire ::Vector{Bool} = zeros(Bool, N)
         dict = Dict()  
-        new{typeof(randcache),typof(fire)}(N,randcache,fire,dict)
+        new{typeof(fire),typeof(randcache)}(N,randcache,fire,dict)
     end
 end
 

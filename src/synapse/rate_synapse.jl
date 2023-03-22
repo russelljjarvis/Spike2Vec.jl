@@ -8,24 +8,25 @@ abstract type AbstractRateSynapse end
 
 struct RateSynapse{VI,VF} <: AbstractRateSynapse
     param::RateSynapseParameter # = RateSynapseParameter()
-    colptr::VI # column pointer of sparse W
-    I::VI      # postsynaptic index of W
-    W::VF  # synaptic weight
-    rJ::VF # presynaptic rate
+    N::Int
     g::VF  # postsynaptic conductance
+    p::Float32
+    o::Float32
+
     records::Dict# = Dict()
     
-    function RateSynapse(param, colptr, I, W, g)
+    function RateSynapse(param,N,g,o)
         rJ::Vector{Any} = ones(length(colptr)) .* param.lr
-        new{typeof(colptr),typeof(rJ)}(param,colptr,I,W,rJ,g,Dict())
+        new{typeof(colptr),typeof(rJ)}(param,N,g,o,Dict())
     end
 
     function RateSynapse(pre, post; σ = 0.0, p = 0.0)
-        w = σ / √(p * pre.N) * sprandn(post.N, pre.N, p)
-        rowptr, colptr, I, J, index, W = dsparse(w)
+        #w = σ / √(p * pre.N) * sprandn(post.N, pre.N, p)
+        #rowptr, colptr, I, J, index, W = dsparse(w)
         g = post.g
+        N = pre.N
         param = RateSynapseParameter(1e-3)
-        RateSynapse(param,colptr, I, W, g)
+        RateSynapse(param,N,g,o,p)
     end
 end
 
@@ -35,15 +36,16 @@ end
 RateSynapse
 
 
-function forward!(c::RateSynapse, param::RateSynapseParameter)
-    @unpack colptr, I, W, rJ, g = c
-    @unpack lr = param
-    fill!(g, zero(eltype(g)))
+function forward!(c::RateSynapse)# param::RateSynapseParameter)
+    @unpack param, N, g, p, o = c
+    lr = param.lr
+    g .= 0.0
+    #@fill!(g, zeros(eltype(g)))
     @inbounds for j in 1:(length(colptr) - 1)
-        rJj = rJ[j]
-        for s = colptr[j]:(colptr[j+1] - 1)
-            g[I[s]] += W[s] * rJj
-        end
+        #rJj = rJ[j]
+        s = colptr[j]:(colptr[j+1] - 1)
+        g[I[s]] += rand()#W[s] * rJj
+        #end
     end
 end
 #=
