@@ -31,7 +31,7 @@ include("neuron/poisson.jl")
 
 include("synapse/spiking_synapse.jl")
 
-include("main.jl")
+include("main_experiment.jl")
 include("neuron/rate.jl")
 include("synapse/rate_synapse.jl")
 

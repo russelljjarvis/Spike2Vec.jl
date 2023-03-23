@@ -131,6 +131,8 @@ function getrecord(p, sym)
     for (k,val) in p.records
         isa(k, Tuple) && k[1] == sym && (key = k)
     end
+    #@show(values(p.records))
+    #@show(keys(p.records))
     p.records[key]
 end
 

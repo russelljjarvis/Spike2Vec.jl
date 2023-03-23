@@ -22,6 +22,8 @@ function count_syn(C,testval::SpikingNeuralNetworks.SpikingSynapse{CuArray})
     end    
     println("synapses to be simulated: ",cnt_synapses)
 end
+
+
 function sim!(P, C, dt)
     for p in P
         integrate!(p, dt)
@@ -33,15 +35,37 @@ function sim!(P, C, dt)
     # scalar indexing slow down
     ##
     for (ind,c) in enumerate(C)
-        if ind <=4
+        if ind <=6
             if ind <=2 
                 set_syn_values!(c, P[1].fire)
             else
                 set_syn_values!(c, P[2].fire)
             end
+                #else
+            #    set_syn_values!(c, P[ind].fire)
+            #end
         end
+
+        #integrate!(p::Poisson, dt::Float32,fire)
         forward!(c)
         record!(c)
+        if ind <=6
+            if ind <=2 
+                P[1].ge = c.g 
+                P[1].gi = c.g 
+
+            else 
+                P[2].ge = c.g 
+                P[2].gi = c.g 
+
+            end
+                #else
+                #P[ind].ge = c.g 
+
+                #set_syn_values!(P[ind].ge, c.g )
+            #end
+        end
+
     end
 end
 

@@ -9,27 +9,34 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 abstract type AbstractIFNF end
 
 
-struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: AbstractIFNF
+mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: AbstractIFNF
     N::C
     v::L 
     ge::L
     gi::L
     fire::Q 
     u::L
-    g::L
     tr::Vector{C}
     records::Dict
+
+    function IFNF(N,v,ge,gi,fire,u,tr,records)
+        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records)
+    end
+
     function IFNF(N,fire,u,sim_type)
         v = typeof(sim_type)(ones(N).-55.) 
         g = typeof(sim_type)(zeros(N))
         ge = typeof(sim_type)(zeros(N))
         gi = typeof(sim_type)(zeros(N))       
-        g = typeof(sim_type)(zeros(N))       
+        #g = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
         records::Dict = Dict()
-        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,g,tr,records)
+        IFNF(N,v,ge,gi,fire,u,tr,records)
     end 
- 
+    
+    #new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records)
+     #(::UInt64, ::Vector{Float64}, ::Vector{Float64}, ::Vector{Float64}, ::Vector{Bool}, ::Vector{Float64}, ::Vector{UInt64}, ::Dict{Any, Any})
+
     function IFNF(N,sim_type::CuArray,u)
         fire::CuArray{Bool} = zeros(Bool,N)
         IFNF(N,fire,u,sim_type)
@@ -45,6 +52,7 @@ struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: 
         u = typeof(sim_type)(zeros(N))
         IFNF(N,sim_type,u)
     end 
+    
 
 end    
 
@@ -54,8 +62,8 @@ end
 IFNF
 
 function integrate!(p::IFNF, dt::Float32)
-    @unpack N, v, ge, gi, fire, u, g, tr = p
-    integrate!(N, v, dt, ge, gi, fire, u, g, tr)
+    @unpack N, v, ge, gi, fire, u, tr = p
+    integrate!(N, v, dt, ge, gi, fire, u, tr)
 
 end
 
@@ -71,7 +79,7 @@ end
 
 #integrate!(::UInt32, ::Vector{Float16}, ::Float32, ::Vector{Float16}, ::Vector{Float16}, ::Vector{Bool}, ::Vector{Float16})
 
-function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},g::Vector,tr::Vector{<:Number})
+function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Number})
     τe, τi = 5.0,10.0
     #,0.2,0.0,-60.0,10.0)    
     #{'V_th': -55.0, 'V_reset': -75.0, 'tau_m': 10.0, 'g_L': 10.0, 'V_init': -75.0, 'E_L': -75.0, 'tref': 2.0, 'T': 400.0, 'dt': 0.1, 'range_t': array([0.000e+00, 1.000e-01, 2.000e-01, ..., 3.997e+02, 3.998e+02,
@@ -82,15 +90,33 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
     vSS::Real =-55.
     v0::Real = -100. 
     tref = 10.0
+    println("from cell model")
+    @show(gi)
+
+    println("from cell model")
+    @show(ge)
     @inbounds for i = 1:N
         #state = neuron.state + input_update * neuron.R / neuron.τ
-
+        #@show(ge[i])
+        #@show(gi[i])
         # Euler method update
         #state += 1000 * (dt/neuron.τ) * (-state + neuron.vSS)
-    
-    
+        #if ge[i]>0 
+        #    @show(ge[i])
+        #end
+        ge[i] += dt * -ge[i] / τe
+        #end
+        #if gi[i]>0 
         
-        v[i] = v[i] + (g[i]+u[i]) * R / τ
+        gi[i] += dt * -gi[i] / τi
+        #end
+        #if ge[i]>0 || gi[i] >0
+        g = ge[i] + gi[i]           
+        #end
+        
+        #@show(g[i])
+        
+        v[i] = v[i] + (g+u[i]) * R / τ
         # Euler method update
         #@show(v[i])
 
@@ -98,23 +124,12 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
         if tr[i] > 0  # check if in refractory period
             v[i] = vSS  # set voltage to reset
             tr[i] = tr[i] - 1 # reduce running counter of refractory period
-    
+            #print("fire lif")
         elseif v[i] >  θ
             fire[i] = v[i] >  θ
             tr[i] = Int(round(tref*dt))  # set refractory time
         end
 
-        if ge[i]>0 || gi[i] >0
-
-            g[i] = ge[i] + gi[i]           
-        end
-        if ge[i]>0 
-            ge[i] += dt * -ge[i] / τe
-        end
-        if gi[i]>0 
-
-            gi[i] += dt * -gi[i] / τi
-        end
 
         
     end

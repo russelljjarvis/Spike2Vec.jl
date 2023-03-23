@@ -17,7 +17,7 @@ abstract type AbstractSpikingSynapse end
 
 
 
-struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
+mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
     rowptr::T # row pointer of sparse W
     colptr::S  # column pointer of sparse W
     I::S      # postsynaptic index of W
@@ -42,7 +42,9 @@ struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
 
     
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w)
-        g = zeros(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
+        #g = zeros(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
+        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+
         SpikingSynapse(rowptr,colptr,I,J,index,w,g,pre,post)
     end
 
@@ -58,13 +60,14 @@ struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         w = σ * sprand(post.N, pre.N, p) 
         w[diagind(w)] .= 0.0
         rowptr, colptr, I, J, index,V = dsparse(w,sim_type)
-        g::typeof(sim_type) = convert(typeof(sim_type), zeros(post.N))
-        #(w[:]).*sign.(minimum(w[:,1]))   
+        #g::typeof(sim_type) = convert(typeof(sim_type), zeros(post.N))
+        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
         V::typeof(sim_type) = convert(typeof(sim_type),V)
         SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)
     end
 
     function SpikingSynapse(rowptr, colptr, I, J, index, w,fireI,fireJ, g, records)
+        #@show(g)
         new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records)
     end
     #=
@@ -92,17 +95,23 @@ function forward!(colptr::Vector{<:Real}, I, W, fireI::Vector{Bool},fireJ::Vecto
     #@inbounds for j in 1:length(g)
     #    g[j] = 0.0
     #end
-    g .= 0.0
+    #g .= 0.0
     #@inbounds for j in colptr[fireJ]
     #    s = colptr[j]:(colptr[j+1] - 1)
     #    g[I[s]] += W[s]
     #end
     @inbounds for j in 1:(length(colptr) - 1)
         if fireJ[j]
-            s = colptr[j]:(colptr[j+1] - 1)
-            g[I[s]] += W[s]
+            for s in colptr[j]:(colptr[j+1] - 1)
+                g[I[s]] += W[s]
+            end
         end
     end
+    replace!(g, Inf=>0.0)
+    replace!(g, NaN=>0.0)
+
+    #g[:]
+    @show(sum(g))
 end
 
 function forward!(c::SpikingSynapse)
@@ -110,7 +119,7 @@ function forward!(c::SpikingSynapse)
     forward!(colptr, I, W, fireI,fireJ, g)
 end
 function forward!(colptr::CuArray, I::CuArray, W::CuArray, fireI::CuArray{Bool},fireJ::CuArray{Bool}, g::CuArray)
-    g .= 0.0
+    #g .= 0.0
     ###
     #CUDA.Const(fireJ::CuDeviceArray{Bool})#, CUDA.Mem.DeviceBuffer})
     #CUDA.Const(colptr::CuDeviceArray{Float32})#, CUDA.Mem.DeviceBuffer})
