@@ -6,7 +6,7 @@
 #CUDA.allowscalar(false)
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using KernelAbstractions
-
+using Revise
 
 abstract type AbstractSpikingSynapse end
 
@@ -43,7 +43,9 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
     
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w)
         #g = zeros(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
-        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+        #g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+       # EE = SNN.SpikingSynapse(E, E,sim_type; σ = 60*0.27/1, p = 0.015)
+        g::typeof(sim_type) = zeros(size(rowptr))#(w[:]).*sign.(minimum(w[:,1]))   
 
         SpikingSynapse(rowptr,colptr,I,J,index,w,g,pre,post)
     end
@@ -52,16 +54,17 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         w = σ * sprand(post.N, pre.N, p) 
         w[diagind(w)] .= 0.0
         rowptr, colptr, I, J, index,V = dsparse(w,sim_type)
-        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+        g::typeof(sim_type) = zeros(size(rowptr))#(w[:]).*sign.(minimum(w[:,1]))   
         V::typeof(sim_type) = convert(typeof(sim_type),V)
         SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)
     end
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Any; σ = 0.0, p = 0.0)
         w = σ * sprand(post.N, pre.N, p) 
+        @show(σ)
         w[diagind(w)] .= 0.0
         rowptr, colptr, I, J, index,V = dsparse(w,sim_type)
         #g::typeof(sim_type) = convert(typeof(sim_type), zeros(post.N))
-        g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
+        g::typeof(sim_type) = zeros(size(rowptr))#(w[:]).*sign.(minimum(w[:,1]))   
         V::typeof(sim_type) = convert(typeof(sim_type),V)
         SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)
     end
