@@ -22,7 +22,6 @@ Supports millions of cells and billions of synapses.
 ![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
 
-![image](https://user-images.githubusercontent.com/7786645/227809039-6a3250e8-ee10-4820-ae86-84b4eb9733c3.png)
 
 
 ![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
