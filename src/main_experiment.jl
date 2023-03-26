@@ -1,4 +1,6 @@
 using Revise
+using StatsBase
+#using SetField
 function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
     @set  container.fireJ = new_values
 end
@@ -59,8 +61,8 @@ function integrate_here!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fir
     end
 end
 =#
-function integrate_here2!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Integer})
-
+function integrate_neuron_was_working!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Number})
+    #= works when tr is integer countdown system=#
     τm = 20ms
     τe = 5ms
     τi = 10ms
@@ -75,14 +77,25 @@ function integrate_here2!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fi
 
     @inbounds for i = 1:N
         v[i] += dt * (ge[i] + gi[i] - (v[i] - El) + u[i]) / τm
-        ge[i] += dt * ge[i] / τe
-
-        gi[i] += dt * -gi[i] / τi
+        # decay conductances after application of them
+        
+        #for seeable problem these equations may only work for a particular value of dt
+        ge[i] += 0.1* (dt * -ge[i]) / τe
+        gi[i] += 0.1* (dt * -gi[i]) / τi
     end
     @inbounds for i = 1:N
-
-        fire[i] = v[i] > Vt
-        v[i] = ifelse(fire[i], Vr, v[i])
+        if abs(tr[i]) > 0  # check if in refractory period
+            v[i] = Vr  # set voltage to reset
+            tr[i] = tr[i] - dt # reduce running counter of refractory period
+        
+        elseif v[i] >  Vt
+            fire[i] = v[i] >  Vt
+            tr[i] = Int(round(tref*dt))  # set refractory time
+        end
+        #@show(tr[i])
+        
+        #fire[i] = v[i] > Vt
+        #v[i] = ifelse(fire[i], Vr, v[i])
         #@show(fire[i])
 
     end
@@ -94,114 +107,197 @@ function integrate_here2!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fi
 
 end
 
-function forwards_here!(colptr::Vector{<:Real}, I, W,fireJ::Vector{Bool},syn_polarity)#,g::Vector)
-    g = zeros(sizeof(fireJ))
-    fill!(g, zero(Float32))
+##
+# TOdo pass function into neurons,
+# functions deal with if 
+##
 
+function integrate_neuron!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Number})
+
+    τm = 20ms
+    τe = 5ms
+    τi = 10ms
+    Vt = -50mV
+    Vr = -60mV
+    El = Vr
+    tref = 10.0/dt
+
+    @inbounds for i = 1:N
+
+        fire[i] = false
+        v[i] += dt * (ge[i] + gi[i] - (v[i] - El) + u[i]) / τm
+        ge[i] += 0.01* (dt * -ge[i]) / τe
+        gi[i] += 0.01* (dt * -gi[i]) / τi
+
+        # decay conductances after application of them
+        
+        #for seeable problem these equations may only work for a particular value of dt
+
+
+
+        if tr[i] > 0  # check if in refractory period
+            v[i] = Vr  # set voltage to reset
+            tr[i] = tr[i] - dt # reduce running counter of refractory period
+
+        end
+        if tr[i]<0
+            tr[i] = 0.0
+        end
+        if tr[i] == 0
+            if v[i] >  Vt
+                fire[i] = v[i] >  Vt
+                tr[i] = Int(round(tref*dt))  # set refractory time
+        
+            end
+        end
+    
+    end
+    replace!(v, Inf=>(Vr+Vt)/2.0)
+    replace!(v, NaN=>(Vr+Vt)/2.0)   
+    replace!(v,-Inf16=>(Vr+Vt)/2.0)
+    replace!(v,-Inf32=>(Vr+Vt)/2.0)
+    replace!(v, NaN32=>(Vr+Vt)/2.0)   
+    replace!(v, NaN16=>(Vr+Vt)/2.0)       
+end
+
+
+function forwards_euler_weights!(colptr::Vector{<:Real}, I, W, fireJ::Vector{Bool},syn_polarity,g::Vector)
+    fill!(g, zero(Float32))
     @inbounds for j in 1:(length(colptr) - 1)
         if fireJ[j]
             for s in colptr[j]:(colptr[j+1] - 1)
                 g[I[s]] += abs(W[s])*syn_polarity
-            end
-            @assert sign(mean(g)) == sign(syn_polarity)
- 
+            end 
         end
     end
     replace!(g, Inf=>0.0)
     replace!(g, NaN=>0.0)   
     replace!(g,-Inf16=>0.0)
-
-    g
-
+    replace!(g, NaN32=>0.0)   
+    #g
 end
 
 
+function sim!(P; C=[], dt)
+    for p in P
+        integrate!(p, p.param, Float32(dt))
+        record!(p)
+    end
+    for c in C
+        forward!(c, c.param)
+        record!(c)
+    end
+end
 
+#using DataStructures.CircularBuffer
 
-function sim!(P, C, dt,conn_map,verbose=false)
+function sim!(P, C, dt,conn_map=nothing,verbose=true;current_stim=0.0)
+    #=
     for (xx,ii) in enumerate(conn_map)
         for (ind,c) in enumerate(ii)
             pre_synaptic_population = c[1]
             p = pre_synaptic_population
-            if true#xx==1
-                p.u .= 10.4*randn(P[1].N)
-                p.ge .= 10.4*randn(P[1].N)
-                p.u = abs.(p.u)
-                p.ge = abs.(p.ge)
-
-                @assert sum(p.ge) >= 0.0
-            end
-            integrate_here2!(p.N, p.v, dt, p.ge, p.gi, p.fire, p.u, p.tr)
+            p.fire = Vector{Bool}([false for i in 1:length(p.fire)])
+            integrate_neuron!(p.N, p.v, dt, p.ge, p.gi, p.fire, p.u, p.tr)
             record!(p)
-
-            if verbose 
-                @show(minimum(p.v))
-                @show(maximum(p.v))
-
-                @show(mean(p.v))
-            end
-                #@show(sum(p.fire))
         end
     end
-    #exc_connection_map = conn_map[1]
+    =#
+    minus(indx, x) = setdiff(1:length(x), indx)
     for ii in conn_map
         for (ind,c) in enumerate(ii)
-
-            #for (ind,c) in enumerate(exc_connection_map)
             pre_synaptic_population = c[1]
-            pre_fire_map = pre_synaptic_population.fire
             post_synaptic_cell_population = c[4]
-
             syn_polarity = c[3]
             projmap = c[2] # pre_synaptic_cell to post synaptic_projection_map
+            p = pre_synaptic_population
+            
+            #@set 
+            p.fire = Vector{Bool}([false for i in 1:length(p.fire)])
 
+            samp = sample(1:length(p.fire),Int(round(3*length(p.fire)/4)),replace=true)
+            #@set 
+            p.u[samp] .= current_stim#Vector{Float32}([current_stim for i in 1:length(samp)])
+            #@show(p.u[samp])
+            p.u[minus(samp, p.u)] .= 0.0
 
+            integrate_neuron!(p.N, p.v, dt, p.ge, p.gi, p.fire, p.u, p.tr)
+            record!(p)
+            pre_fire_map = copy(pre_synaptic_population.fire)
+            g = zeros(sizeof(pre_fire_map))
+            g_weights = forwards_euler_weights!(projmap.colptr, projmap.I, projmap.W, pre_fire_map, syn_polarity,g)
+            
+            # Insert from front and remove from back.
+            #push!(cb, c[2].delays)        # add an element to the back and overwrite front if full
+            #pop!(cb)             # remove the element at the back
+            #pushfirst!(cb, 10)   # add an element to the front and overwrite back if full
+            #popfirst!(cb)        # remove the element at the front
+            #push!(cb, g_weights)        
+            # add an element to the back and overwrite front if full
+            #pop!(cb)             # remove the element at the back
+            #=if tr[i] <= projmap.delay  # check if in refractory period
+                tr[i] = tr[i] - dt # reduce running counter of refractory period
 
-            g_weights = forwards_here!(projmap.colptr,projmap.I,projmap.W, pre_fire_map,syn_polarity)
-            if verbose
-                @show(mean(g_weights))
-                @show(syn_polarity)
             end
-            if syn_polarity>= 0
-                if verbose
-                    @show(mean(g_weights))
-    
+            if tr[i]<0
+                tr[i] = 0.0
+            end
+            if tr[i] == 0
+                if v[i] >  Vt
+                    tr[i] = Int(round(tref*dt))  # set refractory time            
                 end
-                @assert mean(g_weights) >=0.0
-    
-                #@show(sign.(g_weights))# <=0.0
+            end
+            =#
 
-                #@assert sign.(g_weights) >=0.0
+
+            
+            #@set 
+            c[2].g = g_weights
+            for (ind,value) in enumerate(1:length(g_weights))
+                if syn_polarity>= 0
+                    #cnt_d = c[2].delays - dt
+
+                    #@set 
+                    post_synaptic_cell_population.ge[ind] = g_weights[ind] 
+                else
+                    #@set 
+                    post_synaptic_cell_population.gi[ind] = g_weights[ind] 
+                end
+            end
+            pre_fire_map = Vector{Bool}([false for i in 1:length(pre_fire_map)])
+            record!(c[2])
+
+            #=
+            if syn_polarity>= 0
+                @assert mean(g_weights) >=0.0
                 for (ind,value) in enumerate(1:length(g_weights))
                     @assert g_weights[ind] >= 0.0
                     post_synaptic_cell_population.ge[ind] = g_weights[ind] 
                 end
-
             elseif syn_polarity <= 0
-                if verbose
-                    @show(mean(g_weights))
-                    @show(syn_polarity)
-                    
-                end
-                    @assert mean(g_weights) <=0.0
-                    #@show(sign.(g_weights))# <=0.0
-
+                @assert mean(g_weights) <=0.0
                 for (ind,value) in enumerate(1:length(g_weights))
                     @assert g_weights[ind] <= 0.0
-   
                     post_synaptic_cell_population.gi[ind] = g_weights[ind] 
                 end
             end
-            #@show(sum(post_synaptic_cell_population.fire))
-            record!(c[2])
+            =#
         end
-        #integrate_here2!(p.N, p.v, dt, p.ge, p.gi, p.fire, p.u, p.tr)
     end
-
-
-
+end 
+function sim!(P, C;conn_map=nothing, dt = 0.1ms, duration = 10ms,current_stim=nothing)
+    #count_syn(C,C[1])
+    #delays[]
+    @showprogress for (ind,t) in enumerate(0ms:dt:(duration - dt))
+        sim!(P, C, Float32(dt),conn_map,current_stim=current_stim[ind])
+        #for c in C
+        #    c[2].cnt_d = c[2].delays - dt
+        #end
+                ##
+        # TODO Throttle maximum firing rate
+        # at physiologically plausible levels
+    end
 end
-
     #=
     inh_connection_map = conn_map[2]
     for (ind,c) in enumerate(inh_connection_map)
@@ -256,15 +352,7 @@ end
     end
     =#
 
-function sim!(P, C;conn_map, dt = 0.1ms, duration = 10ms)
-    #count_syn(C,C[1])
-    @showprogress for t = 0ms:dt:(duration - dt)
-        sim!(P, C, Float32(dt),conn_map)
-                ##
-        # TODO Throttle maximum firing rate
-        # at physiologically plausible levels
-    end
-end
+
 
 function train!(P, C, dt, t = 0)
     for p in P
