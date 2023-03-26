@@ -11,10 +11,6 @@ using Pkg
 pkg"add SpikingNeuralNetworks"
 ```
 
-## Documentation
-
-The documentation of this package is not finished yet. For now, just check `examples` folder.
-
 Takes 30 seconds after forced compilation to simulate `20,000` LIF neurons with millions of synapses.
 
 Supports millions of cells and billions of synapses.
@@ -30,3 +26,8 @@ Upgrades:
 * Models can be simulated as 16Bit Float (to run bigger networks with more speed or the same sized network with less memory allocation).
 * CUDA compilitability
 * Adaptive Exponential Integrate and Fire Neuron.
+
+
+## Documentation
+
+The documentation of this package is not finished yet. For now, just check `examples` folder.
