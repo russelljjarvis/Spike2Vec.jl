@@ -24,7 +24,7 @@ function assign_gids(list_of_pops)
 
 end
 
-
+#=
 
 function forwards_here!(colptr::Vector{<:Real}, I, W,fireJ::Vector{Bool},g::Vector)
     fill!(g, zero(Float32))
@@ -43,39 +43,27 @@ function forwards_here!(colptr::Vector{<:Real}, I, W,fireJ::Vector{Bool},g::Vect
     #@show(sum(g))
 
 end
+=#
 function main()
-    pop_size::UInt64=2000
+    pop_size::UInt64=10000
     sim_type = Vector{Float32}(zeros(1))
-    u1 = Float32[0.052929259 for i in 50:0.1ms:150ms]
-
-    E = SNN.IFNF(pop_size,sim_type)
+    u1 = Float32[1.52929259 for i in 50:0.1ms:150ms]
+    E = SNN.IFNF(pop_size,sim_type,u1)
     I = SNN.IFNF(pop_size,sim_type)
-    #Gx = SNN.Poisson(pop_size, 20Hz)
-    #Gy = SNN.Poisson(pop_size, 20Hz)
-
-    #G0 = SNN.SpikingSynapse(Gx, E,sim_type; σ = 2.9927, p = 0.9925)
-
-    #G1 = SNN.SpikingSynapse(Gy, I,sim_type; σ = 1.827, p = 0.990125)
-
-    EE = SNN.SpikingSynapse(E, E,sim_type; σ = 60*0.27/1, p = 0.15)
-    EI = SNN.SpikingSynapse(E, I,sim_type; σ = 11600*0.27/1, p = 0.99)
-    IE = SNN.SpikingSynapse(I, E,sim_type; σ = -20*4.5/1, p = 0.125)
-    II = SNN.SpikingSynapse(I, I,sim_type; σ = -20*4.5/1, p = 0.15)
-    P = [E, I]#,Gx,Gy]
-    #C = [EE, EI, IE, II]#,G0,G1]
-    
+    EE = SNN.SpikingSynapse(E, E,sim_type; σ = 560*0.27/1, p = 0.325)
+    EI = SNN.SpikingSynapse(E, I,sim_type; σ = 560*0.27/1, p = 0.5)
+    IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.5)
+    II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.0125)
+    P = [I, E]#,Gx,Gy]
     C = [EE, EI, IE, II]#$,G0,G1]
-    #SNN.monitor(P, [:fire])#,:v,:ge,:gi])
     SNN.monitor([C], [:g])
     SNN.monitor([E, I], [:fire])
-
-    #SNN.raster(P)
 
     inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
     
     exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
     connection_map = [exc_connection_map,inh_connection_map]
-    SNN.sim!(P, C;conn_map= connection_map, duration = 5.5second)
+    SNN.sim!(P, C;conn_map= connection_map, duration = 0.25second)
     print("simulation done !")
     (times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
     #@show(length(nodes))
