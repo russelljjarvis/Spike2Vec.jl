@@ -26,6 +26,8 @@ Upgrades:
 * Models can be simulated as 16Bit Float (to run bigger networks with more speed or the same sized network with less memory allocation).
 * CUDA compilitability
 * Adaptive Exponential Integrate and Fire Neuron.
+* More unit tests.
+
 
 
 ## Documentation
