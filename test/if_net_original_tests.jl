@@ -44,38 +44,43 @@ function forwards_here!(colptr::Vector{<:Real}, I, W,fireJ::Vector{Bool},g::Vect
 
 end
 =#
-function main()
-    pop_size::UInt64=10000
-    sim_type = Vector{Float32}(zeros(1))
-    u1 = Float32[1.52929259 for i in 50:0.1ms:150ms]
-    E = SNN.IFNF(pop_size,sim_type,u1)
-    I = SNN.IFNF(pop_size,sim_type)
-    EE = SNN.SpikingSynapse(E, E,sim_type; σ = 560*0.27/1, p = 0.325)
-    EI = SNN.SpikingSynapse(E, I,sim_type; σ = 560*0.27/1, p = 0.5)
-    IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.5)
-    II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.0125)
-    P = [I, E]#,Gx,Gy]
-    C = [EE, EI, IE, II]#$,G0,G1]
-    SNN.monitor([C], [:g])
-    SNN.monitor([E, I], [:fire])
+#function main()
+pop_size::UInt64=100000
+sim_type = Vector{Float32}(zeros(1))
+sim_duration = 1.0second
+u1 = Float32[10.0*abs(4.0*rand()) for i in 0:0.01ms:sim_duration]
+E = SNN.IFNF(pop_size,sim_type)
+I = SNN.IFNF(pop_size,sim_type)
+EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
+EI = SNN.SpikingSynapse(E, I,sim_type; σ = 160*0.27/1, p = 0.025)
+IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.25)
+II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.15)
+P = [I, E]
+C = [EE, EI, IE, II]
 
-    inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
-    
-    exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
-    connection_map = [exc_connection_map,inh_connection_map]
-    SNN.sim!(P, C;conn_map= connection_map, duration = 0.25second)
-    print("simulation done !")
-    (times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
-    #@show(length(nodes))
+##
+# ToDO make a real interface that uses block arrays.
+## 
+SNN.monitor([C], [:g])
+SNN.monitor([E, I], [:fire])
+inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
+exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
+connection_map = [exc_connection_map,inh_connection_map]
+SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
+print("simulation done !")
+(times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
+#@assert length(unique(nodes)) > round(pop_size/4)
+display(SNN.raster([E,I]))
+
+#@show(length(nodes))
     #@show(times)
     #,
-    (EE,II,C,times,nodes,E,I)
-end
+#    (EE,II,C,times,nodes,E,I)
+#end
 
 
 #times,nodes,
-(times,nodes,EE,II,C,E,I) = main();
-display(SNN.raster([E,I]))
+#(times,nodes,EE,II,C,E,I) = main();
 
 #@show(times)
 #@show(unique(nodes))

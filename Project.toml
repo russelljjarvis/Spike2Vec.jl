@@ -3,6 +3,7 @@ uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
 version = "0.1.1"
 
 [deps]
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"

@@ -5,7 +5,7 @@
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 #include(joinpath(dirname(pathof(KernelAbstractions)), "../examples/utils.jl")) # Load backend
-
+using Revise
 abstract type AbstractIFNF end
 
 
@@ -16,7 +16,7 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
     gi::L
     fire::Q 
     u::L
-    tr::Vector{C}
+    tr::L
     records::Dict
 
     function IFNF(N,v,ge,gi,fire,u,tr,records)
