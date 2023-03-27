@@ -8,7 +8,7 @@
 
 ```julia
 using Pkg
-pkg"add SpikingNeuralNetworks"
+pkg"add https://github.com/russelljjarvis/SpikingNeuralNetworks.jl"
 ```
 
 Takes 30 seconds after forced compilation to simulate `20,000` LIF neurons with millions of synapses.
