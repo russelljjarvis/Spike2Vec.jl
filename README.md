@@ -24,6 +24,7 @@ Top half excitatory population, bottom half inhibitory population.
 Upgrades:
 
 * Models can be simulated as 16Bit Float (to run bigger networks with more speed or the same sized network with less memory allocation).
+*   Low precision models have a tendency to cause Inf, and NaN values, so these are cleaned during simulation.
 * CUDA compilitability
 * Adaptive Exponential Integrate and Fire Neuron.
 * More unit tests.
