@@ -29,7 +29,9 @@ Upgrades:
 * Adaptive Exponential Integrate and Fire Neuron.
 * More unit tests.
 
-
+TODO.
+* Use Block Array with display to visualize the connection topology of the network.
+* Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
 
 ## Documentation
 
