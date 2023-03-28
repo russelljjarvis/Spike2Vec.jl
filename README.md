@@ -19,6 +19,7 @@ Supports millions of cells and billions of synapses.
 
 
 ![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
+
 Caption: Top half of plot excitatory population activity, bottom half inhibitory population activity. The plot is interesting because 
 
 Upgrades:
