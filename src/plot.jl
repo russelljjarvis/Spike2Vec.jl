@@ -88,7 +88,7 @@ function raster(P::Vector)
         append!(Y, y .+ sum(y0))
         push!(y0, p.N)
     end
-    plt = scatter(X, Y, m = (0.02, :black), leg = :none,
+    plt = scatter(X, Y, m = (0.5, :black), leg = :none,
                   xaxis=("t", (0, Inf)), yaxis = ("neuron",))
     y0 = y0[2:end-1]
     !isempty(y0) && hline!(plt, cumsum(y0), linecolor = :red)

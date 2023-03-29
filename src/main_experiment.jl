@@ -288,7 +288,7 @@ function sim!(P, C, dt,conn_map=nothing,verbose=true;current_stim=0.0)
         end
     end
 end 
-function sim!(P, C;conn_map=nothing, dt = 0.1ms, duration = 10ms,current_stim=nothing)
+function sim!(P, C;conn_map=nothing, dt = 1ms, duration = 10ms,current_stim=nothing)
     #count_syn(C,C[1])
     #delays[]
     @showprogress for (ind,t) in enumerate(0ms:dt:(duration - dt))
