@@ -58,10 +58,14 @@ for i in 1:325
     Odesa.Feast.reset_time(feast_layer)
     for (y,ts) in zip(nodes,times)
         winner = Odesa.Feast.forward(feast_layer, Int32(1), Int32(y), ts)    
-        if i==125
+        if i==325
+            distances = feast_layer.dot_prod
             append!(winners,winner)
         end
         
     end
+    layer.event_context .= layer.event_context ./ norm(layer.event_context)
+    #temp = zeros(feast_layer.dot_prod)
+    #mul!(temp, feast_layer.w', view(feast_layer.event_context, :))
     display(plot!(p1,feast_layer.thresh,legend=false))
 end
