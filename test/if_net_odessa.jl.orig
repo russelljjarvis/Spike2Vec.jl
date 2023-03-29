@@ -8,6 +8,11 @@ CUDA.allowscalar(false)
 using Test
 using Revise
 using Odesa
+<<<<<<< HEAD
+#import Odesa.Feast
+=======
+
+>>>>>>> 5ac83d9d81efca6e157b86b18bbd6e9b8b304eb3
 
 
 
@@ -35,8 +40,7 @@ connection_map = [exc_connection_map,inh_connection_map]
 SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
 print("simulation done !")
 (times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
-
-
+#display(SNN.raster([E,I]))
 
 feast_layer_nNeurons::Int32 = pop_size*2
 feast_layer_eta::Float32 = 0.001
@@ -53,5 +57,3 @@ for (y,ts) in zip(nodes,times)
 end
 
 Odesa.Feast.reset_time(feast_layer)
-display(SNN.raster([E,I]))
-
