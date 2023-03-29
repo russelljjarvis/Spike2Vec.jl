@@ -8,19 +8,7 @@ CUDA.allowscalar(false)
 using Test
 using Revise
 using Odesa
-function assign_gids(list_of_pops)
-    gid = 1
-    offset = 0
-    for p in list_of_pops
-        if offset == 0
-            p.gid = collect(1:p.pop_size)
-            offset += p.pop_size
-        else
-            p.gid = collect(offset:offset+p.pop_size)
-        end
-    end
 
-end
 
 
 pop_size::UInt64=100
