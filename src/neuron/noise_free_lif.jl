@@ -87,11 +87,7 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
     vSS::Real =-55.
     v0::Real = -100. 
     tref = 10.0
-    println("from cell model")
-    @show(gi)
 
-    println("from cell model")
-    @show(ge)
     @inbounds for i = 1:N
 
         ge[i] += dt * -ge[i] / τe        
@@ -147,4 +143,4 @@ Base.show(io::IO, neuron::IFNF) =
 """
     LIF(τm, vreset, vth, R = 1.0)
 Create a LIF neuron with zero initial voltage and empty current queue.
-
+"""

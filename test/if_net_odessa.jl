@@ -8,22 +8,11 @@ CUDA.allowscalar(false)
 using Test
 using Revise
 using Odesa
-function assign_gids(list_of_pops)
-    gid = 1
-    offset = 0
-    for p in list_of_pops
-        if offset == 0
-            p.gid = collect(1:p.pop_size)
-            offset += p.pop_size
-        else
-            p.gid = collect(offset:offset+p.pop_size)
-        end
-    end
-
-end
+#import Odesa.Feast
 
 
-pop_size::UInt64=100
+
+pop_size::Int32=100
 sim_type = Vector{Float32}(zeros(1))
 sim_duration = 1.0second
 u1 = Float32[10.0*abs(4.0*rand()) for i in 0:0.01ms:sim_duration]
@@ -47,5 +36,20 @@ connection_map = [exc_connection_map,inh_connection_map]
 SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
 print("simulation done !")
 (times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
-display(SNN.raster([E,I]))
+#display(SNN.raster([E,I]))
 
+feast_layer_nNeurons::Int32 = pop_size*2
+feast_layer_eta::Float32 = 0.001
+feast_layer_threshEta::Float32 = 0.001
+feast_layer_thresholdOpen::Float32 = 0.1
+feast_layer_tau::Float32 = 0.464
+# This doesn't matter, it is used in ODESA but not in FEAST 
+feast_layer_traceTau::Float32 = 0.81
+# Create a Feast layer with the above parameters
+feast_layer = Odesa.Feast.FC(Int32(1),Int32(pop_size*2),feast_layer_nNeurons,feast_layer_eta,feast_layer_threshEta,feast_layer_thresholdOpen,feast_layer_tau,feast_layer_traceTau)
+
+for (y,ts) in zip(nodes,times)
+    Odesa.Feast.forward(feast_layer, Int32(1), Int32(y), ts)    
+end
+
+Odesa.Feast.reset_time(feast_layer)

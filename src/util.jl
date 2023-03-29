@@ -16,7 +16,7 @@ function GetApplyLayerOffsets(layer_pre_index, layer_post_index)
     rowptr, colptr, I, J, index, W = dense_from_sparse(w)
     fireI, fireJ = post.fire, pre.fire
     g = getfield(post, sym)
-    SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    #SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 end
 
 function Map_also_with_conversion_from_dense_from_sparse(A)
@@ -75,7 +75,7 @@ function MapPreSynapticToPost(pre, post, layer_pre_index, layer_post_index, sym;
     # fireJ is fire pre synaptic
     post_fireI, pre_fireJ = post.fire, pre.fire
     g = getfield(post, sym)
-    SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+    #SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 end
 
 function anytype(A,I,J,V,At,rowptr,colptr,coldown,index,return_type::CuArray)
