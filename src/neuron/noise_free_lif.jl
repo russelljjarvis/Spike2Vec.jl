@@ -33,9 +33,6 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records)
     end 
-    
-    #new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records)
-     #(::UInt64, ::Vector{Float64}, ::Vector{Float64}, ::Vector{Float64}, ::Vector{Bool}, ::Vector{Float64}, ::Vector{UInt64}, ::Dict{Any, Any})
 
     function IFNF(N,sim_type::CuArray,u)
         fire::CuArray{Bool} = zeros(Bool,N)
@@ -96,35 +93,15 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
     println("from cell model")
     @show(ge)
     @inbounds for i = 1:N
-        #state = neuron.state + input_update * neuron.R / neuron.τ
-        #@show(ge[i])
-        #@show(gi[i])
-        # Euler method update
-        #state += 1000 * (dt/neuron.τ) * (-state + neuron.vSS)
-        #if ge[i]>0 
-        #    @show(ge[i])
-        #end
-        ge[i] += dt * -ge[i] / τe
-        #end
-        #if gi[i]>0 
-        
-        gi[i] += dt * -gi[i] / τi
-        #end
-        #if ge[i]>0 || gi[i] >0
-        g = ge[i] + gi[i]           
-        #end
-        
-        #@show(g[i])
-        
-        v[i] = v[i] + (g+u[i]) * R / τ
-        # Euler method update
-        #@show(v[i])
 
+        ge[i] += dt * -ge[i] / τe        
+        gi[i] += dt * -gi[i] / τi
+        g = ge[i] + gi[i]           
+        v[i] = v[i] + (g+u[i]) * R / τ
         v[i] += (dt/τ) * (-v[i] + vSS)
         if tr[i] > 0  # check if in refractory period
             v[i] = vSS  # set voltage to reset
             tr[i] = tr[i] - 1 # reduce running counter of refractory period
-            #print("fire lif")
         elseif v[i] >  θ
             fire[i] = v[i] >  θ
             tr[i] = Int(round(tref*dt))  # set refractory time
@@ -163,93 +140,11 @@ Base.show(io::IO, ::MIME"text/plain") =
                      voltage: $(neuron.v)
                      current: $(neuron.u)
                      τm:      $(neuron.τm)
-                     Vr    :  $(neuron.Vr)
-                     R:       $(neuron.R)""")
+                     Vr    :  $(neuron.Vr)""")
 Base.show(io::IO, neuron::IFNF) =
     print(io, "LIF(voltage = $(neuron.v), current = $(neuron.u))")
 
 """
     LIF(τm, vreset, vth, R = 1.0)
 Create a LIF neuron with zero initial voltage and empty current queue.
-"""
-#LIF(τm::Real, vreset::Real, R::Real = 1.0) = LIF{Float32, Int}(vreset, 0, 0, τm, vreset, R)
 
-
-    #=
-    function IFNF(;N::Integer,u::Vector{Float32})
-        N::Integer = N
-        PT=Vector{Float32}
-        v::PT = zeros(N) 
-        ge::PT = zeros(N)
-        gi::PT = zeros(N)
-        fire::Vector{Bool} = zeros(Bool, N)
-        records::Dict = Dict()
-        pop_indexs::Integer = 1
-        new(N,pop_indexs,v,ge,gi,fire,I,records)
-    end 
-
-    function IFNF(;N::Integer,I::CuArray{Float32})
-        PT=CuArray{Float32}
-        N::Integer = N
-        v::PT = zeros(N) 
-        ge::PT = zeros(N)
-        gi::PT = zeros(N)
-        fire::CuArray{Bool} = zeros(Bool, N)
-        records::Dict = Dict()
-        pop_indexs::Integer = 1
-        new(N,pop_indexs,v,ge,gi,fire,I,records)
-    end 
-    =#
-    
-    
-
-
-
-#IFNF(N::Integer) = IFNF{Vector{Float32}}(N,pop_indexs,v,ge,gi,fire,I,records)
-#IFNF(N::Integer) = IFNF{CuArray{Float32}}(N,pop_indexs,v,ge,gi,fire,I,records)
-#IFNF(;N::Integer,I::Vector{Float32}) = IFNF{Vector{Float32}}(N,pop_indexs,v,ge,gi,fire,I,records)
-#IFNF(;N::Integer,I::CuArray{Float32}) = IFNF{CuArray{Float32}}(N,pop_indexs,v,ge,gi,fire,I,records)
-
-#IFNF(;N::Integer,I::CuArray{Float32},pop_indexs::Integer) = IFNF{CuArray{Float32}}(N,pop_indexs,v,ge,gi,fire,I,records)
-
-
-#=function IFNF{Vector{Float32}}(;N::Integer,PT<:Vector{Float32})
-    v::PT = param.Vr .* ones(N) 
-    ge::PT = zeros(N)
-    gi::PT= zeros(N)
-    fire::PT{Bool} = zeros(Bool, N)
-    I::PT = zeros(N)
-    records::Dict = Dict()
-    new(N,v,ge,gi,fire,I,records)
-end
-
-function IFNF{CuArray}(;N::Integer,I<:CuArray,PT<:CuArray)
-    v::PT = param.Vr .* ones(N) 
-    ge::PT = zeros(N)
-    gi::PT = zeros(N)
-    fire::PT{Bool} = zeros(Bool, N)
-    records::Dict = Dict()
-    new(N,v,ge,gi,fire,I,records)
-end
-function IFNF{CuArray}(;N::Integer,PT<:CuArray)
-    v::PT = param.Vr .* ones(N) 
-    ge::PT = zeros(N)
-    gi::PT= zeros(N)
-    fire::PT{Bool} = zeros(Bool, N)
-    I::PT = zeros(N)
-    records::Dict = Dict()
-    new(N,v,ge,gi,fire,I,records)
-end
-=#
-#struct LIF{VT<:Real, IT<:Integer} <: AbstractCell
-#LIF(τm::Real, vreset::Real, R::Real = 1.0) = LIF{Float32, Int}(vreset, 0, 0, τm, vreset, R)
-        
-
-
-#MyType(v::Real) = ...
-#function MyType{T}(v::Vector{T})  # parametric type
-#   ....
-#end
-
-
-#

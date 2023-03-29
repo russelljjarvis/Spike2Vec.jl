@@ -9,6 +9,75 @@ function connect!(c, j, i, σ = 1e-6)
     return nothing
 end
 
+function GetApplyLayerOffsets(layer_pre_index, layer_post_index)
+    in_synapse_pol = :gi
+    exc_synapse_pol = :ge
+
+    rowptr, colptr, I, J, index, W = dense_from_sparse(w)
+    fireI, fireJ = post.fire, pre.fire
+    g = getfield(post, sym)
+    SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+end
+
+function Map_also_with_conversion_from_dense_from_sparse(A)
+    """
+    Create a unit test for this.
+        
+    Convert dense matrix from sparse matrix.
+    """
+    At = sparse(A') ## Post synapses
+    tgts = A.colptr 
+    @show(tgts)
+    # transpose means we only have fast columnwise iteration.    
+    srcs = At.colptr # Pre-synapses.
+    I = rowvals(A) ## Get all rows of adjanency matrix the connectome.
+    
+    
+    WW = nonzeros(A) # get all non-zero values of the adjancey matrix connectome.
+    ## the dense product of the adjacency matrix that needs navigation.
+    # Navigation steps are below.
+    
+    J = zero(I) # J is a collection to be filled that is the same shape as I.
+    for j in 1:(length(tgts) - 1) ## fill J now.
+
+        # J is filled sytematically monochromatically by the coloumn order of colptr.
+        # J is probably the dense mapping from pre-synapse to post synapse.
+
+        J[tgts[j]:(tgts[j+1] - 1)] .= j
+    end
+    # is J dense?
+
+    @show(sizeof(J))
+
+    @show(J)
+    index = zeros(size(I))
+    coldown = zeros(eltype(index), length(tgts) - 1)
+
+    ##
+    # Another hardcore conversion process.
+    # rowptr is fast non-zero presynaptic matrix location found by transpose
+    # colptr is fast non-zero post-synaptic matrix location found by transpose
+    ##
+    for i in 1:(length(srcs) - 1) # iterate presynapses
+        for st in srcs[i]:(srcs[i+1] - 1) # grab a pre-synapse and its next neightbour
+            j = At.rowval[st] # grab the whole row that this presynapse represents.
+            index[st] = tgts[j] + coldown[j] # 
+            coldown[j] += 1 # This must be the number of post synaptic locations.
+        end
+    end
+    
+    #colptr, I, W, 
+    colptr, I, WW # V becomes W
+end
+
+function MapPreSynapticToPost(pre, post, layer_pre_index, layer_post_index, sym; σ = 0.0, p = 0.0, kwargs...)
+    rowptr, colptr, I, J, index, W = dsparse(w)
+    # fireJ is fire pre synaptic
+    post_fireI, pre_fireJ = post.fire, pre.fire
+    g = getfield(post, sym)
+    SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
+end
+
 function anytype(A,I,J,V,At,rowptr,colptr,coldown,index,return_type::CuArray)
     for j in 1:(length(colptr) - 1)
         J[colptr[j]:(colptr[j+1] - 1)] .= j
