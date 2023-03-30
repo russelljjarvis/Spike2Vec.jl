@@ -21,15 +21,16 @@ Supports millions of cells and billions of synapses.
 
 Caption: Top half of plot excitatory population activity, bottom half inhibitory population activity. The plot is interesting because 
 
-Upgrades:
+Completed Upgrades:
 
 * Models can be simulated as 16Bit Float (to run bigger networks with more speed or the same sized network with less memory allocation).
 *   Low precision models have a tendency to cause Inf, and NaN values, so these are cleaned during simulation.
-* CUDA compilitability
 * Adaptive Exponential Integrate and Fire Neuron.
 * More unit tests.
+* UMAP of spike trains
 
 TODO.
+* CUDA compilitability
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
 
