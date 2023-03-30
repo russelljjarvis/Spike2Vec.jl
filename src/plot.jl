@@ -90,14 +90,6 @@ function bespoke_2dhist(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for
 
     return weights
 end
-#colorrange = [-n/4, n/4];
-    
-# choose color map [https://docs.juliahub.com/AbstractPlotting/6fydZ/0.12.10/generated/colors.html]
-
-# make colored scatter plot
-#fig = Figure()
-#scatter(fig[1, 1], x, y; color=z, colormap = cmap, markersize=10, strokewidth=0, colorrange = colorrange)
-
 function get_ts(nodes,times)
     dt = 100
     tau = 400
