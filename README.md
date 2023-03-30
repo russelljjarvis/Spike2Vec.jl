@@ -1,7 +1,6 @@
 # SpikingNeuralNetworks
 
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/AStupidBear/SpikingNeuralNetworks.jl?svg=true)](https://ci.appveyor.com/project/AStupidBear/SpikingNeuralNetworks-jl)
-[![Coverage](https://codecov.io/gh/AStupidBear/SpikingNeuralNetworks.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/AStupidBear/SpikingNeuralNetworks.jl)
+[![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
 ## Installation
 
