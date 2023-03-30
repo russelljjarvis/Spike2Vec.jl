@@ -7,8 +7,6 @@ using HDF5
 import HDF5
 ##
 # For reference see this file:
-##
-# # https://github.com/yeshwanthravitheja/odesa_variants/blob/aecdc06976a26c593eff1d9a9b913840da52147a/convolutional/ODESA/Conv.py
 
 mutable struct NmnistMotion
     file::HDF5.HDF5File
