@@ -13,6 +13,14 @@ Takes 30 seconds after forced compilation to simulate `20,000` LIF neurons with 
 
 Supports millions of cells and billions of synapses.
 
+file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/color_time.png![image](https://user-images.githubusercontent.com/7786645/228764232-b6818524-ea31-461f-913d-5e50196a2a6f.png)
+
+
+file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/UMAP_model.png![image](https://user-images.githubusercontent.com/7786645/228764191-10262134-8602-4c7c-81ae-57e0c7ca871c.png)
+
+file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/TimeSurface.png![image](https://user-images.githubusercontent.com/7786645/228764258-4da67dfe-1e8b-4a30-97eb-724a9e7dd683.png)
+
+
 ![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
 file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/heatmap_normalized.png![image](https://user-images.githubusercontent.com/7786645/228708652-74b1a5d3-811d-418e-870a-c27b7315e815.png)
