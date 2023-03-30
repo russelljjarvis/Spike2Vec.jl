@@ -3,59 +3,16 @@ using .Plots
 # FIXME: using StatsBase
 using StatsPlots
 using StatsBase
+using OnlineStats
+using UMAP
+using LinearAlgebra
 
-#=
-function bespoke_2dhist(nbins::Int64,times::Vector{Float32},nodes::Vector{Int64},fname=nothing)
-
-    stimes = sort(times)
-    ns = maximum(unique(nodes))    
-    stride_length = Float64(maximum(stimes)/nbins)
-    temp_vec = collect(0:stride_length:maximum(stimes))
-    templ = []
-    for (cnt,n) in enumerate(collect(1:maximum(nodes)+1))
-        push!(templ,[])
-    end
-    for (cnt,n) in enumerate(nodes)
-
-        push!(templ[n+1],times[cnt])    
-        #@show(templ[n+1])
-    end
-    list_of_artifact_rows = []
-    #data = Matrix{Float64}(undef, ns+1, Int(length(temp_vec)-1))
-    for (ind,t) in enumerate(templ)
-        psth = fit(Histogram,t,temp_vec)
-        #data[ind,:] = psth.weights[:]
-        if sum(psth.weights[:]) == 0.0
-            append!(list_of_artifact_rows,ind)
-        end
-    end
-    #@show(list_of_artifact_rows)
-    adjusted_length = ns+1-length(list_of_artifact_rows)
-    data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)-1))
-    cnt = 1
-    for t in templ
-        psth = fit(Histogram,t,temp_vec)        
-        if sum(psth.weights[:]) != 0.0
-            data[cnt,:] = psth.weights[:]
-            @assert sum(data[cnt,:])!=0
-            cnt +=1
-        end
-    end
-    return data
-end
-=#
-
+import LinearAlgebra: normalize
 function normalised_2dhist(data)
     foreach(normalize!, eachcol(data'))
     return data
 end
 
-
-#function raster(p::IFNF)
-#    
-#    x,y = raster(fire)
-#    x,y
-#end
 
 function raster(p::IFNF)
     fire = p.records[:fire]
@@ -96,7 +53,148 @@ function raster(P::Vector)
 end
 
 
+function bespoke_2dhist(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64)
+    t0 = times
+    n0 = nodes
+    stimes = sort(times)
+    ns = maximum(unique(nodes))    
+    temp_vec = collect(0:Float64(maximum(stimes)/denom_for_bins):maximum(stimes))
+    templ = []
+    for (cnt,n) in enumerate(collect(1:maximum(nodes)+1))
+        push!(templ,[])
+    end
+    for (cnt,n) in enumerate(nodes)
+        push!(templ[n+1],times[cnt])    
+    end
+    list_of_artifact_rows = [] # These will be deleted as they bias analysis.
+    for (ind,t) in enumerate(templ)
+        psth = fit(Histogram,t,temp_vec)
+        if sum(psth.weights[:]) == 0.0
+            append!(list_of_artifact_rows,ind)
+        end
+    end
+    adjusted_length = ns+1-length(list_of_artifact_rows)
+    data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)-1))
+    cnt = 1
+    for t in templ
+        psth = fit(Histogram,t,temp_vec)        
+        if sum(psth.weights[:]) != 0.0
+            data[cnt,:] = psth.weights[:]
+            @assert sum(data[cnt,:])!=0
+            cnt +=1
+        end
+    end
+    weights = LinearAlgebra.normalize(data)
+    Plots.plot(heatmap(weights))
+    Plots.savefig("heatmap_normalized.png")
 
+    return weights
+end
+#colorrange = [-n/4, n/4];
+    
+# choose color map [https://docs.juliahub.com/AbstractPlotting/6fydZ/0.12.10/generated/colors.html]
+
+# make colored scatter plot
+#fig = Figure()
+#scatter(fig[1, 1], x, y; color=z, colormap = cmap, markersize=10, strokewidth=0, colorrange = colorrange)
+
+function get_ts(nodes,times)
+    dt = 100
+    tau = 400
+    num_neurons = Int(length(unique(nodes)))+1#int(df.max(axis=0)['x1'])
+    total_time =  Int(maximum(times))
+    time_resolution = Int(round(total_time/dt))
+    # Final output. 
+    final_timesurf = zeros((num_neurons, time_resolution+1))
+    # Timestamp and membrane voltage store for generating time surface
+    timestamps = zeros((num_neurons)) .- Inf
+    mv = zeros((num_neurons))
+    
+    get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
+    return final_timesurf
+end
+function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
+    
+    last_t = 0
+    for (tt,nn) in zip(times,nodes)
+        #Get the current spike
+        neuron = Int(nn) 
+        time = Int(tt)        
+        # If time of the next spikes leaps over, make sure to generate 
+        # timesurfaces for all the intermediate dt time intervals and fill the 
+        # final_timesurface.
+        if time > last_t
+            timesurf = similar(final_timesurf[:,1])
+            for t in collect(last_t:dt:time)
+                @. timesurf = mv*exp((timestamps-t)/tau)
+                final_timesurf[:,1+Int(round(t/dt))] = timesurf
+            end
+            last_t = time
+        end
+        # Update the membrane voltage of the time surface based on the last value and time elapsed
+        mv[neuron] =mv[neuron]*exp((timestamps[neuron]-time)/tau) +1
+        timestamps[neuron] = time
+        # Update the latest timestamp at the channel. 
+    end
+    # Generate the time surface for the rest of the time if there exists no other spikes. 
+    timesurf = similar(final_timesurf[:,1])
+    for t in collect(last_t:dt:total_time)
+        @. timesurf = mv*exp((timestamps-t)/tau)
+        final_timesurf[:,1+Int(round(t/dt))] = timesurf
+    end
+
+end
+
+function get_isis(times,nodes)
+    spike_dict = Dict()
+    all_isis = []
+    for n in unique(nodes)
+        spike_dict[n] = []
+    end
+    for (st,n) in zip(times,nodes)
+        append!(spike_dict[n],st)
+    end
+    for (k,v) in pairs(spike_dict)
+        time_old = 0
+        for time in spike_dict[k][1:end-1]
+            isi = time - time_old
+            append!(all_isis,isi)
+            time_old = time
+        end
+    end
+    return StatsBase.mean(all_isis)
+end
+function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64, file_name::String)
+    perm = sortperm(times)
+    nodes = nodes[perm]
+    times = times[perm]
+    CList = collect(0:1:length(times))
+    cmap = :balance
+
+    Plots.plot(scatter(times,nodes,zcolor=CList, title="Color Time Plot", marker=(2, 2, :auto, stroke(0.0005)),legend=false))
+    Plots.savefig("color_time.png")
+    time_end = Int(length(times))
+    cmap = :balance
+    final_timesurf = get_ts(nodes,times);
+    normalize!(final_timesurf)
+    Plots.heatmap(final_timesurf)
+    Plots.savefig("TimeSurface.png")
+
+    #hist_weights = bespoke_2dhist(nodes,times,denom_for_bins)
+    #hist_weights =  hist_weights'
+    #Plots.heatmap(final_timesurf)
+    #Plots.savefig("heatmap.png")
+
+    res_jl = umap(final_timesurf',n_neighbors=20, min_dist=0.001, n_epochs=100)
+    #@show(length(CList))
+    #@show(length(res_jl))
+    #CList = collect(0:length(times)/length(res_jl):length(times))
+
+    Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList, title="Spike Rate: UMAP", marker=(1, 1, :auto, stroke(0.5)),legend=false))
+    Plots.savefig(file_name)
+
+    return 
+end
 function vecplot(p, sym)
     v = getrecord(p, sym)
     y = hcat(v...)'

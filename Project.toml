@@ -3,6 +3,8 @@ uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
 version = "0.1.1"
 
 [deps]
+UMAP = "c4f8c510-2410-5be4-91d7-4fbaeb39457e"
+OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
