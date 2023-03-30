@@ -108,7 +108,7 @@ end
 function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
     
     last_t = 0
-    for (tt,nn) in zip(times,nodes)
+    @inbounds for (tt,nn) in zip(times,nodes)
         #Get the current spike
         neuron = Int(nn) 
         time = Int(tt)        
@@ -130,7 +130,7 @@ function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,ti
     end
     # Generate the time surface for the rest of the time if there exists no other spikes. 
     timesurf = similar(final_timesurf[:,1])
-    for t in collect(last_t:dt:total_time)
+    @inbounds for t in collect(last_t:dt:total_time)
         @. timesurf = mv*exp((timestamps-t)/tau)
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
     end
