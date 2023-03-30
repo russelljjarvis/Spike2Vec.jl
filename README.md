@@ -16,6 +16,8 @@ Supports millions of cells and billions of synapses.
 
 ![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
+file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/heatmap_normalized.png![image](https://user-images.githubusercontent.com/7786645/228708652-74b1a5d3-811d-418e-870a-c27b7315e815.png)
+
 
 ![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
 
