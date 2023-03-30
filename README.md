@@ -23,6 +23,9 @@ file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/heatmap_normalized.png![
 
 [image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
+file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/UMAP_model.png![image](https://user-images.githubusercontent.com/7786645/228714243-3adb5de9-6482-420e-b2c5-17a1970ba38a.png)
+
+
 Caption: Top half of plot excitatory population activity, bottom half inhibitory population activity. The plot is interesting because 
 
 Completed Upgrades:
