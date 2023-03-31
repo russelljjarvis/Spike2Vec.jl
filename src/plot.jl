@@ -4,13 +4,12 @@ using StatsBase
 using OnlineStats
 using UMAP
 using LinearAlgebra
-
 import LinearAlgebra: normalize
+
 function normalised_2dhist(data)
     foreach(normalize!, eachcol(data'))
     return data
 end
-
 
 function raster(p::IFNF)
     fire = p.records[:fire]
