@@ -55,10 +55,12 @@ Caption another UMAP of spike trains
 ## Similar Simulators
 This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs. Furthermore another goal of this work is neural analysis and visualization that scales well.
 
-* https://github.com/SpikingNetwork/TrainSpikingNet.jl
-* https://github.com/darsnack/SpikingNN.jl
-* https://github.com/wsphillips/Conductor.jl
-* https://github.com/FabulousFabs/AdEx
+* https://github.com/FabulousFabs/Spike.jl (looking very inspired by Brian2 except in Julia)
+* https://github.com/SpikingNetwork/TrainSpikingNet.jl (nice use of CUDA and reduced precision types)
+* https://github.com/leaflabs/WaspNet.jl (nice use of block arrays)
+* https://github.com/darsnack/SpikingNN.jl (nice use of multidispatch)
+* https://github.com/wsphillips/Conductor.jl (nice use of DiffEq.jl)
+* https://github.com/FabulousFabs/AdEx (interesting and different)
 
 
 ## Documentation
