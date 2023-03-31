@@ -34,12 +34,17 @@ function divide_epoch(nodes,times,sw,toi)
     neuron0
 end
 
-
+"""
+Get the mean Interspike Interval and all other ISIs as a per cell dictionary, and as a "bag of words",pooled collection.
+"""
 function get_isis(times,nodes)
     spike_dict = Dict()
+    isi_dict = Dict()
+
     all_isis = []
     for n in unique(nodes)
         spike_dict[n] = []
+	isi_dict[n] = []
     end
     for (st,n) in zip(times,nodes)
         append!(spike_dict[n],st)
@@ -48,11 +53,12 @@ function get_isis(times,nodes)
         time_old = 0
         for time in spike_dict[k][1:end-1]
             isi = time - time_old
+	    append!(isi_dict[n],isi)
             append!(all_isis,isi)
             time_old = time
         end
     end
-    return StatsBase.mean(all_isis)
+    (StatsBase.mean(all_isis),isi_dict,all_isis)
 end
 
 
