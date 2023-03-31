@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
-![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
 
 ## Installation
 
@@ -28,9 +27,8 @@ file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/TimeSurface.png![image](
 
 
 
-[image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
-
+![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
 
 Caption: Top half of plot excitatory population activity, bottom half inhibitory population activity. The plot is interesting because 
 
@@ -42,6 +40,7 @@ Completed Upgrades:
 * More unit tests.
 * UMAP of spike trains
 * Progress Bars, because people like to know how long they should expect to wait.
+[image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
 TODO.
 * CUDA compilitability
