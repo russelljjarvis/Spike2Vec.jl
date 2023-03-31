@@ -1,10 +1,5 @@
-
-#using CUDA
-#CUDA.allowscalar(false)
-
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
-#include(joinpath(dirname(pathof(KernelAbstractions)), "../examples/utils.jl")) # Load backend
 using Revise
 abstract type AbstractIFNF end
 
@@ -73,8 +68,6 @@ function integrate!(N::Integer,v::CuArray,dt::Real,ge::CuVector,gi::CuVector,fir
     kernel(N, v, ge, gi, fire, u,dt;threads=(xthreads), blocks=(xblocks<<2))
 
 end
-
-#integrate!(::UInt32, ::Vector{Float16}, ::Float32, ::Vector{Float16}, ::Vector{Float16}, ::Vector{Bool}, ::Vector{Float16})
 
 function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Number})
     τe, τi = 5.0,10.0
