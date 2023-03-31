@@ -1,6 +1,4 @@
 using .Plots
-#using Plots
-# FIXME: using StatsBase
 using StatsPlots
 using StatsBase
 using OnlineStats
