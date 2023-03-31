@@ -20,6 +20,8 @@ Supports millions of cells and billions of synapses.
 
 ![image](https://user-images.githubusercontent.com/7786645/228764191-10262134-8602-4c7c-81ae-57e0c7ca871c.png)
 
+Time surfaces of the neural activity (similar to a membrane potential heatmap across the network)
+
 ![image](https://user-images.githubusercontent.com/7786645/228764258-4da67dfe-1e8b-4a30-97eb-724a9e7dd683.png)
 
 ## Older Plots
