@@ -27,7 +27,7 @@ Time surfaces of the neural activity (similar to a membrane potential heatmap ac
 ## Older Plots
 
 
-The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the [Potjan's model](https://github.com/social-hacks-for-mental-health/SpikingNeuralNetworks.jl/tree/potjans).
+The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the [Potjan's model]([https://github.com/social-hacks-for-mental-health/SpikingNeuralNetworks.jl/tree/potjans](https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/blob/potjans_model/src/genPotjansInPlace.jl)).
 
 ![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
 
@@ -52,7 +52,8 @@ Caption another UMAP of spike trains
 * Robust CUDA compilitability including STDP
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
-
+* Demonstration of Potjans network https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/blob/potjans_model/src/genPotjansInPlace.jl
+*
 ## Similar Simulators
 This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs. Furthermore another goal of this work is neural analysis and visualization that scales well.
 
