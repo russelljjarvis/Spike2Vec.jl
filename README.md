@@ -50,6 +50,7 @@ Caption another UMAP of spike trains
 
 # Pending Upgrades
 * Robust CUDA compilitability including STDP
+* Bio Network Consumption of the ```NMNIST.NmnistMotion("./nmnist_motions.hdf5")``` dataset
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
 * Demonstration of Potjans network https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/blob/potjans_model/src/genPotjansInPlace.jl
