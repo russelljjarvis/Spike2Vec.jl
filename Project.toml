@@ -22,9 +22,6 @@ StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 
-[deps.registries]
-Odessa ="https://github.com/russelljjarvis/Odesa.jl-1"
-
 [compat]
 Requires = "0.5, 1"
 UnPack = "1"
