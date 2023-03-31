@@ -1,3 +1,31 @@
+"""
+Get the mean Interspike Interval and all other ISIs as a per cell dictionary, and as a "bag of words",pooled collection.
+"""
+function get_isis(times,nodes)
+    spike_dict = Dict()
+    isi_dict = Dict()
+
+    all_isis = []
+    for n in unique(nodes)
+        spike_dict[n] = []
+	isi_dict[n] = []
+    end
+    for (st,n) in zip(times,nodes)
+        append!(spike_dict[n],st)
+    end
+    for (k,v) in pairs(spike_dict)
+        time_old = 0
+        for time in spike_dict[k][1:end-1]
+            isi = time - time_old
+	    append!(isi_dict[n],isi)
+            append!(all_isis,isi)
+            time_old = time
+        end
+    end
+    (StatsBase.mean(all_isis),isi_dict,all_isis)
+end
+
+
 
 """
 Divide up epochs, this would normally be called in a loop
@@ -33,34 +61,6 @@ function divide_epoch(nodes,times,sw,toi)
     end
     neuron0
 end
-
-"""
-Get the mean Interspike Interval and all other ISIs as a per cell dictionary, and as a "bag of words",pooled collection.
-"""
-function get_isis(times,nodes)
-    spike_dict = Dict()
-    isi_dict = Dict()
-
-    all_isis = []
-    for n in unique(nodes)
-        spike_dict[n] = []
-	isi_dict[n] = []
-    end
-    for (st,n) in zip(times,nodes)
-        append!(spike_dict[n],st)
-    end
-    for (k,v) in pairs(spike_dict)
-        time_old = 0
-        for time in spike_dict[k][1:end-1]
-            isi = time - time_old
-	    append!(isi_dict[n],isi)
-            append!(all_isis,isi)
-            time_old = time
-        end
-    end
-    (StatsBase.mean(all_isis),isi_dict,all_isis)
-end
-
 
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
