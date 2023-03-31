@@ -10,6 +10,8 @@ using Pkg
 pkg"add https://github.com/russelljjarvis/SpikingNeuralNetworks.jl"
 ```
 
+Heavily based and derived from work by AStupidBear
+
 Takes 30 seconds after forced compilation to simulate `20,000` LIF neurons with millions of synapses.
 
 Supports millions of cells and billions of synapses.
@@ -47,6 +49,15 @@ Caption: Top half of plot excitatory population activity, bottom half inhibitory
 * Robust CUDA compilitability including STDP
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
+
+## Similar Simulators
+This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs.
+
+* https://github.com/SpikingNetwork/TrainSpikingNet.jl
+* https://github.com/darsnack/SpikingNN.jl
+* https://github.com/wsphillips/Conductor.jl
+* https://github.com/FabulousFabs/AdEx
+
 
 ## Documentation
 
