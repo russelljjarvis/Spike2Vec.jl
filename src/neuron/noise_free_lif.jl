@@ -70,9 +70,6 @@ end
 
 function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Number})
     τe, τi = 5.0,10.0
-    #,0.2,0.0,-60.0,10.0)    
-    #{'V_th': -55.0, 'V_reset': -75.0, 'tau_m': 10.0, 'g_L': 10.0, 'V_init': -75.0, 'E_L': -75.0, 'tref': 2.0, 'T': 400.0, 'dt': 0.1, 'range_t': array([0.000e+00, 1.000e-01, 2.000e-01, ..., 3.997e+02, 3.998e+02,
-    #3.999e+02])}
     τ::Real = 8.         
     R::Real = 10.      
     θ::Real = -50.     
