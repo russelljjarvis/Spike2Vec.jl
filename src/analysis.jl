@@ -77,16 +77,6 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
     end
     return self_distances
 end
-
-function get_()
-    hf5 = h5open("spikes.h5","r")
-    nodes = Vector{Int64}(read(hf5["spikes"]["v1"]["node_ids"]))
-    nodes = [n+1 for n in nodes]
-    times = Vector{Float64}(read(hf5["spikes"]["v1"]["timestamps"]))
-    close(hf5)
-    return (times,nodes)
-end
-
 function looped!(times,t0,spk_counts,segment_length,temp)
     doonce = LinRange(0.0, segment_length, temp)[:]
     for (neuron, t) in enumerate(t0)
@@ -104,7 +94,6 @@ function surrogate_to_uniform(times_,segment_length)
     return times
 
 end
-
 
 function get_plot(;plot_time_chunked_train=false)
     times,nodes = get_()
