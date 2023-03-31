@@ -16,12 +16,9 @@ function raster(p::IFNF)
     fire = p.records[:fire]
     if typeof(fire) == CuArray{Bool}
         fire = convert(Vector{Bool},fire)
-    end
-
-    
+    end    
     x, y = Float32[], UInt32[]
     for t = eachindex(fire)
-
         for n in findall(fire[t])
             push!(x, t)
             push!(y, n)
@@ -36,7 +33,6 @@ function raster(P::Vector)
     X = Float32[]; Y = UInt64[]
     for p in P
         x, y = raster(p)
-
         append!(X, x)
         append!(Y, y .+ sum(y0))
         push!(y0, p.N)
@@ -48,7 +44,10 @@ function raster(P::Vector)
     return plt
 end
 
-
+"""
+Create a 2D histogram/heatmap
+Its usually good to normalize this retrospectively.
+"""
 function 2dhistHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64)
     t0 = times
     n0 = nodes
