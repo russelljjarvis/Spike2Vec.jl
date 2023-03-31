@@ -34,6 +34,7 @@ Caption: Top half of plot excitatory population activity, bottom half inhibitory
 
 
 ![image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
+
 Caption another UMAP of spike trains
 
 # Completed Upgrades:
