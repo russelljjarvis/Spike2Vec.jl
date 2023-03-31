@@ -22,9 +22,9 @@ file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/UMAP_model.png![image](h
 file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/TimeSurface.png![image](https://user-images.githubusercontent.com/7786645/228764258-4da67dfe-1e8b-4a30-97eb-724a9e7dd683.png)
 
 
-![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
-
+UMAP of spike trains
+[image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
 
 
@@ -40,7 +40,7 @@ Completed Upgrades:
 * More unit tests.
 * UMAP of spike trains
 * Progress Bars, because people like to know how long they should expect to wait.
-[image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
+![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
 TODO.
 * CUDA compilitability
