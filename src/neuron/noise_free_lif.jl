@@ -90,30 +90,31 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
         elseif v[i] >  θ
             fire[i] = v[i] >  θ
             tr[i] = Int(round(tref*dt))  # set refractory time
-        end
-
-
-        
+        end        
     end
 
 end
-function lif_kernel!(N, v, ge, gi, fire, u,dt,g)
+function lif_kernel!(N, v, ge, gi, fire, u,dt,g,tr)
     τm, τe, τi, Vt, Vr, El, gL = (100.0,5.0,10.0,0.2,0.0,-60.0,10.0)
     R = 1.75
     i0 = threadIdx().x + (blockIdx().x - 1) * blockDim().x
     stride = blockDim().x
     g = g + (ge + gi)
-    
+    tref = 10.0
+
     @inbounds for i=i0:stride:N
-        #X = ge[i] + gi[i]
-        #u = u[i]
         v[i] = v[i] * exp(-dt /τm) + Vr +X+g[i]+u[i]        
         v[i] += (u[i]+g[i]) * (R/ τm)
         ge[i] += dt * -ge[i] / τe
         gi[i] += dt * -gi[i] / τi
         g[i] += dt * -g[i] / (τi+τe)
-        fire[i] = v[i] > Vt
-        v[i] = ifelse(fire[i], Vr, v[i])
+        if tr[i] > 0  # check if in refractory period
+            v[i] = vSS  # set voltage to reset
+            tr[i] = tr[i] - 1 # reduce running counter of refractory period
+        elseif v[i] >  θ
+            fire[i] = v[i] >  θ
+            tr[i] = Int(round(tref*dt))  # set refractory time
+        end
     end
     nothing
 end
