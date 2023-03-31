@@ -1,4 +1,29 @@
-            @assert t-toi>=0
+
+"""
+Divide up epochs, this would normally be called in a loop
+For example:
+```julia    
+    for (ind,toi) in enumerate(end_window)
+        self_distances = Array{Float32}(zeros(maximum(nodes)+1))
+        sw = start_windows[ind]
+        neuron0 = divide_epoch(nodes,times,sw,toi)    
+    end
+```
+"""
+function divide_epoch(nodes,times,sw,toi)
+    t1=[]
+    n1=[]
+    t0=[]
+    n0=[]
+    @assert sw< toi
+    third = toi-sw
+    @assert third==300
+    for (n,t) in zip(nodes,times)
+        if sw<=t && t<toi
+            append!(t0,t-sw)
+            append!(n0,n)            
+        elseif t>=toi && t<=toi+third
+	    @assert t-toi>=0
             append!(n1,n)
         end
     end
@@ -7,6 +32,27 @@
         append!(neuron0[neuron],t) 
     end
     neuron0
+end
+
+
+function get_isis(times,nodes)
+    spike_dict = Dict()
+    all_isis = []
+    for n in unique(nodes)
+        spike_dict[n] = []
+    end
+    for (st,n) in zip(times,nodes)
+        append!(spike_dict[n],st)
+    end
+    for (k,v) in pairs(spike_dict)
+        time_old = 0
+        for time in spike_dict[k][1:end-1]
+            isi = time - time_old
+            append!(all_isis,isi)
+            time_old = time
+        end
+    end
+    return StatsBase.mean(all_isis)
 end
 
 
