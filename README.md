@@ -23,7 +23,7 @@ file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/UMAP_model.png![image](h
 
 file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/TimeSurface.png![image](https://user-images.githubusercontent.com/7786645/228764258-4da67dfe-1e8b-4a30-97eb-724a9e7dd683.png)
 
-
+## Older Plots
 
 UMAP of spike trains
 
@@ -51,7 +51,7 @@ Caption: Top half of plot excitatory population activity, bottom half inhibitory
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
 
 ## Similar Simulators
-This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs.
+This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs. Furthermore another goal of this work is neural analysis and visualization that scales well.
 
 * https://github.com/SpikingNetwork/TrainSpikingNet.jl
 * https://github.com/darsnack/SpikingNN.jl
