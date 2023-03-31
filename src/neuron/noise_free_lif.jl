@@ -23,7 +23,6 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         g = typeof(sim_type)(zeros(N))
         ge = typeof(sim_type)(zeros(N))
         gi = typeof(sim_type)(zeros(N))       
-        #g = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records)
