@@ -33,8 +33,6 @@ function raster(p::IFNF)
  
 end
 
-#raster(::Vector{SpikingNeuralNetworks.IFNF{UInt64, Vector{Bool}, Vector{Float16}}})
-#                        ::SpikingNeuralNetworks.IFNF{UInt64, Vector{Bool}, Vector{Float16}}
 function raster(P::Vector)
     y0 = UInt64[0]
     X = Float32[]; Y = UInt64[]
@@ -53,7 +51,7 @@ function raster(P::Vector)
 end
 
 
-function bespoke_2dhist(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64)
+function 2dhistHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64)
     t0 = times
     n0 = nodes
     stimes = sort(times)
@@ -90,6 +88,10 @@ function bespoke_2dhist(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for
 
     return weights
 end
+
+"""
+Preallocation for get time surface
+"""
 function get_ts(nodes,times)
     dt = 100
     tau = 400
@@ -105,8 +107,10 @@ function get_ts(nodes,times)
     get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
     return final_timesurf
 end
+"""
+get time surface
+"""
 function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
-    
     last_t = 0
     @inbounds for (tt,nn) in zip(times,nodes)
         #Get the current spike
@@ -134,27 +138,6 @@ function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,ti
         @. timesurf = mv*exp((timestamps-t)/tau)
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
     end
-
-end
-
-function get_isis(times,nodes)
-    spike_dict = Dict()
-    all_isis = []
-    for n in unique(nodes)
-        spike_dict[n] = []
-    end
-    for (st,n) in zip(times,nodes)
-        append!(spike_dict[n],st)
-    end
-    for (k,v) in pairs(spike_dict)
-        time_old = 0
-        for time in spike_dict[k][1:end-1]
-            isi = time - time_old
-            append!(all_isis,isi)
-            time_old = time
-        end
-    end
-    return StatsBase.mean(all_isis)
 end
 function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64, file_name::String)
     perm = sortperm(times)
