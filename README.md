@@ -33,7 +33,7 @@ The simulated networks are capable of producing rich and unusual dynamics, furth
 
 Caption: Top half of plot excitatory population activity, bottom half inhibitory population activity. The plot is interesting because 
 
-Completed Upgrades:
+# Completed Upgrades:
 
 * Models can be simulated as 16Bit Float (to run bigger networks with more speed or the same sized network with less memory allocation).
 *   Low precision models have a tendency to cause Inf, and NaN values, so these are cleaned during simulation.
@@ -43,8 +43,8 @@ Completed Upgrades:
 * Progress Bars, because people like to know how long they should expect to wait.
 ![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
-TODO.
-* CUDA compilitability
+# Pending Upgrades
+* Robust CUDA compilitability including STDP
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
 
