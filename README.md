@@ -25,7 +25,7 @@ file:///home/rjjarvis/git/SpikingNeuralNetworks.jl/test/TimeSurface.png![image](
 
 UMAP of spike trains
 
-file:///https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png[image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
+![image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
 The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the [Potjan's model](https://github.com/social-hacks-for-mental-health/SpikingNeuralNetworks.jl/tree/potjans).
 
