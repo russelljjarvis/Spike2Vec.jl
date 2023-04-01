@@ -8,6 +8,8 @@ This file consists of a function stack that seemed necessary to achieve a networ
 electrical neural network dynamics.
 This code draws heavily on the PyNN OSB Potjans implementation code found here:
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py#L139-L146
+However the translation of this Python PyNN code into performant and scalable Julia was not trivial.
+
 Hard coded Potjans parameters follow.
 and then the function outputs adapted Potjans parameters.
 """
