@@ -30,8 +30,7 @@ function potjans_params(ccu, scale=1.0::Float64)
                                     0.0156   0.0066 0.0211 0.0166 0.0572 0.0197 0.0396 0.2252
                                     0.0364   0.001  0.0034 0.0005 0.0277 0.008  0.0658 0.1443 ]
 
-    # hard coded stuff is manipulated below:
-    #columns_conn_probs = [col for col in eachcol(conn_probs)][1]    
+    # hard coded network wiring parameters are manipulated below:
     v_old=1
     cum_array = Any[]
     for (k,v) in pairs(ccu)
