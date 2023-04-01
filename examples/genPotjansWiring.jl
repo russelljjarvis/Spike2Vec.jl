@@ -201,7 +201,9 @@ function potjans_weights(args)
     (EE,EI,IE,II,synII,synIE,synEI,synEE) = build_neurons_connections(Lee,Lei,Lie,Lii,cumvalues, Ncells,syn_pol)
 end
 
-
+"""
+A mechanism for scaling cell population sizes to suite hardware constraints.
+"""
 function auxil_potjans_param(scale=1.0::Float64)
 	ccu = Dict{String, Int32}("23E"=>20683,
 		    "4E"=>21915, 
@@ -221,6 +223,7 @@ end
 
 """
 The entry point to building the whole Potjans model in SNN.jl
+Also some of the current density parameters needed to adjust synaptic gain initial values.
 """
 function potjans_layer(scale)
     Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
