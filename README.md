@@ -62,11 +62,11 @@ https://www.biorxiv.org/content/10.1101/248401v1
 ## Similar Simulators
 This work is different from other simulators in the sense that it mainly intends to scale well and read well at the same time. This work is less concerned with code generation and garunteed robust solutions to DEs (the forward Euler method is used for synapse and Vm updates because it is fast). Furthermore another goal of this work is neural analysis and spike data visualizations that scale to billions of neurons.
 
-* https://github.com/FabulousFabs/Spike.jl (looking very inspired by Brian2 except in Julia)
+* https://github.com/FabulousFabs/Spike.jl (looking very inspired by Brian2 except in Julia, nice use of code generation)
 * https://github.com/SpikingNetwork/TrainSpikingNet.jl (nice use of CUDA and reduced precision types)
 * https://github.com/leaflabs/WaspNet.jl (nice use of block arrays)
-* https://github.com/darsnack/SpikingNN.jl (nice use of multidispatch)
-* https://github.com/wsphillips/Conductor.jl (nice use of DiffEq.jl)
+* https://github.com/darsnack/SpikingNN.jl (nice use of multidispatch abstract types and type restriction)
+* https://github.com/wsphillips/Conductor.jl (nice use of DiffEq.jl and code generation)
 * https://github.com/FabulousFabs/AdEx (interesting and different)
 
 
