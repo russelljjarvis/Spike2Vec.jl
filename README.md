@@ -55,8 +55,7 @@ Caption another UMAP of spike trains
 * Bio Network Consumption of the ```NMNIST.NmnistMotion("./nmnist_motions.hdf5")``` dataset
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
-* Demonstration of Potjans network https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/blob/potjans_model/src/genPotjansInPlace.jl
-*
+* Demonstration of Potjans network https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/examples/genPotjansWiring.jl
 ## Similar Simulators
 This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs. Furthermore another goal of this work is neural analysis and visualization that scales well.
 
