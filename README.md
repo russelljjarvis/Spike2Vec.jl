@@ -56,6 +56,8 @@ Caption another UMAP of spike trains
 * Use Block Array with display to visualize the connection topology of the network.
 * Make axonal delays possible using something similar to the refractory period counter inside neural model population structs.
 * Demonstration of Potjans network, I have written the majority of the code here, some minor bugs need addressing: https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/examples/genPotjansWiring.jl
+The Potjan's Diesman model is an important network model that researchers re-implement again and again (implementations: Nest, Brian2, PyNN etc)
+https://www.biorxiv.org/content/10.1101/248401v1
 
 ## Similar Simulators
 This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs. Furthermore another goal of this work is neural analysis and visualization that scales well.
