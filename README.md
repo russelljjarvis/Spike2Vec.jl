@@ -60,7 +60,7 @@ The Potjan's Diesman model is an important network model that researchers re-imp
 https://www.biorxiv.org/content/10.1101/248401v1
 
 ## Similar Simulators
-This work is different from other simulators in the sense that it only intends to scale well (and read well at the same time), This work is less concerned with code generation and robust solutions to DEs. Furthermore another goal of this work is neural analysis and visualization that scales well.
+This work is different from other simulators in the sense that it mainly intends to scale well and read well at the same time. This work is less concerned with code generation and garunteed robust solutions to DEs (the forward Euler method is used for synapse and Vm updates because it is fast). Furthermore another goal of this work is neural analysis and spike data visualizations that scale to billions of neurons.
 
 * https://github.com/FabulousFabs/Spike.jl (looking very inspired by Brian2 except in Julia)
 * https://github.com/SpikingNetwork/TrainSpikingNet.jl (nice use of CUDA and reduced precision types)
