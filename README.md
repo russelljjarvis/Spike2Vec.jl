@@ -39,8 +39,8 @@ Caption another UMAP of spike trains
 
 # Completed Upgrades:
 
-* Models can be simulated as 16Bit Float (to simulate the effect of reduced precision) 
-* Low precision models have a tendency to cause Inf, and NaN values, so these are cleaned during simulation.
+* Models can be simulated as 16Bit Float (to simulate the effect of reduced precision). Note 16Bit precision on CPU is not supported by CPU hardware, 16bit precision could only result in simulation speedups on GPUs.
+* Low precision models have a tendency to cause Inf, and NaN values, so these values are now cleaned during simulation.
 * Adaptive Exponential Integrate and Fire Neuron.
 * More unit tests.
 * Time Surface Plots
@@ -50,6 +50,7 @@ Caption another UMAP of spike trains
 ![image](https://user-images.githubusercontent.com/7786645/227809077-b7b19bf0-cffc-493f-9d28-2034d1bdf038.png)
 
 # Pending Upgrades
+* GLIF neurons.
 * Robust CUDA compilitability including STDP and 16bit float.
 * Bio Network Consumption of the ```NMNIST.NmnistMotion("./nmnist_motions.hdf5")``` dataset
 * Use Block Array with display to visualize the connection topology of the network.
