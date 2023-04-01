@@ -97,30 +97,7 @@ function index_assignment!(item::NTuple{4, Int64}, g_strengths::Vector{Float64},
         end
     end
 end
-#=
-Depreciated method
-function build_matrix!(Lxx::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
-    ##
-    # use maybe threaded paradigm.
-    ##
-    #Threads.@threads for i = 1:10
-    @inbounds for (i,(syn0,v)) in enumerate(zip(syn_pol,cumvalues))
-        @inbounds for src in v
-            @inbounds for (j,(syn1,v1)) in enumerate(zip(syn_pol,cumvalues))
-                @inbounds for tgt in v1
-                    if src!=tgt                        
-                        prob = conn_probs[i,j]
-                        if rand()<prob
-                            item = src,tgt,syn0,syn1
-                            index_assignment!(item,g_strengths,Lxx)#,Lee,Lie,Lii,Lei)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-=#
+
 function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
     (jee,_,jei,_) = g_strengths 
     wig = -20*4.5
@@ -153,10 +130,6 @@ function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatr
     Lxx = Lee+Lei+Lii+Lie
     display(Lxx)
 end
-
-
-
-
 
 function make_proj(xx,pop)
     rowptr, colptr, I, J, index, W = dsparse(xx)
@@ -194,9 +167,6 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
 end
 
 function build_matrix(Ncells::Int32,just_iterator,g_strengths::Vector{Float64})
-    #index_assignment!(::NTuple{4, Int64}, ::Vector{Float64}, ::SparseMatrixCSC{Float32, Int64}, ::Vector{Vector{Tuple{Int64, Int64}}}, ::Vector{Vector{Tuple{Int64, Int64}}}, ::Vector{Vector{Tuple{Int64, Int64}}}, ::Vector{Vector{Tuple{Int64, Int64}}})
-    #Lee = spzeros(Boolean, (Ncells, Ncells))
-
     Lee = Vector{Vector{Tuple{Int64, Int64}}}[]
     Lie = Vector{Vector{Tuple{Int64, Int64}}}[]
     Lii = Vector{Vector{Tuple{Int64, Int64}}}[]
@@ -208,72 +178,27 @@ function build_matrix(Ncells::Int32,just_iterator,g_strengths::Vector{Float64})
     Lie = Lxx[Lie[1,:],Lie[2,:]]
     Lii = Lxx[Lii[1,:],Lii[2,:]]
     Lei = Lxx[Lei[1,:],Lei[2,:]]
-
-    #Iterators.map(f, iterators...)
-   # map(index_assignment!(item,w0Weights,g_strengths,Lee,Lie,Lii,Lei,just_iterator)
-    #output = map(x -> samplesmallGram(L), 1:1:10)
-    #map(samplesmallGram(L), just_iterator)
     Lexc = Lee+Lei
     Linh = Lie+Lii
-
-    #map!(index_assignment!, item for iter_item)
-    @assert maximum(Lexc[:])>=0.0
-    @assert maximum(Linh[:])<=0.0
-
-
-    #@show(just_iterator)
-    #ploop(f, itr,w0Weights,g_strengths,Lee,Lie,Lii,Lei)
-    #ploop(index_assignment!,just_iterator,w0Weights,g_strengths,Lee,Lie,Lii,Lei)
-    
-    ## this works
-    ##
-    Lee = Lxx[(i[1],i[2]) for i in Lee]
-    Lie = Lxx[Lie[1,:],Lie[2,:]]
-    Lii = Lxx[Lii[1,:],Lii[2,:]]
-    Lei = Lxx[Lei[1,:],Lei[2,:]]
-
-    #Iterators.map(f, iterators...)
-    #map(index_assignment!(item,w0Weights,g_strengths,Lee,Lie,Lii,Lei,just_iterator)
-    #output = map(x -> samplesmallGram(L), 1:1:10)
-    #map(samplesmallGram(L), just_iterator)
-    Lexc = Lee+Lei
-    Linh = Lie+Lii
-
-    #map!(index_assignment!, item for iter_item)
-    @assert maximum(Lexc[:])>=0.0
-    @assert maximum(Linh[:])<=0.0
-
-    #Lee_ = MArray{Tuple{Ncells,Ncells},Float32}(Lee)
-    #Lee_ = {Tuple{Ncells,Ncells},Float32}(Lee) #,2,9}
-
     return Lee,Lie,Lei,Lii
 end
 
 
+
+
 """
 Build the matrix from the Potjans parameterpotjans_layers.
-
 """
 function potjans_weights(args)
     Ncells, g_strengths, ccu, scale = args
-    #(;Ncells,g_strengths,ccu,scale)
     (cumulative,ccu,layer_names,conn_probs,syn_pol) = potjans_params(ccu,scale)    
     cumvalues = values(cumulative)
-    #cumvalues = convert(Vector{Vector{Float32}},cumvalues)
-
-    #just_iterator = []
-    #Lxx = spzeros(Float32, (Ncells, Ncells))
     Lee = spzeros(Float32, (Ncells, Ncells))
     Lie = spzeros(Float32, (Ncells, Ncells))
     Lei = spzeros(Float32, (Ncells, Ncells))
     Lii = spzeros(Float32, (Ncells, Ncells))
-
-    #rv = spzeros(Float32, (Ncells, Ncells))
-
     build_matrix_prot!(Lee,Lie,Lei,Lii,cumvalues,conn_probs,Ncells,syn_pol,g_strengths)
     (EE,EI,IE,II,synII,synIE,synEI,synEE) = build_neurons_connections(Lee,Lei,Lie,Lii,cumvalues, Ncells,syn_pol)
-    #Lee,Lie,Lei,Lii = build_matrix(Ncells,just_iterator,g_strengths)
-    #Lee,Lie,Lei,Lii
 end
 
 
@@ -294,8 +219,10 @@ function auxil_potjans_param(scale=1.0::Float64)
 
 end
 
+"""
+The entry point to building the whole Potjans model in SNN.jl
+"""
 function potjans_layer(scale)
-    
     Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
     pree = 0.1
     K = round(Int, Ne*pree)
@@ -309,10 +236,33 @@ function potjans_layer(scale)
     jie = -0.75ji 
     jii = -ji
     g_strengths = Vector{Float64}([jee,jie,jei,jii])
-
     genStaticWeights_args = (;Ncells,g_strengths,ccu,scale)
     potjans_weights(genStaticWeights_args),Ne,Ni
 end
+#=
+Depreciated method
+function build_matrix!(Lxx::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
+    ##
+    # use maybe threaded paradigm.
+    ##
+    #Threads.@threads for i = 1:10
+    @inbounds for (i,(syn0,v)) in enumerate(zip(syn_pol,cumvalues))
+        @inbounds for src in v
+            @inbounds for (j,(syn1,v1)) in enumerate(zip(syn_pol,cumvalues))
+                @inbounds for tgt in v1
+                    if src!=tgt                        
+                        prob = conn_probs[i,j]
+                        if rand()<prob
+                            item = src,tgt,syn0,syn1
+                            index_assignment!(item,g_strengths,Lxx)#,Lee,Lie,Lii,Lei)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+=#
 
 #=
 
@@ -408,3 +358,4 @@ https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/scaling.
 
 
 =#
+
