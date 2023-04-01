@@ -80,24 +80,21 @@ function index_assignment!(item::NTuple{4, Int64}, g_strengths::Vector{Float64},
     if syn0==1
         if syn1==1            
             setindex!(lxx,jee, src,tgt)
-
         elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
             setindex!(lxx, jei, src,tgt)
-
         end
     elseif syn0==0# meaning if the same as a logic: Inhibitory post synapse  is true   
         if syn1==1
             setindex!(lxx, wig, src,tgt)
-
         elseif syn1==0# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
             @assert syn1==0
             setindex!(lxx,wig, src,tgt)
-
             @assert syn1==0
-
         end
     end
 end
+#=
+Depreciated method
 function build_matrix!(Lxx::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
     ##
     # use maybe threaded paradigm.
@@ -118,9 +115,8 @@ function build_matrix!(Lxx::SparseMatrixCSC{Float32, Int64},cumvalues, conn_prob
             end
         end
     end
-    #return just_iterator
 end
-
+=#
 function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
     (jee,_,jei,_) = g_strengths 
     wig = -20*4.5
@@ -142,23 +138,16 @@ function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatr
                                     setindex!(Lie,wig, src,tgt)
                                 elseif syn1==0
                                     setindex!(Lii,wig, src,tgt)
-
                                 end
-
                             end 
                         end
                     end
                 end
             end            
         end
-                    
     end
     Lxx = Lee+Lei+Lii+Lie
     display(Lxx)
-    #display(Lei)
-    #display(Lii)
-    #display(Lie)
-
 end
 
 
@@ -172,7 +161,6 @@ function make_proj(xx,pop)
     SpikingSynapse(W,pre, post, sym)
     syn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
     return syn
-    #return SpikingSynapse(;@symdict(rowptr, colptr, I, J, index, W, fireI, fireJ, g)..., kwargs...)
 end
 
 function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
