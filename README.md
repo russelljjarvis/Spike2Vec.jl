@@ -19,7 +19,7 @@ The framework supports scalling to millions of cells and billions of synapses gi
 
 ![image](https://user-images.githubusercontent.com/7786645/228764191-10262134-8602-4c7c-81ae-57e0c7ca871c.png)
 
-Time surfaces of the neural activity (similar to a membrane potential heatmap across the network)
+Time surfaces of the neural activity (similar to a membrane potential heatmap across the network). Note that time surface heatmaps are often used in relation to the FEAST algorithm:  https://www.mdpi.com/1424-8220/20/6/1600
 
 ![image](https://user-images.githubusercontent.com/7786645/228764258-4da67dfe-1e8b-4a30-97eb-724a9e7dd683.png)
 
