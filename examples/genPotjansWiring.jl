@@ -4,7 +4,8 @@ using ProgressMeter
 using UnicodePlots
 
 """
-This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using TrainSpikeNet.jl to simulate.
+This file consists of a function stack that seemed necessary to achieve a network with Potjans like wiring in Julia using SpikingNeuralNetworks.jl to simulate
+electrical neural network dynamics.
 This code draws heavily on the PyNN OSB Potjans implementation code found here:
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py#L139-L146
 Hard coded Potjans parameters follow.
