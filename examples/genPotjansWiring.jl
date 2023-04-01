@@ -12,6 +12,10 @@ However the translation of this Python PyNN code into performant and scalable Ju
 
 Hard coded Potjans parameters follow.
 and then the function outputs adapted Potjans parameters.
+
+TODO for self, considering PR differencing my old branch with this one, as I may have neglected to carry over other constructive code changes.
+Old branch worth diffing.
+https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/tree/potjans_model
 """
 function potjans_params(ccu, scale=1.0::Float64)
     # a cummulative cell count
