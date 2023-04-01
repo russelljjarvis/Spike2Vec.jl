@@ -10,7 +10,7 @@ using Pkg
 pkg"add https://github.com/russelljjarvis/SpikingNeuralNetworks.jl"
 ```
 
-Heavily based and derived from work by @AStupidBear, the main contributions and differences are explained below.
+Heavily based and derived from work by @AStupidBear (https://github.com/AStupidBear/SpikingNeuralNetworks.jl), the new contributions and differences in this work are explained below.
 
 Takes 30 seconds after forced compilation to simulate `20,000` LIF neurons with millions of synapses.
 
