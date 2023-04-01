@@ -61,7 +61,12 @@ function divide_epoch(nodes,times,sw,toi)
     end
     neuron0
 end
-
+"""
+spike2vector algorithm to demonstrate object recognition in spike trains. 
+Briefly neural activity in a window can be represented as a coordinate in a high dimensional space; when a network performs object recognition, the networks behavior is guided by familiar scenes. 
+The trajectory of the network between familiar and unfamiliar states can be tracked using a high dimensional coordinate scheme. 
+A networks ability to revisit an encoded coordinate is testable, and so a spike2vector test of object recognition could be construed as a formal hypothesis test.
+"""
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
         if length(n0_) != 0 && length(n1_) != 0
