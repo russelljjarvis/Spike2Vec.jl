@@ -39,7 +39,7 @@ Caption another UMAP of spike trains
 
 # Completed Upgrades:
 
-* Models can be simulated as 16Bit Float (to simulate the effect of reduced precision). Note 16Bit precision on CPU is not supported by CPU hardware, 16bit precision could only result in simulation speedups on GPUs.
+* Models can be simulated as 16Bit Float (to simulate the effect of reduced precision). Note 16Bit precision on CPU is only "emulated" as it is not supported by real CPU hardware, 16bit precision can feasibly speedup GPU simulation though.
 * Low precision models have a tendency to cause Inf, and NaN values, so these values are now cleaned during simulation.
 * Adaptive Exponential Integrate and Fire Neuron.
 * More unit tests.
