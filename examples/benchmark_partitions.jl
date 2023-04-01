@@ -20,7 +20,6 @@ function toinstallonly()
     Pkg.add("Conda")
     ENV["PYTHON"]= "/home/rjjarvis/.julia/conda/3/x86_64/bin/python3"
     Pkg.build("PyCall")
-    
     Conda.add("scipy")
     Conda.add("numpy")
     @assert numpy = pyimport("numpy")
@@ -52,10 +51,7 @@ end
 
 function do_fast()
     @time w = get_blocks(connectome_size,numBlocks)
-
     @show(size(w))
-#       @show(size(blocks(w)[1]))
-
     @time numpy_matrix = py"get_blocks_py"(connectome_size,numBlocks)
 end
 function smart_partition()
@@ -63,12 +59,9 @@ function smart_partition()
     target_matrix = sprand(connectome_size,connectome_size,0.01)
     A = max.(target_matrix, target_matrix')
     @time result0 = MatrixNetworks.spectral_cut(A)
-    #@time result1 = MatrixNetworks.dirclustercoeffs(target_matrix)
     result0
     #result1
-    #UnicodePlots.spy(result0)
-    #UnicodePlots.spy(result1)
-    return result0,target_matrix#,result1
+    return result0,target_matrix
 end
 result0,target_matrix = smart_partition()
 result0
