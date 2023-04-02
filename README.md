@@ -9,7 +9,7 @@
 using Pkg
 pkg"add https://github.com/russelljjarvis/SpikingNeuralNetworks.jl"
 ```
-This work is different from other simulators in the sense that it mainly intends to scale well and read well at the same time. This work is less concerned with code generation and garunteed robust solutions to DEs (the forward Euler method is used for synapse and Vm updates because it is fast). Furthermore another goal of this work is neural analysis and spike data visualizations that scale to billions of neurons. This work is directly derived from work by @AStupidBear (https://github.com/AStupidBear/SpikingNeuralNetworks.jl), the new contributions and differences in this work are explained below.
+This work is different from other simulators in the sense that it mainly intends to scale well and read well at the same time. This work is less concerned with code generation and garunteed robust solutions to DEs (the forward Euler method is used for synapse and Vm updates because it is fast). Furthermore another goal of this work is neural analysis and spike data visualizations that scale to billions of neurons. This work is directly derived from work by @AStupidBear (https://github.com/AStupidBear/SpikingNeuralNetworks.jl), and new contributions and differences in this work are explained below.
 
 This simulation framework only takes `30` seconds after being pre-compiled (in the background) to simulate `20,000` LIF neurons with millions of synapses.
 The framework supports scalling to millions of cells and billions of synapses given sufficient computer memory is available. In my experience 64GB can support very large cell count simulations.
