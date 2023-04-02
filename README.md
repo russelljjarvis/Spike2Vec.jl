@@ -26,7 +26,7 @@ Time surfaces of the neural activity (similar to a membrane potential heatmap ac
 ## Older Plots
 
 
-The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the [Potjan's model]([https://github.com/social-hacks-for-mental-health/SpikingNeuralNetworks.jl/tree/potjans](https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/blob/potjans_model/src/genPotjansInPlace.jl)).
+The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the [Potjan's and Diesmann model]([https://github.com/social-hacks-for-mental-health/SpikingNeuralNetworks.jl/tree/potjans](https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/blob/potjans_model/src/genPotjansInPlace.jl)).
 
 ![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
 
@@ -39,7 +39,7 @@ Caption another UMAP of spike trains
 
 # Completed Upgrades:
 
-* Models can be simulated as 16Bit Float (to simulate the effect of reduced precision). Note 16Bit precision on CPU is only "emulated" as it is not supported by real CPU hardware, 16bit precision can feasibly speedup GPU simulation though.
+* Models can be simulated as 16Bit Float (to simulate the effect of reduced precision). Note 16Bit precision on CPU is only "emulated" as it is not supported by real CPU hardware, 16bit precision can feasibly speedup GPU simulation, because NVIDIA GPUs do provide Float16 and Int8 support in hardware.
 * Low precision models have a tendency to cause Inf, and NaN values, so these values are now cleaned during simulation.
 * Adaptive Exponential Integrate and Fire Neuron.
 * More unit tests.
