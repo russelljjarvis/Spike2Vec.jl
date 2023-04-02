@@ -27,7 +27,7 @@ function toinstallonly()
 end
 
 py"""
-# This is an example of Python code that will is past onto a Python executor in the Julia namespace.
+# This is an example of a Python code string that will be plugged into a Python executor from within the Julia namespace.
 # The code partitions arrays into equal block sizes.
 
 def get_arrays(connectome_size,numBlocks):
