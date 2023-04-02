@@ -71,5 +71,14 @@ https://www.biorxiv.org/content/10.1101/248401v1
 
 
 ## Documentation
-
-The documentation of this package is not finished yet. For now, just check `examples` folder.
+### FEAST analysis support example:
+ Since Odesa is not an officially Julia registered package, running this example would require:
+```julia 
+ using Pkg
+ Pkg.add(url=https://github.com/russelljjarvis/Odesa.jl-1")
+ ] resolve
+ ] activate
+ ] instantiate
+```
+* https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/test/if_net_odessa.jl
+The documentation of this package is not finished yet. For now, just check `examples` and `tests` folder.
