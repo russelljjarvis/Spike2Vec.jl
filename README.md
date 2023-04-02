@@ -26,7 +26,7 @@ Time surfaces of the neural activity (similar to a membrane potential heatmap ac
 ## Older Plots
 
 
-The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the ![Potjan's and Diesmann model](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/examples/genPotjansWiring.jl)).
+The simulated networks are capable of producing rich and unusual dynamics, furthermore dynamics are expected to become more sophisticated as STDP learning rules are re-introduced (in a CUDA compatible way), and also as more elaborate models will be included, such as the ![Potjan's and Diesmann model](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/examples/genPotjansWiring.jl).
 
 ![image](https://user-images.githubusercontent.com/7786645/227809116-d7180fbd-e937-4bdb-bb0d-77645c1eb284.png)
 
