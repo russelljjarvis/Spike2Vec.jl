@@ -3,13 +3,18 @@ using SpikingNeuralNetworks
 using OnlineStats
 using SparseArrays
 SNN.@load_units
-#using CUDA
-#CUDA.allowscalar(false)
+
 using Test
 using Revise
+##
+# Since Odesa is not an officially Julia registered package, running this example would require:
+# using Pkg
+# Pkg.add(url=https://github.com/russelljjarvis/Odesa.jl-1")
+# ] resolve
+# ] activate
+# ] instantiate
+##
 using Odesa
-#import Odesa.Feast
-
 using StatsBase
 
 pop_size::Int32=100
