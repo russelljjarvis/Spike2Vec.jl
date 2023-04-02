@@ -4,7 +4,6 @@ Get the mean Interspike Interval and all other ISIs as a per cell dictionary, an
 function get_isis(times,nodes)
     spike_dict = Dict()
     isi_dict = Dict()
-
     all_isis = []
     for n in unique(nodes)
         spike_dict[n] = []
