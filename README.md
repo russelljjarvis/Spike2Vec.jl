@@ -68,6 +68,7 @@ This work is different from other simulators in the sense that it mainly intends
 * https://github.com/darsnack/SpikingNN.jl (nice use of multidispatch abstract types and type restriction)
 * https://github.com/wsphillips/Conductor.jl (nice use of DiffEq.jl and code generation)
 * https://github.com/FabulousFabs/AdEx (interesting and different)
+* https://github.com/ominux/pub-illing2019-nnetworks (research orientated code)
 
 
 ## Documentation
