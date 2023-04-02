@@ -13,7 +13,7 @@ pkg"add https://github.com/russelljjarvis/SpikingNeuralNetworks.jl"
 Heavily based and derived from work by @AStupidBear (https://github.com/AStupidBear/SpikingNeuralNetworks.jl), the new contributions and differences in this work are explained below.
 
 This simulation framework only takes `30` seconds after being pre-compiled (in the background) to simulate `20,000` LIF neurons with millions of synapses.
-The framework supports scalling to millions of cells and billions of synapses given sufficient computer memory is available in my experience 32GB to 64GB works well.
+The framework supports scalling to millions of cells and billions of synapses given sufficient computer memory is available. In my experience 64GB can support very large cell count simulations.
 
 ![image](https://user-images.githubusercontent.com/7786645/228764232-b6818524-ea31-461f-913d-5e50196a2a6f.png)
 
