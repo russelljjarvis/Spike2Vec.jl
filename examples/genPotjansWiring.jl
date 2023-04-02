@@ -58,19 +58,47 @@ end
 
 
 """
-An optional container that is not yet utilized.
+A mechanism for scaling cell population sizes to suite hardware constraints.
 """
-struct NetParameter 
-    syn_pol::Vector{Float32}
-    conn_probs::Matrix{Float32} 
-    cumulative::Dict{String, Vector{Int64}}
-    layer_names::Vector{String}
-    columns_conn_probs::SubArray{Float32, 1, Matrix{Float32}, Tuple{Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+function auxil_potjans_param(scale=1.0::Float64)
+	ccu = Dict{String, Int32}("23E"=>20683,
+		    "4E"=>21915, 
+		    "5E"=>4850, 
+		    "6E"=>14395, 
+		    "6I"=>2948, 
+		    "23I"=>5834,
+		    "5I"=>1065,
+		    "4I"=>5479)
+	ccu = Dict{String, Int32}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
+	Ncells = Int32(sum([i for i in values(ccu)])+1)
+	Ne = Int32(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
+    Ni = Int32(Ncells - Ne)
+    Ncells, Ne, Ni, ccu
 end
 
+"""
+The entry point to building the whole Potjans model in SNN.jl
+Also some of the current density parameters needed to adjust synaptic gain initial values.
+"""
+function potjans_layer(scale)
+    Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
+    pree = 0.1
+    K = round(Int, Ne*pree)
+    sqrtK = sqrt(K)
+    g = 1.0
+    tau_meme = 10   # (ms)
+    je = 2.0 / sqrtK * tau_meme * g
+    ji = 2.0 / sqrtK * tau_meme * g 
+    jee = 0.15je 
+    jei = je 
+    jie = -0.75ji 
+    jii = -ji
+    g_strengths = Vector{Float64}([jee,jie,jei,jii])
+    genStaticWeights_args = (;Ncells,g_strengths,ccu,scale)
+    potjans_weights(genStaticWeights_args),Ne,Ni
+end
 
 """
-The constructor for an optional container that is not even used yet.
 This function contains synapse selection logic seperated from iteration logic for readability only.
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
@@ -166,6 +194,27 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
     (EE,EI,IE,II,synII,synIE,synEI,synEE)
 end
 
+"""
+Build the matrix from the Potjans parameterpotjans_layers.
+"""
+function potjans_weights(args)
+    Ncells, g_strengths, ccu, scale = args
+    (cumulative,ccu,layer_names,conn_probs,syn_pol) = potjans_params(ccu,scale)    
+    cumvalues = values(cumulative)
+    Lee = spzeros(Float32, (Ncells, Ncells))
+    Lie = spzeros(Float32, (Ncells, Ncells))
+    Lei = spzeros(Float32, (Ncells, Ncells))
+    Lii = spzeros(Float32, (Ncells, Ncells))
+    build_matrix_prot!(Lee,Lie,Lei,Lii,cumvalues,conn_probs,Ncells,syn_pol,g_strengths)
+    (EE,EI,IE,II,synII,synIE,synEI,synEE) = build_neurons_connections(Lee,Lei,Lie,Lii,cumvalues, Ncells,syn_pol)
+end
+
+
+
+
+#=
+Depreciated methods
+
 function build_matrix(Ncells::Int32,just_iterator,g_strengths::Vector{Float64})
     Lee = Vector{Vector{Tuple{Int64, Int64}}}[]
     Lie = Vector{Vector{Tuple{Int64, Int64}}}[]
@@ -185,65 +234,20 @@ end
 
 
 
-
 """
-Build the matrix from the Potjans parameterpotjans_layers.
+An optional container that is not yet utilized.
 """
-function potjans_weights(args)
-    Ncells, g_strengths, ccu, scale = args
-    (cumulative,ccu,layer_names,conn_probs,syn_pol) = potjans_params(ccu,scale)    
-    cumvalues = values(cumulative)
-    Lee = spzeros(Float32, (Ncells, Ncells))
-    Lie = spzeros(Float32, (Ncells, Ncells))
-    Lei = spzeros(Float32, (Ncells, Ncells))
-    Lii = spzeros(Float32, (Ncells, Ncells))
-    build_matrix_prot!(Lee,Lie,Lei,Lii,cumvalues,conn_probs,Ncells,syn_pol,g_strengths)
-    (EE,EI,IE,II,synII,synIE,synEI,synEE) = build_neurons_connections(Lee,Lei,Lie,Lii,cumvalues, Ncells,syn_pol)
-end
-
-"""
-A mechanism for scaling cell population sizes to suite hardware constraints.
-"""
-function auxil_potjans_param(scale=1.0::Float64)
-	ccu = Dict{String, Int32}("23E"=>20683,
-		    "4E"=>21915, 
-		    "5E"=>4850, 
-		    "6E"=>14395, 
-		    "6I"=>2948, 
-		    "23I"=>5834,
-		    "5I"=>1065,
-		    "4I"=>5479)
-	ccu = Dict{String, Int32}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-	Ncells = Int32(sum([i for i in values(ccu)])+1)
-	Ne = Int32(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
-    Ni = Int32(Ncells - Ne)
-    Ncells, Ne, Ni, ccu
-
-end
-
-"""
-The entry point to building the whole Potjans model in SNN.jl
-Also some of the current density parameters needed to adjust synaptic gain initial values.
-"""
-function potjans_layer(scale)
-    Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
-    pree = 0.1
-    K = round(Int, Ne*pree)
-    sqrtK = sqrt(K)
-    g = 1.0
-    tau_meme = 10   # (ms)
-    je = 2.0 / sqrtK * tau_meme * g
-    ji = 2.0 / sqrtK * tau_meme * g 
-    jee = 0.15je 
-    jei = je 
-    jie = -0.75ji 
-    jii = -ji
-    g_strengths = Vector{Float64}([jee,jie,jei,jii])
-    genStaticWeights_args = (;Ncells,g_strengths,ccu,scale)
-    potjans_weights(genStaticWeights_args),Ne,Ni
-end
 #=
-Depreciated method
+struct NetParameter 
+    syn_pol::Vector{Float32}
+    conn_probs::Matrix{Float32} 
+    cumulative::Dict{String, Vector{Int64}}
+    layer_names::Vector{String}
+    columns_conn_probs::SubArray{Float32, 1, Matrix{Float32}, Tuple{Base.Slice{Base.OneTo{Int64}}, Int64}, true}
+end
+=#
+
+
 function build_matrix!(Lxx::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
     ##
     # use maybe threaded paradigm.
