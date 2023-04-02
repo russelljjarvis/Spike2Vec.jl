@@ -16,6 +16,7 @@ This code is to compare the speed of matrix partitioning in Julia versus Python.
 Note in Julia its normal to put documentation strings above method definitions.
 """
 function toinstallonly()
+    # This function installs Python and Python tools needed to do graph partitioning, inside the Julia namespace.
     Pkg.add("MatrixNetworks")
     Pkg.add("Conda")
     ENV["PYTHON"]= "/home/rjjarvis/.julia/conda/3/x86_64/bin/python3"
