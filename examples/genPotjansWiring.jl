@@ -20,7 +20,6 @@ https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/tree/potjans_model
 function potjans_params(ccu, scale=1.0::Float64)
     # a cummulative cell count
     cumulative = Dict{String, Vector{Int64}}()  
-    #layer_names = Vector{String}(
     layer_names = @SVector ["23E","23I","4E","4I","5E", "5I", "6E", "6I"] 
     # Probabilities for >=1 connection between neurons in the given populations. 
     # The first index is for the target population; the second for the source population
@@ -44,7 +43,7 @@ function potjans_params(ccu, scale=1.0::Float64)
         v_old=v+v_old
     end    
     
-    syn_pol = Vector{Int64}(zeros(length(ccu)))
+    syn_pol = Vector{UInt64}(zeros(length(ccu)))
     for (i,(k,v)) in enumerate(pairs(ccu))
         if occursin("E",k) 
             syn_pol[i] = 1
@@ -52,7 +51,7 @@ function potjans_params(ccu, scale=1.0::Float64)
             syn_pol[i] = 0
         end
     end
-    syn_pol = SVector{8,Int64}(syn_pol)
+    syn_pol = SVector{8,UInt64}(syn_pol)
     return (cum_array,ccu,layer_names,conn_probs,syn_pol)
 end
 
@@ -60,8 +59,8 @@ end
 """
 A mechanism for scaling cell population sizes to suite hardware constraints.
 """
-function auxil_potjans_param(scale=1.0::Float64)
-	ccu = Dict{String, Int32}("23E"=>20683,
+function auxil_potjans_param(scale=1.0::Float32)
+	ccu = Dict{String, UInt32}("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
 		    "6E"=>14395, 
@@ -69,7 +68,7 @@ function auxil_potjans_param(scale=1.0::Float64)
 		    "23I"=>5834,
 		    "5I"=>1065,
 		    "4I"=>5479)
-	ccu = Dict{String, Int32}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
+	ccu = Dict{String, UInt64}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
 	Ncells = Int32(sum([i for i in values(ccu)])+1)
 	Ne = Int32(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
     Ni = Int32(Ncells - Ne)
@@ -103,7 +102,7 @@ This function contains synapse selection logic seperated from iteration logic fo
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
 """
-function index_assignment!(item::NTuple{4, Int64}, g_strengths::Vector{Float64}, lxx::SparseMatrixCSC{Float32, Int64})#,lee::Vector{Vector{Tuple{Int64, Int64}}},lie::Vector{Vector{Tuple{Int64, Int64}}}, lii::Vector{Vector{Tuple{Int64, Int64}}}, lei::Vector{Vector{Tuple{Int64, Int64}}})
+function index_assignment!(item::NTuple{4, UInt64}, g_strengths::Vector{Float32}, lxx::SparseMatrixCSC{Float32, UInt64})#,lee::Vector{Vector{Tuple{Int64, UInt64}}},lie::Vector{Vector{Tuple{Int64, UInt64}}}, lii::Vector{Vector{Tuple{Int64, Int64}}}, lei::Vector{Vector{Tuple{Int64, Int64}}})
     # excitatory weights.
     (jee,_,jei,_) = g_strengths 
     # Relative inhibitory synaptic weight
