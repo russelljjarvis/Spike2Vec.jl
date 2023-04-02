@@ -102,31 +102,10 @@ This function contains synapse selection logic seperated from iteration logic fo
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
 """
-function index_assignment!(item::NTuple{4, UInt64}, g_strengths::Vector{Float32}, lxx::SparseMatrixCSC{Float32, UInt64})#,lee::Vector{Vector{Tuple{Int64, UInt64}}},lie::Vector{Vector{Tuple{Int64, UInt64}}}, lii::Vector{Vector{Tuple{Int64, Int64}}}, lei::Vector{Vector{Tuple{Int64, Int64}}})
+function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
     # excitatory weights.
     (jee,_,jei,_) = g_strengths 
     # Relative inhibitory synaptic weight
-    wig = -20*4.5
-    (src,tgt,syn0,syn1) = item
-    if syn0==1
-        if syn1==1            
-            setindex!(lxx,jee, src,tgt)
-        elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
-            setindex!(lxx, jei, src,tgt)
-        end
-    elseif syn0==0# meaning if the same as a logic: Inhibitory post synapse  is true   
-        if syn1==1
-            setindex!(lxx, wig, src,tgt)
-        elseif syn1==0# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
-            @assert syn1==0
-            setindex!(lxx,wig, src,tgt)
-            @assert syn1==0
-        end
-    end
-end
-
-function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
-    (jee,_,jei,_) = g_strengths 
     wig = -20*4.5
     @inbounds @showprogress for (i,(syn0,v)) in enumerate(zip(syn_pol,cumvalues))
         @inbounds for (j,(syn1,v1)) in enumerate(zip(syn_pol,cumvalues))
@@ -166,7 +145,9 @@ function make_proj(xx,pop)
     syn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
     return syn
 end
-
+"""
+Similar to the methods above except that cells and synapses are instantiated in place to cut down on code
+"""
 function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
     @inbounds @showprogress for (syn0,v) in zip(syn_pol,cumvalues)
         @inbounds for (syn1,v1) in zip(syn_pol,cumvalues)
@@ -214,6 +195,28 @@ end
 #=
 Depreciated methods
 
+function index_assignment!(item::NTuple{4, UInt64}, g_strengths::Vector{Float32}, lxx::SparseMatrixCSC{Float32, UInt64})#,lee::Vector{Vector{Tuple{Int64, UInt64}}},lie::Vector{Vector{Tuple{Int64, UInt64}}}, lii::Vector{Vector{Tuple{Int64, Int64}}}, lei::Vector{Vector{Tuple{Int64, Int64}}})
+    # excitatory weights.
+    (jee,_,jei,_) = g_strengths 
+    # Relative inhibitory synaptic weight
+    wig = -20*4.5
+    (src,tgt,syn0,syn1) = item
+    if syn0==1
+        if syn1==1            
+            setindex!(lxx,jee, src,tgt)
+        elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
+            setindex!(lxx, jei, src,tgt)
+        end
+    elseif syn0==0# meaning if the same as a logic: Inhibitory post synapse  is true   
+        if syn1==1
+            setindex!(lxx, wig, src,tgt)
+        elseif syn1==0# eaning meaning if the same as a logic: if occursin("I",k1)      is true               
+            @assert syn1==0
+            setindex!(lxx,wig, src,tgt)
+            @assert syn1==0
+        end
+    end
+end
 function build_matrix(Ncells::Int32,just_iterator,g_strengths::Vector{Float64})
     Lee = Vector{Vector{Tuple{Int64, Int64}}}[]
     Lie = Vector{Vector{Tuple{Int64, Int64}}}[]
@@ -354,7 +357,7 @@ for layer in layers:
         if layer == 'L6': y_offset = layer_thicknesses['L6']/2
         if layer == 'L5': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']/2
         if layer == 'L4': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']+layer_thicknesses['L4']/2
-        if layer == 'L23': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']+layer_thicknesses['L4']+layer_thicknesses['L23']/2
+        if layer == 'L23': y_offset = layer_thicknesses['L6']+layer_thicknesses['L5']+layer_thicknesses['L4']+layer_thicknesses['Lhttps://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/test/if_net_odessa.jl23']/2
         
         layer_volume = Cuboid(x_dim_scaled,layer_thicknesses[layer],z_dim_scaled)
         layer_structures[layer] = RandomStructure(layer_volume, origin=(0,y_offset,0))
