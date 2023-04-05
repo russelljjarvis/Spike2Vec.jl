@@ -1,7 +1,7 @@
 using SparseArrays
 using StaticArrays
 using ProgressMeter
-using UnicodePlots
+#using UnicodePlots
 
 """
 This file contains a function stack that creates a network with Potjans and Diesmann wiring likeness in Julia using SpikingNeuralNetworks.jl to simulate
@@ -58,9 +58,12 @@ end
 
 """
 A mechanism for scaling cell population sizes to suite hardware constraints.
+While Int64 might seem excessive when cell counts are between 1million to a billion Int64 is required.
+Only dealing with positive count entities so Usigned is fine.
 """
 function auxil_potjans_param(scale=1.0::Float32)
-	ccu = Dict{String, UInt32}("23E"=>20683,
+
+	ccu = Dict{String, Int64}("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
 		    "6E"=>14395, 
@@ -68,10 +71,10 @@ function auxil_potjans_param(scale=1.0::Float32)
 		    "23I"=>5834,
 		    "5I"=>1065,
 		    "4I"=>5479)
-	ccu = Dict{String, UInt64}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-	Ncells = Int32(sum([i for i in values(ccu)])+1)
-	Ne = Int32(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
-    Ni = Int32(Ncells - Ne)
+	ccu = Dict{String, Int64}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
+	Ncells = UInt64(sum([i for i in values(ccu)])+1)
+	Ne = UInt64(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
+    Ni = UInt64(Ncells - Ne)
     Ncells, Ne, Ni, ccu
 end
 
@@ -94,7 +97,7 @@ function potjans_layer(scale)
     jii = -ji
     g_strengths = Vector{Float64}([jee,jie,jei,jii])
     genStaticWeights_args = (;Ncells,g_strengths,ccu,scale)
-    potjans_weights(genStaticWeights_args),Ne,Ni
+    potjans_weights(genStaticWeights_args),Ne,Ni,ccu
 end
 
 """
@@ -102,7 +105,13 @@ This function contains synapse selection logic seperated from iteration logic fo
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
 """
-function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::Int32, syn_pol::StaticArraysCore.SVector{8, Int64},g_strengths::Vector{Float64})
+
+#matching 
+#build_matrix_prot!(::SparseMatrixCSC{Float32, Int64}, ::SparseMatrixCSC{Float32, Int64}, ::SparseMatrixCSC{Float32, Int64}, ::SparseMatrixCSC{Float32, Int64}, ::Vector{Any}, ::SMatrix{8, 8, Float64, 64}, ::Int32, ::SVector{8, UInt64}, ::Vector{Float64})
+#Closest candidates are:
+#build_matrix_prot!(::SparseMatrixCSC{Float32, Int64}, ::SparseMatrixCSC{Float32, Int64}, ::SparseMatrixCSC{Float32, Int64}, ::SparseMatrixCSC{Float32, Int64}, ::Any, ::SMatrix{8, 8, Float64, 64}, ::Int32, ::SVector{8, Int64}, ::Vector{Float64}) 
+
+function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::UInt64, syn_pol::StaticArraysCore.SVector{8, UInt64},g_strengths::Vector{Float64})
     # excitatory weights.
     (jee,_,jei,_) = g_strengths 
     # Relative inhibitory synaptic weight
@@ -111,7 +120,7 @@ function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatr
         @inbounds for (j,(syn1,v1)) in enumerate(zip(syn_pol,cumvalues))
             @inbounds for src in v
                 @inbounds for tgt in v1
-                    if v!=v1
+                    if src!=tgt
                         prob = conn_probs[i,j]
                         if rand()<prob
                             if syn0==1
@@ -128,13 +137,14 @@ function build_matrix_prot!(Lee::SparseMatrixCSC{Float32, Int64},Lie::SparseMatr
                                 end
                             end 
                         end
-                    end
                 end
             end            
         end
     end
     Lxx = Lee+Lei+Lii+Lie
     display(Lxx)
+    ## Note to self function return annotations help.
+    Lxx,Lee,Lei,Lii,Lie
 end
 
 function make_proj(xx,pop)
@@ -185,8 +195,8 @@ function potjans_weights(args)
     Lie = spzeros(Float32, (Ncells, Ncells))
     Lei = spzeros(Float32, (Ncells, Ncells))
     Lii = spzeros(Float32, (Ncells, Ncells))
-    build_matrix_prot!(Lee,Lie,Lei,Lii,cumvalues,conn_probs,Ncells,syn_pol,g_strengths)
-    (EE,EI,IE,II,synII,synIE,synEI,synEE) = build_neurons_connections(Lee,Lei,Lie,Lii,cumvalues, Ncells,syn_pol)
+    return build_matrix_prot!(Lee,Lie,Lei,Lii,cumvalues,conn_probs,Ncells,syn_pol,g_strengths)
+    #(EE,EI,IE,II,synII,synIE,synEI,synEE) = build_neurons_connections(Lee,Lei,Lie,Lii,cumvalues, Ncells,syn_pol)
 end
 
 
