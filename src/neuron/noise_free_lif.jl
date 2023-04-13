@@ -3,7 +3,11 @@ using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using Revise
 abstract type AbstractIFNF end
 
+"""
+A population of cells
 
+
+"""
 mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: AbstractIFNF
     N::C
     v::L 
@@ -13,7 +17,7 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
     u::L
     tr::L
     records::Dict
-
+    post_synaptic_targets::SVector{N, Array{UInt32}}
     function IFNF(N,v,ge,gi,fire,u,tr,records)
         new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records)
     end
@@ -24,8 +28,16 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         ge = typeof(sim_type)(zeros(N))
         gi = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
+        #K = length(N)
+        post_synaptic_targets = Array{Array{UInt64}}(undef,N)
+        for i in 1:N
+            post_synaptic_targets[i] = Array{UInt64}([])
+        end
+        pre_synaptic_weights = Vector{Float32}(zeros(N))
+        
+
         records::Dict = Dict()
-        IFNF(N,v,ge,gi,fire,u,tr,records)
+        IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
     end 
 
     function IFNF(N,sim_type::CuArray,u)
