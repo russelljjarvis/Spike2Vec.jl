@@ -1,4 +1,3 @@
-# SpikingNeuralNetworks
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
@@ -35,7 +34,17 @@ Caption: Top half of plot excitatory population activity, bottom half inhibitory
 
 ![image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
+
+file:///home/rjjarvis/Desktop/Screenshot%20from%202023-04-12%2015-02-38.png
 Caption another UMAP of spike trains
+file:///home/rjjarvis/Desktop/Screenshot%20from%202023-04-12%2015-02-24.png![image](https://user-images.githubusercontent.com/7786645/231696958-d51206c1-825b-45f0-8b5e-e17af6a66c22.png)
+
+
+file:///home/rjjarvis/Desktop/Screenshot%20from%202023-04-12%2015-02-24.png![Uploading image.png…]()
+
+[image](https://user-images.githubusercontent.com/7786645/231696944-f13de2dd-5bf6-4ee6-aaf7-718840626215.png)
+Community structure of the structural wiring corresponding to the Potjan's network.
+
 
 # Completed Upgrades:
 
