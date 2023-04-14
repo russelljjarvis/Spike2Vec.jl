@@ -4,8 +4,8 @@
 ## Spurious Spikes.
 This project started life as a rogue project, or a shadow and has since become legitimate. The project consists of three parts:
 
-* a simulation part, which was largely inherited and has since been improved.
-* a structural analysis part
+* a simulation part, which was largely inherited and has since been improved for speed and efficiency.
+* a structural analysis part, which also helps for things like load balancing the network.
 * a temporal analysis part.
 
 ### Temporal Analysis
