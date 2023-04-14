@@ -1,6 +1,19 @@
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
+## Spurious Spikes.
+This project started life as a rogue project and has since become legitimate. The project consists of three parts:
+
+* a simulation part, which was largely inherited and has since been improved.
+* a structural analysis part
+* a temporal analysis part.
+
+
+
+Neural activity in a window can be represented as a coordinate in high-dimensional space. When mammal brains enact object recognition, encoded memories guide cortical neurons to “replay” previously seen neural states, which happen to be states that correspond to familiar scenes. 
+
+The spike2vec algorithm will enable reseachers to track the trajectory of the network between familiar and unfamiliar states using a high-dimensional coordinate scheme. A network’s ability to revisit an encoded coordinate is testable, and so a spike2vector test of object recognition could be construed as a formal hypothesis test. 
+
 
 ## Installation
 
