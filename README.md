@@ -52,9 +52,8 @@ Caption another UMAP of spike trains
 file:///home/rjjarvis/Desktop/Screenshot%20from%202023-04-12%2015-02-24.png![image](https://user-images.githubusercontent.com/7786645/231696958-d51206c1-825b-45f0-8b5e-e17af6a66c22.png)
 
 
-file:///home/rjjarvis/Desktop/Screenshot%20from%202023-04-12%2015-02-24.png![Uploading image.png…]()
-
 [image](https://user-images.githubusercontent.com/7786645/231696944-f13de2dd-5bf6-4ee6-aaf7-718840626215.png)
+
 Community structure of the structural wiring corresponding to the Potjan's network.
 
 
