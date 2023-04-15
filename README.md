@@ -1,6 +1,17 @@
-# SpikingNeuralNetworks
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
+
+## Spurious Spikes.
+This project started life as a rogue project, or a shadow and has since become legitimate. The project consists of three parts:
+
+* a simulation part, which was largely inherited and has since been improved for speed and efficiency.
+* a structural analysis part, which also helps for things like load balancing the network.
+* a temporal analysis part.
+
+### Temporal Analysis
+Neural activity in a window can be represented as a coordinate in high-dimensional space. When mammal brains enact object recognition, encoded memories guide cortical neurons to “replay” previously seen neural states, which happen to be states that correspond to familiar scenes. 
+
+The spike2vec algorithm will enable reseachers to track the trajectory of the network between familiar and unfamiliar states using a high-dimensional coordinate scheme. A network’s ability to revisit an encoded coordinate is testable, and so a spike2vector test of object recognition could be construed as a formal hypothesis test. 
 
 
 ## Installation
@@ -35,7 +46,16 @@ Caption: Top half of plot excitatory population activity, bottom half inhibitory
 
 ![image](https://user-images.githubusercontent.com/7786645/228695786-d496ce45-8df2-401f-a72c-ec48b8281d83.png)
 
+
 Caption another UMAP of spike trains
+
+[image](https://user-images.githubusercontent.com/7786645/231696958-d51206c1-825b-45f0-8b5e-e17af6a66c22.png)
+
+
+![image](https://user-images.githubusercontent.com/7786645/231696944-f13de2dd-5bf6-4ee6-aaf7-718840626215.png)
+
+Community structure of the structural wiring corresponding to the Potjan's network.
+
 
 # Completed Upgrades:
 
