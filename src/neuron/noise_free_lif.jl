@@ -1,6 +1,8 @@
 using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using Revise
+using StaticArrays
+
 abstract type AbstractIFNF end
 
 """
@@ -17,9 +19,9 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
     u::L
     tr::L
     records::Dict
-    post_synaptic_targets::SVector{N, Array{UInt32}}
-    function IFNF(N,v,ge,gi,fire,u,tr,records)
-        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records)
+    post_synaptic_targets::Array{Array{UInt64}} # SVector
+    function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
+        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
     end
 
     function IFNF(N,fire,u,sim_type)
@@ -29,10 +31,13 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         gi = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
         #K = length(N)
+
+        
         post_synaptic_targets = Array{Array{UInt64}}(undef,N)
         for i in 1:N
             post_synaptic_targets[i] = Array{UInt64}([])
         end
+        #post_synaptic_targets = SVector{N, Array{UInt32}}(post_synaptic_targets)
         pre_synaptic_weights = Vector{Float32}(zeros(N))
         
 

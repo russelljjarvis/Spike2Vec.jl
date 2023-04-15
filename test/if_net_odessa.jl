@@ -16,11 +16,17 @@ using Revise
 ##
 using Odesa
 using StatsBase
+using UMAP
+using ProgressMeter
 
 pop_size::Int32=100
 sim_type = Vector{Float32}(zeros(1))
 sim_duration = 1.0second
 u1 = Float32[10.0*abs(4.0*rand()) for i in 0:1ms:sim_duration]
+
+#ERROR: LoadError: MethodError: no method matching 
+#SpikingNeuralNetworks.IFNF(::Int32, ::Vector{Float32}, ::Vector{Float32}, ::Vector{Float32}, ::Vector{Bool}, ::Vector{Float32}, ::Vector{Int32}, ::Dict{Any, Any}, ::Vector{Array{UInt64}})
+
 E = SNN.IFNF(pop_size,sim_type)
 I = SNN.IFNF(pop_size,sim_type)
 EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
@@ -41,40 +47,24 @@ connection_map = [exc_connection_map,inh_connection_map]
 SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
 print("simulation done !")
 (times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
-#display(SNN.raster([E,I]))
-function get_mean_isis(times,nodes)
-    spike_dict = Dict()
-    for n in unique(nodes)
-        spike_dict[n] = []
-    end
+println("hodld up a")
 
+display(SNN.raster([E,I]))
+println("hodld up b")
 
-    for (st,n) in zip(times,nodes)
-        append!(spike_dict[n],st)
-    end
+plot_umap(nodes,times)
+println("hodld up c")
 
-    all_isis = []
-    for (k,v) in pairs(spike_dict)
-        time_old = 0
-        for time in spike_dict[k][1:end-1]
-            isi = time - time_old
-            append!(all_isis,isi)
-            time_old = time
-        end
-    end
-    #@show(StatsBase.mean(all_isis))
-    mean_isi = StatsBase.mean(all_isis)
-end
 mean_isi = get_mean_isis(times,nodes)
 
-feast_layer_nNeurons::Int32 = 20# pop_size*2
+feast_layer_nNeurons::Int32 = length(unique(nodes))# pop_size*2
 feast_layer_eta::Float32 = 0.001
 feast_layer_threshEta::Float32 = 0.001
 feast_layer_thresholdOpen::Float32 = 0.01
 feast_layer_tau::Float32 =  1.0/mean_isi #/2.0)/2.0#0.464
 # This doesn't matter, it is used in ODESA but not in FEAST 
 feast_layer_traceTau::Float32 = 0.81
-precision::UInt16 = convert(UInt32,0)  
+precision::UInt32 = convert(UInt32,0)  
 
 feast_layer = Odesa.Feast.FC(precision,Int32(1),Int32(pop_size*2),feast_layer_nNeurons,feast_layer_eta,feast_layer_threshEta,feast_layer_thresholdOpen,feast_layer_tau,feast_layer_traceTau)
 
@@ -83,23 +73,36 @@ nodes = nodes[perm]
 times = times[perm]
 winners = []
 p1=plot(feast_layer.thresh)
-display(SNN.raster([E,I]))
-function collect_distances(feast_layer,nodes,times)
+display(p1)
+#display(SNN.raster([E,I]))
+function collect_distances!(feast_layer,nodes,times)
     distances = feast_layer.dot_prod
 
-    for i in 1:2
+    @inbounds @showprogress for i in 1:150
         Odesa.Feast.reset_time(feast_layer)
-        for (y,ts) in zip(nodes,times)
-            winner = Odesa.Feast.forward(feast_layer, Int16(1), Int16(y), Float16(ts))    
-            distances = feast_layer.dot_prod
+        @inbounds for (y,ts) in zip(nodes,times)
+            winner = Odesa.Feast.forward(feast_layer, Int32(1), Int32(y), Float32(ts))    
+            #distances = feast_layer.dot_prod
+
+            # do UMAP on feast_layer.
+            #feast_layer.w
+
             
         end
         #display(plot!(p1,feast_layer.thresh,legend=false))
     end
-    distances
+    #distances
 end
-distances = collect_distances(feast_layer,nodes,times)
+#distances = 
+collect_distances!(feast_layer,nodes,times)
 
+CList = collect(1:length(feast_layer.w))
+#@show(CList)
+res_jl = umap(feast_layer.w,n_neighbors=10, min_dist=0.001, n_epochs=100)
+display(Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList, title="Spike Rate: UMAP", marker=(1, 1, :auto, stroke(1.5)),legend=false)))
+#Plots.savefig(file_name)
+
+#=
 function get_ts(nodes,times)
     #num_spikes = length(nodes)
     # The temporal resolution of the final timesurface
@@ -146,6 +149,7 @@ end
 final_timesurf = get_ts(nodes,times);
 @show(sum(final_timesurf))
 display(Plots.heatmap(final_timesurf))
+=#
 
 #using CSV, Tables, DataFrames
 

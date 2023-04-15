@@ -73,7 +73,7 @@ print("simulation done !")
 display(SNN.raster([E,I]))
 Plots.savefig("rasterPlot.png")
 #SNN.plot_umap(times,nodes)
-SNN.plot_umap(nodes,times,Int(round(sim_duration/20)),"UMAP_model.png")
+SNN.plot_umap(nodes,times,"UMAP_model.png")
 #@show(length(nodes))
     #@show(times)
     #,

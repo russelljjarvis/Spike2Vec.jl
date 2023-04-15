@@ -172,29 +172,68 @@ end
 Similar to the methods above except that cells and synapses are instantiated in place to cut down on code
 """
 function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
-    @inbounds @showprogress for (syn0,v) in zip(syn_pol,cumvalues)
-        @inbounds for (syn1,v1) in zip(syn_pol,cumvalues)
-            if syn0==1
-                if syn1==1 
-                    EE = SNN.IFNF(;N = length(cumvalues), param = SNN.IFParameter())
-                    synEE = make_proj(Lee[v,v1],EE)
-                elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
-                    EI = SNN.IFNF(;N = length(cumvalues), param = SNN.IFParameter())
-                    synEI = make_proj(Lei[v,v1],EI)
+    cntee=[]
+    cntei=[]
+    cntie=[]
+    cntii=[]
+    weights=[]
+    
+    
+    @inbounds @showprogress for (i,v) in enumerate(cumvalues)
+        @inbounds for (j,v1) in enumerate(cumvalues)
+            @inbounds for src in v
+                @inbounds for tgt in v1
+                    if src!=tgt
+                        prob = conn_probs[i,j]
+                        
+                        if rand()<prob
+                            syn1 = syn_pol[j]
+                            syn0 = syn_pol[i]
+
+                            if syn0==1
+                                if syn1==1
+                                    cntee+=1 
+                                    setindex!(Lee,jee, src,tgt)
+                                elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
+                                    cntei+=1 
+                                    setindex!(Lei,jei, src,tgt)
+                                end
+                            elseif syn0==0         
+                                if syn1==1 
+                                    cntie+=1 
+                                    setindex!(Lie,wig, src,tgt)
+                                elseif syn1==0pop_size
+                                    cntii+=1
+                                    setindex!(Lii,wig, src,tgt)
+                                end
+                            end 
+                        end
+                    end
                 end
-            elseif syn0==0         
-                if syn1==1 
-                    IE = SNN.IFNF(;N = length(cumvalues), param = SNN.IFParameter())
-                    synIE = make_proj(Lie[v,v1],IE)
-                elseif syn1==0
-                    II = SNN.IFNF(;N = length(cumvalues), param = SNN.IFParameter())
-                    synII = make_proj(Lii[v,v1],II)
-                end
-            end 
+            end
         end
-                    
+        EE_ = Lee+Lei 
+        II_ = Lii+Lie
+        cntepopsize=0
+        cntipopsize=0
+
+        for (ind,row) in enumerate(eachcol(EE_'))
+            if sum(row[:])!=0
+                cntepopsize+=1
+            end
+        end
+        for row in enumerate(eachcol(II_'))
+            if sum(row[:])!=0
+                cntipopsize+=1
+
+            end            
+        end
+
     end
-    (EE,EI,IE,II,synII,synIE,synEI,synEE)
+    E_ = SNN.IFNF(cntepopsize,sim_type)
+    I_ = SNN.IFNF(cntipopsize,sim_type)
+    #EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
+
 end
 
 """

@@ -42,12 +42,10 @@ function raster(P::Vector)
     !isempty(y0) && hline!(plt, cumsum(y0), linecolor = :red)
     return plt
 end
-
 """
-Create a 2D histogram/heatmap
-Its usually good to normalize this retrospectively.
+Create a 2D histogram/heatmap Its usually good to normalize this retrospectively
 """
-function 2dhistHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64)
+function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Float32)
     t0 = times
     n0 = nodes
     stimes = sort(times)
@@ -78,11 +76,11 @@ function 2dhistHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
             cnt +=1
         end
     end
-    weights = LinearAlgebra.normalize(data)
-    Plots.plot(heatmap(weights))
-    Plots.savefig("heatmap_normalized.png")
-
-    return weights
+    #weights = 
+    LinearAlgebra.normalize(data)
+    #Plots.plot(heatmap(data))
+    #Plots.savefig("heatmap_normalized.png")
+    return data
 end
 
 """
@@ -135,15 +133,57 @@ function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,ti
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
     end
 end
-function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Int64, file_name::String)
+
+
+
+function color_time_plot(nodes::Vector{UInt32}, times::Vector{Float32}, file_name::String)
+
     perm = sortperm(times)
     nodes = nodes[perm]
     times = times[perm]
-    CList = collect(0:1:length(times))
+    CList = Vector{Float32}(collect(0:1:length(times)))
     cmap = :balance
 
     Plots.plot(scatter(times,nodes,zcolor=CList, title="Color Time Plot", marker=(2, 2, :auto, stroke(0.0005)),legend=false))
     Plots.savefig("color_time.png")
+    return CList::Vector{Float32}
+end
+
+function get_mean_isis(times,nodes)
+    spike_dict = Dict()
+    for n in unique(nodes)
+        spike_dict[n] = []
+    end
+
+
+    for (st,n) in zip(times,nodes)
+        append!(spike_dict[n],st)
+    end
+
+    all_isis = []
+    for (k,v) in pairs(spike_dict)
+        time_old = 0
+        for time in spike_dict[k][1:end-1]
+            isi = time - time_old
+            append!(all_isis,isi)
+            time_old = time
+        end
+    end
+    #@show(StatsBase.mean(all_isis))
+    mean_isi = StatsBase.mean(all_isis)
+end
+function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}; file_name::String="empty.png")
+    perm = sortperm(times)
+    nodes = nodes[perm]
+    times = times[perm]
+    CList = color_time_plot(nodes, times, file_name)
+
+    #CList = collect(0:1:length(times))
+
+    #cmap = :balance
+
+    #Plots.plot(scatter(times,nodes,zcolor=CList, title="Color Time Plot", marker=(2, 2, :auto, stroke(0.0005)),legend=false))
+    #Plots.savefig("color_time.png")
     time_end = Int(length(times))
     cmap = :balance
     final_timesurf = get_ts(nodes,times);
@@ -157,13 +197,16 @@ function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins
     #Plots.savefig("heatmap.png")
 
     res_jl = umap(final_timesurf',n_neighbors=20, min_dist=0.001, n_epochs=100)
+    #@show(size(final_timesurf'))
+    CList_ = [maximum(CList)/i for i in collect(1:length(final_timesurf')) ]
+
     #@show(length(CList))
     #@show(length(res_jl))
     #CList = collect(0:length(times)/length(res_jl):length(times))
 
-    Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList, title="Spike Rate: UMAP", marker=(1, 1, :auto, stroke(0.5)),legend=false))
+    display(Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList_, title="Spike Rate: UMAP", marker=(2, 2, :auto, stroke(3.5)),legend=false)))
     Plots.savefig(file_name)
-
+    
     return 
 end
 function vecplot(p, sym)

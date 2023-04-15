@@ -1,6 +1,8 @@
 using Revise
 using StatsBase
 #using SetField
+using ProgressMeter
+
 function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
     @set  container.fireJ = new_values
 end
@@ -207,7 +209,7 @@ function sim!(P, C, dt,conn_map=nothing,verbose=true;current_stim=0.0)
     end
     =#
     minus(indx, x) = setdiff(1:length(x), indx)
-    for ii in conn_map
+    @showprogress for ii in conn_map
         for (ind,c) in enumerate(ii)
             pre_synaptic_population = c[1]
             post_synaptic_cell_population = c[4]

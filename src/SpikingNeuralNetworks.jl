@@ -46,7 +46,8 @@ include("synapse/pinning_synapse.jl")
 include("synapse/pinning_sparse_synapse.jl")
 =#
 include("plot.jl")
-
+export get_mean_isis
+export plot_umap
 #function __init__()
 #    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plot.jl")
 #end
