@@ -207,7 +207,7 @@ function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}; file_name::Str
     display(Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList_, title="Spike Rate: UMAP", marker=(2, 2, :auto, stroke(3.5)),legend=false)))
     Plots.savefig(file_name)
     
-    return 
+    #return 
 end
 function vecplot(p, sym)
     v = getrecord(p, sym)

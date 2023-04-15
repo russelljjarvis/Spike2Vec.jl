@@ -52,8 +52,9 @@ println("hodld up a")
 display(SNN.raster([E,I]))
 println("hodld up b")
 
-plot_umap(nodes,times)
+display(plot_umap(nodes,times))
 println("hodld up c")
+
 
 mean_isi = get_mean_isis(times,nodes)
 
