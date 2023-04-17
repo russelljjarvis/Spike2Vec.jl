@@ -172,11 +172,17 @@ end
 Similar to the methods above except that cells and synapses are instantiated in place to cut down on code
 """
 function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
-    cntee=[]
-    cntei=[]
-    cntie=[]
-    cntii=[]
-    weights=[]
+    cntees=[]
+    cnteis=[]
+    cnties=[]
+    cntiis=[]
+    cnteet=[]
+    cnteit=[]
+    cntiet=[]
+    cntiit=[]
+
+    weightse=[]
+    weightsi=[]
     
     
     @inbounds @showprogress for (i,v) in enumerate(cumvalues)
@@ -193,16 +199,33 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
                             if syn0==1
                                 if syn1==1
                                     cntee+=1 
+                                    append!(cntees,src)
+                                    append!(cnteet,tgt)
+                                    append!(weightse,jee)
+
                                     setindex!(Lee,jee, src,tgt)
                                 elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
+                                    append!(cnteis,src)
+                                    append!(cnteit,tgt)
+          
                                     cntei+=1 
                                     setindex!(Lei,jei, src,tgt)
+                                    append!(weightse,jei)
+
                                 end
                             elseif syn0==0         
                                 if syn1==1 
                                     cntie+=1 
+                                    append!(cnties,src)
+                                    append!(cntiet,tgt)
+                                    append!(weightse,jie)
+        
                                     setindex!(Lie,wig, src,tgt)
                                 elseif syn1==0pop_size
+                                    append!(cntiis,src)
+                                    append!(cntiit,tgt)
+                                    append!(weightse,jii)
+
                                     cntii+=1
                                     setindex!(Lii,wig, src,tgt)
                                 end
