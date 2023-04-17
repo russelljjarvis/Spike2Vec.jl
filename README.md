@@ -2,7 +2,7 @@
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
 ## Spurious Spikes.
-This project started life as a rogue project, or a shadow and has since become legitimate. The project consists of three parts:
+The project consists of three parts:
 
 * a simulation part, which was largely inherited and has since been improved for speed and efficiency.
 * a structural analysis part, which also helps for things like load balancing the network.
