@@ -1,7 +1,7 @@
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
-# SpikeLiness
+# BigSpikeLiness
 
 
 
