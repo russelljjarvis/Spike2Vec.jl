@@ -5,26 +5,29 @@ tags:
   - Neuroinformatics
   - Simulation of Spiking Neural Networks.
   - Computational Neuroscience
-  - Neuromorphic Engineering
+  - Big Data
 
 authors:
   - name: Russell Jarvis
-    affiliation: International Centre for Neuromorphic Systems, MARCS Institute Western Sydney University
+    affiliation: International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University
 date: June  2023
 
 Bibliography: paper.bib
 
 ### Summary
+A scalable algorithm that can detect coarse grained repetitions quickly across large spiking datasets is desirable, as it provides a means to test for the tendency of activity to revisit states. By quantifying repetitions large spiking datasets, using geometric representations of complex spike patterns, we can quantify the frequency of repitition, and achieve a better understanding of a networks ability to revisit states. To this end we represented time bound neural activity as simple geometric coordinates in a highdimensional space. Working with geometric representations of chaotic spike train recordings may enable researchers to interrogate the state-fullness of both biologically recorded spike trains and their digitally simulated counterparts. Furthermore, there is reason to believe that when mammal brains enact visual object recognition encoded memories guide cortical neurons to “replay” previously observed neural states, as replayed spiking states may cohere with the visual brains perceptual recognition of a familiar scene.  
+
+Two common models of cortical spiking networks are the, Potjan's and Diesmon model and the Brunel model, both of these models are said exist within a fluctuation driven regime, when these are simulated, observed spike times are typically chaotic and random, but some coarsely recognizable repeating patterns also occur. Under the dynamic systems view of the brain neuronal memories are analogous to attractor basins [Hopfield,Lin, Hairong, et al]. If the view of memories as basins is correct then it should be possible to demonstrate synaptic learning as the mechanism that encodes memories as basins. Network attractor basins may be derived from the interleaved application of Spike Timing Dependent Plasticity (STPD) and sleep when synapses are able to change in a way that strongly biases some future spiking activities towards stereotyped patterns. 
+
+The application of STDP learning within the fluctuation driven regime necessitates a simple method to optimise network parameters a way that maximises the networks capacity to encode and revisit attractor states. A spike2vec algorithm will enable researchers to investigate the state-fullness of spike trains, the corruption of information caused by STDP in the absence of sleep and resistance to the degradation of memories that may be concomitant with neuronal death and synaptic pruning, as many of these network level phenonemana can be re-construed as network parameters: for example neuronal death relates to synaptic count and neuron count.
 
 ### Statement of Need
-Scalable methods for decoding large populations of read out neurons are needed. The control dynamic systems view of balanced E/I networks, as  being marginally stable and encoding Hopfield like attractor (memories) but requires a simple low dimensional way to assess a marginally stable networks capacity to act as a robust attractor.
- effectiveness and the , 
 
- 
-the fluctuation driven regime.
-
-### Scientific Application
-
-### Caveat
+Scalable methods for representing the transient behavior of large populations of neurons are needed. The spike2vec algorithm will enable researchers to track the trajectory of the network between familiar and unfamiliar states using a high-dimensional coordinate scheme. A network’s ability to revisit an encoded coordinate is testable, and so a spike2vector test of object recognition could be construed as a formal hypothesis test.
 
 ### Reproducibility
+Some preliminary code that performs the Spike2Vec analysis is avaialble at the following [link](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/src/analysis.jl#L29-L83). the code is implemented in Julia, a modern language alternative to Python that makes large-scale model visualization and analysis more computationally tractable. A docker file is included.
+
+### References
+B. Illing, W. Gerstner & J. Brea, Biologically plausible deep learning - but how far can we go with shallow networks?, Neural Networks 118 (2019) 90-101
+Lin, Hairong, et al. "A Review of Chaotic Systems Based on Memristive Hopfield Neural Networks." Mathematics 11.6 (2023): 1369.
