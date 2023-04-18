@@ -6,7 +6,7 @@
 
 
 ## About
-Exploiting Modern Language Features for Larger and Easier Simulations of Spiking Neural Networks. Some gains in biologically faithful neuronal network simulation can be achieved merely by selecting and recombining recently presented computer language features. 
+Exploiting Modern Language Features for Larger and Easier Simulations of Spiking Neural Networks. Some gains in biologically faithful neuronal network simulation can be achieved merely by selecting and recombining recent computer language features. 
 
 * a simulation part, which was largely inherited and has since been improved for speed and efficiency.
 * a structural analysis part, which also helps for things like load balancing the network.
