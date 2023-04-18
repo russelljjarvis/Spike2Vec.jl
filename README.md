@@ -1,9 +1,7 @@
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
-# BigSpikeliness.jl
-
-
+# SpikeThroughput.jl
 
 ## About
 Exploiting Modern Language Features for Larger and Easier Simulations of Spiking Neural Networks. Some gains in biologically faithful neuronal network simulation can be achieved merely by selecting and recombining recent computer language features. 
