@@ -1,5 +1,5 @@
 -----
-title: 'an Abundance of Spikeliness: Exploiting Modern Language Features for Larger and Easier Simulations of Spiking Neural Networks.'
+title: 'High ThroughPut Spiking Simulators: Exploiting Modern Language Features in Spiking Neural Networks Simulations.'
 tags:
   - Simulation of Spiking Neural Networks.
   - Computational Neuroscience
