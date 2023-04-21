@@ -44,6 +44,11 @@ end
 """
 Using the windowed spike trains for neuron0: a uniform surrogate spike train reference, versus neuron1: a real spike train in the  target window.
 compute the intergrated spike distance quantity in that time frame.
+
+SpikeSynchrony is a Julia package for computing spike train distances just like elephant in python
+And in every window I get the population state vector by comparing current window to uniform spiking windows
+But it's also a good idea to use the networks most recently past windows as reference windows 
+
 """
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
@@ -82,10 +87,7 @@ function looped!(times,t0,spk_counts,segment_length,temp)
     end
 end
 """
-SpikeSynchrony is a Julia package for computing spike train distances just like elephant in python
-I generate uniform surrogate spike trains that fire at the networks mean firing rat
-And in every window I get the population state vector by comparing current window to uniform spiking windows
-But it's also a good idea to use the networks most recently past windows as reference windows 
+I generate uniform surrogate spike trains that fire at the networks mean firing rate
 """
 function surrogate_to_uniform(times_,segment_length)
     times =  Array{}([Float32[] for i in 1:length(times_)])
