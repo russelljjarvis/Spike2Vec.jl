@@ -13,6 +13,9 @@ using OnlineStats, Plots#, Random
 #using DataFrames
 using UMAP
 using Distances
+using LinearAlgebra
+#import StatsBase.ZScoreTransform
+#import StatsBase.fit!
 
 """
 Divide epoch into windows.
@@ -24,7 +27,7 @@ function divide_epoch(nodes,times,sw,toi)
     n0=[]
     @assert sw< toi
     third = toi-sw
-    @assert third==300
+    #@assert third==300
     for (n,t) in zip(nodes,times)
         if sw<=t && t<toi
             append!(t0,t-sw)
@@ -58,7 +61,7 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
             t1_ = sort(unique(n0_))
             t0_ = sort(unique(n1_))
             t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
-            self_distances[ind]=sum(S)
+            self_distances[ind]=abs(sum(S))
         else
             self_distances[ind]=0
         end
@@ -66,9 +69,9 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
     self_distances
 end
 """
-Just a helper method to get some locally stored data if it exists.
+Just a helper method to get some locally stored spike data if it exists.
 """
-function get_()
+function fromHDF5spikes()
     hf5 = h5open("spikes.h5","r")
     nodes = Vector{Int64}(read(hf5["spikes"]["v1"]["node_ids"]))
     nodes = [n+1 for n in nodes]
@@ -100,43 +103,6 @@ function surrogate_to_uniform(times_,segment_length)
     times
 end
 
-function get_plot()
-    times,nodes = get_()
-    division_size = 10
-    step_size = maximum(times)/division_size
-    end_window = collect(step_size:step_size:step_size*division_size)
-    spike_distance_size = length(end_window)
-    start_windows = collect(0:step_size:step_size*division_size-1)
-    mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
-    n0ref = divide_epoch(nodes,times,start_windows[3],end_window[3])
-    segment_length = end_window[3] - start_windows[3]
-    t0ref = surrogate_to_uniform(n0ref,segment_length)
-    PP = []
-    for (ind,toi) in enumerate(end_window)
-        self_distances = Array{Float32}(zeros(maximum(nodes)+1))
-        sw = start_windows[ind]
-        neuron0 = divide_epoch(nodes,times,sw,toi)    
-        self_distances = get_vector_coords(neuron0,t0ref,self_distances)
-        mat_of_distances[ind,:] = self_distances
-        #@show(self_distances)
-    end
-    cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
-    p=nothing
-    for (ind,_) in enumerate(eachrow(mat_of_distances))
-        temp = (mat_of_distances[ind,:].- mean(mat_of_distances[ind,:]))./std(mat_of_distances[ind,:])
-        n = length(temp)
-        θ = LinRange(0, 2pi, n)
-        if ind==1
-            p = plot(θ, temp, proj=:polar,color=cs1[ind])#, layout = length(mat_of_distances))
-        else 
-            plot!(p,θ,mat_of_distances[ind,:], proj=:polar,color=cs1[ind])  |>display
-        end
-
-    end
-    return mat_of_distances
-end
-#mat_of_distances = get_plot()
-
 function post_proc_viz(mat_of_distances)
     angles0 = []
     distances0 = []
@@ -149,8 +115,6 @@ function post_proc_viz(mat_of_distances)
             r = evaluate(Euclidean(),mat_of_distances[ind,:],mat_of_distances[ind-1,:])
             append!(angles1,θ)
             append!(distances1,r)        
-
-            #scatter!(p,θ,r,color=cs1[ind])  |>display
         end
         θ = angle(mat_of_distances[ind,:],mat_of_distances[1,:])
         r = evaluate(Euclidean(),mat_of_distances[ind,:],mat_of_distances[1,:])
@@ -160,17 +124,27 @@ function post_proc_viz(mat_of_distances)
     return angles0,distances0,angles1,distances1
 end
 
-function final_plots(mat_of_distances)
-    normalize!(mat_of_distances[:,:])
+function final_plots2(mat_of_distances)
+    #normalize!(mat_of_distances[:,:])
+    #fit!(ZScoreTransform, mat_of_distances, dims=2)
+    #for (ind,row) in enumerate(eachcol(mat_of_distances))
+    #    mat_of_distances[:,ind].- mean.(mat_of_distances)./std.(mat_of_distances)
+    #end
+    #for (ind,_) in enumerate(eachcol(mat_of_distances))
+    #    mat_of_distances[:,ind] = mat_of_distances[:,ind].- mean(mat_of_distances)./std(mat_of_distances)
+    #end
+    #mat_of_distances[ind,:] = mat_of_distances[ind,:].- mean(mat_of_distances)./std(mat_of_distances)
 
-    for (ind,row) in enumerate(eachcol(mat_of_distances))
-        mat_of_distances[:,ind].- mean(mat_of_distances[:,ind])./std(mat_of_distances[:,ind])
-    end
+    #mat_of_distances ./ norm.(eachcol(mat_of_distances))'
+
     angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
-    display(scatter(angles0,distances0))#,color=cs1))
-    display(scatter(angles1,distances1))#,color=cs1))
-    cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
-    plot!(angles1,distances1, proj=:polar)  |>display   
+    #display(scatter(angles0,distances0))#,color=cs1))
+    #display(scatter(angles1,distances1))#,color=cs1))
+    #cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
+    #plot!(angles1,distances1, proj=:polar)  |>display   
+    plot!(angles1,distances1,marker =:circle, arrow=(:closed, 3.0)) 
+    savefig("statemvements.png")   
+    (angles1,distances1)
 end
 
 #=

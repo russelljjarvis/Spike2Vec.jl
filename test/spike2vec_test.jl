@@ -7,7 +7,12 @@ using Test
 using Revise
 using StatsBase
 using ProgressMeter
-
+using ColorSchemes
+import StatsBase.ZScoreTransform
+using LinearAlgebra
+using DrWatson
+initialize_project("DrWatson Example"; authors="RJarvis", force=true)
+#import StatsBase.fit!
 #include("genPotjansWiring.jl")
 #import SpikingNeuralNetworks.models.potjans_layer
 #include("../models/genPotjansWiring.jl")
@@ -31,17 +36,16 @@ end
 #pot_conn,x,y,ccu,scale,Lx = protect_variable()
 
 function hide_scope()
-    pop_size::UInt64=100
+    pop_size::UInt64=10000
     sim_type = Vector{Float32}(zeros(1))
     #pop_size::Int32=100
-    sim_duration = 1.0second
+    sim_duration = 3.0second
     u1 = Float32[10.0*abs(4.0*rand()) for i in 0:1ms:sim_duration]
     
     post_synaptic_targets = Array{Array{UInt64}}(undef,pop_size)
     for i in 1:pop_size
         post_synaptic_targets[i] = Array{UInt64}([])
     end
-    @show(typeof(post_synaptic_targets))
 
     E = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
 
@@ -67,12 +71,12 @@ function hide_scope()
 
     print("simulation done !")
     (times,nodes) = SNN.get_trains([E,I])
-    (times,nodes)
+    (times,nodes,E,I)
 end
-(times,nodes) = hide_scope()
+(times,nodes,E,I) = hide_scope()
+
 function get_plot(times,nodes)
-    #times,nodes = get_()
-    division_size = 10
+    division_size = 20
     step_size = maximum(times)/division_size
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
@@ -88,32 +92,38 @@ function get_plot(times,nodes)
         neuron0 = divide_epoch(nodes,times,sw,toi)    
         self_distances = get_vector_coords(neuron0,t0ref,self_distances)
         mat_of_distances[ind,:] = self_distances
-        #@show(self_distances)
     end
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
     p=nothing
+    mat_of_distances ./ norm.(eachcol(mat_of_distances))'
+
+    for (ind,_) in enumerate(eachcol(mat_of_distances))
+        mat_of_distances[:,ind] = mat_of_distances[:,ind].- mean(mat_of_distances)./std(mat_of_distances)
+    end
     for (ind,_) in enumerate(eachrow(mat_of_distances))
-        temp = (mat_of_distances[ind,:].- mean(mat_of_distances[ind,:]))./std(mat_of_distances[ind,:])
-        n = length(temp)
+        n = length(mat_of_distances[1,:])
         θ = LinRange(0, 2pi, n)
         if ind==1
-            p = plot(θ, temp, proj=:polar,color=cs1[ind])#, layout = length(mat_of_distances))
+            p = plot(θ, mat_of_distances[ind,:], proj=:polar,color=cs1[ind])#, layout = length(mat_of_distances))
         else 
             plot!(p,θ,mat_of_distances[ind,:], proj=:polar,color=cs1[ind])  |>display
         end
 
     end
+    savefig("vectors_wrapped.png")
     return mat_of_distances
 end
 
-mat_of_distances = get_plot(times,nodes)
-
+@time mat_of_distances = get_plot(times,nodes)
+@time (angles1,distances1) = final_plots(mat_of_distances)
+#angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
 display(SNN.raster([E,I]))
-println("hodld up b")
+savefig("raster.png")
+#println("hodld up b")
 
 #display(plot_umap(nodes,times))
-println("hodld up c")
-final_timesurf = get_ts(nodes,times);
-@show(sum(final_timesurf))
-display(Plots.heatmap(final_timesurf))
+#println("hodld up c")
+#final_timesurf = get_ts(nodes,times);
+#@show(sum(final_timesurf))
+#display(Plots.heatmap(final_timesurf))
 
