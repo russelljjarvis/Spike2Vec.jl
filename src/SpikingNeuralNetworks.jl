@@ -24,7 +24,7 @@ include("unit.jl")
 #include("neuron/16bit_if.jl")
 #include("neuron/if2.jl")
 #include("neuron/noisy_if.jl")
-
+include("spike2vec.jl")
 include("util.jl")
 include("neuron/noise_free_lif.jl")
 include("neuron/poisson.jl")

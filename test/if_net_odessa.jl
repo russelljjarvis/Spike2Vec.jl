@@ -1,5 +1,7 @@
 using Plots
 using SpikingNeuralNetworks
+import SpikingNeuralNetworks.spike2vec.
+
 using OnlineStats
 using SparseArrays
 SNN.@load_units

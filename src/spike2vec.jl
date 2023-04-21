@@ -87,7 +87,7 @@ function looped!(times,t0,spk_counts,segment_length,temp)
     end
 end
 """
-I generate uniform surrogate spike trains that fire at the networks mean firing rate
+Generate uniform surrogate spike trains that fire at the networks mean firing rate
 """
 function surrogate_to_uniform(times_,segment_length)
     times =  Array{}([Float32[] for i in 1:length(times_)])
@@ -135,7 +135,7 @@ function get_plot()
     end
     return mat_of_distances
 end
-mat_of_distances = get_plot()
+#mat_of_distances = get_plot()
 
 function post_proc_viz(mat_of_distances)
     angles0 = []
@@ -159,13 +159,61 @@ function post_proc_viz(mat_of_distances)
     end
     return angles0,distances0,angles1,distances1
 end
-normalize!(mat_of_distances[:,:])
 
-for (ind,row) in enumerate(eachcol(mat_of_distances))
-    mat_of_distances[:,ind].- mean(mat_of_distances[:,ind])./std(mat_of_distances[:,ind])
+function final_plots(mat_of_distances)
+    normalize!(mat_of_distances[:,:])
+
+    for (ind,row) in enumerate(eachcol(mat_of_distances))
+        mat_of_distances[:,ind].- mean(mat_of_distances[:,ind])./std(mat_of_distances[:,ind])
+    end
+    angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
+    display(scatter(angles0,distances0))#,color=cs1))
+    display(scatter(angles1,distances1))#,color=cs1))
+    cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
+    plot!(angles1,distances1, proj=:polar)  |>display   
 end
-angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
-display(scatter(angles0,distances0))#,color=cs1))
-display(scatter(angles1,distances1))#,color=cs1))
-cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
-plot!(angles1,distances1, proj=:polar)  |>display
+
+
+function get_ts(nodes,times)
+    #num_spikes = length(nodes)
+    # The temporal resolution of the final timesurface
+    dt = 10
+    num_neurons = Int(length(unique(nodes)))+1#int(df.max(axis=0)['x1'])
+    total_time =  Int(maximum(times))
+    time_resolution = Int(round(total_time/dt))
+    # Final output. 
+    final_timesurf = zeros((num_neurons, time_resolution+1))
+    # Timestamp and membrane voltage store for generating time surface
+    timestamps = zeros((num_neurons)) .- Inf
+    mv = zeros((num_neurons))
+    tau = 200
+    last_t = 0
+    for (tt,nn) in zip(times,nodes)
+        #Get the current spike
+        neuron = Int(nn) 
+        time = Int(tt)        
+        # If time of the next spikes leaps over, make sure to generate 
+        # timesurfaces for all the intermediate dt time intervals and fill the 
+        # final_timesurface.
+        if time > last_t
+            timesurf = similar(final_timesurf[:,1])
+            for t in collect(last_t:dt:time)
+                @. timesurf = mv*exp((timestamps-t)/tau)
+                final_timesurf[:,1+Int(round(t/dt))] = timesurf
+            end
+            last_t = time
+        end
+        # Update the membrane voltage of the time surface based on the last value and time elapsed
+        mv[neuron] =mv[neuron]*exp((timestamps[neuron]-time)/tau) +1
+        timestamps[neuron] = time
+        # Update the latest timestamp at the channel. 
+    end
+    # Generate the time surface for the rest of the time if there exists no other spikes. 
+    timesurf = similar(final_timesurf[:,1])
+    for t in collect(last_t:dt:total_time)
+        @. timesurf = mv*exp((timestamps-t)/tau)
+        final_timesurf[:,1+Int(round(t/dt))] = timesurf
+    end
+    return final_timesurf
+
+end
