@@ -1,7 +1,7 @@
 using HDF5
 using Plots
 using OnlineStats
-using ThreadsX
+#using ThreadsX
 using Plots
 using JLD2
 using SpikeSynchrony
@@ -9,8 +9,8 @@ using LinearAlgebra
 using ColorSchemes
 using AngleBetweenVectors
 using Revise
-using OnlineStats, Plots, Random
-using DataFrames
+using OnlineStats, Plots#, Random
+#using DataFrames
 using UMAP
 using Distances
 
@@ -173,7 +173,7 @@ function final_plots(mat_of_distances)
     plot!(angles1,distances1, proj=:polar)  |>display   
 end
 
-
+#=
 function get_ts(nodes,times)
     #num_spikes = length(nodes)
     # The temporal resolution of the final timesurface
@@ -217,3 +217,4 @@ function get_ts(nodes,times)
     return final_timesurf
 
 end
+=#

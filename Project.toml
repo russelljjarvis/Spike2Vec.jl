@@ -3,6 +3,11 @@ uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
 version = "0.1.1"
 
 [deps]
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+AngleBetweenVectors = "ec570357-d46e-52ed-9726-18773498274d"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+SpikeSynchrony = "3713708d-6816-4a57-846e-904b81e02fa1"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 UMAP = "c4f8c510-2410-5be4-91d7-4fbaeb39457e"
 OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"

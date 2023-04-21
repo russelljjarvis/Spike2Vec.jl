@@ -17,16 +17,23 @@ using StatsPlots
 
 #using StaticArrays
 #include("genPotjans.jl")
-
+include("neuron/noise_free_lif.jl")
+export IFNF
 include("unit.jl")
+include("models/genPotjansWiring.jl")
+export potjans_layer
 #include("plot.jl")
 #include("neuron/if.jl")
 #include("neuron/16bit_if.jl")
 #include("neuron/if2.jl")
 #include("neuron/noisy_if.jl")
 include("spike2vec.jl")
+export divide_epoch
+export get_vector_coords
+export surrogate_to_uniform
+export post_proc_viz
+export final_plots
 include("util.jl")
-include("neuron/noise_free_lif.jl")
 include("neuron/poisson.jl")
 
 include("synapse/spiking_synapse.jl")

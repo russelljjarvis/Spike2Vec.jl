@@ -3,49 +3,73 @@ using SpikingNeuralNetworks
 using OnlineStats
 using SparseArrays
 SNN.@load_units
-
 using Test
 using Revise
-##
-# Since Odesa is not an officially Julia registered package, running this example would require:
-# using Pkg
-# Pkg.add(url=https://github.com/russelljjarvis/Odesa.jl-1")
-# ] resolve
-# ] activate
-# ] instantiate
-##
-using Odesa
 using StatsBase
-#using UMAP
 using ProgressMeter
 
-pop_size::Int32=100
-sim_type = Vector{Float32}(zeros(1))
-sim_duration = 1.0second
-u1 = Float32[10.0*abs(4.0*rand()) for i in 0:1ms:sim_duration]
+#include("genPotjansWiring.jl")
+#import SpikingNeuralNetworks.models.potjans_layer
+#include("../models/genPotjansWiring.jl")
 
-#ERROR: LoadError: MethodError: no method matching 
-#SpikingNeuralNetworks.IFNF(::Int32, ::Vector{Float32}, ::Vector{Float32}, ::Vector{Float32}, ::Vector{Bool}, ::Vector{Float32}, ::Vector{Int32}, ::Dict{Any, Any}, ::Vector{Array{UInt64}})
+function protect_variable()
+    scale = 1.0
+    (pot_conn,x,y,ccu) = build_neurons_connections(scale)
+    Lx = Vector{Int64}(zeros(size(pot_conn)))
+    return pot_conn,x,y,ccu,scale,Lx
+end
 
-E = SNN.IFNF(pop_size,sim_type)
-I = SNN.IFNF(pop_size,sim_type)
-EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
-EI = SNN.SpikingSynapse(E, I,sim_type; σ = 160*0.27/1, p = 0.055)
-IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.250)
-II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.15)
-P = [I, E]
-C = [EE, EI, IE, II]
+function potjans_weights(args)
+    Ncells, g_strengths, ccu, scale = args
+    (cumvalues,_,_,conn_probs,syn_pol) = potjans_params(ccu,scale)        
+    Lxx = spzeros(Float32, (Ncells, Ncells))
+    (jee,_,jei,_) = g_strengths 
+    wig = Float32(-20*4.5) 
+    return build_neurons_connections!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
+end
 
-##
-# ToDO make a real interface that uses block arrays.
-## 
-SNN.monitor([C], [:g])
-SNN.monitor([E, I], [:fire])
-inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
-exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
-connection_map = [exc_connection_map,inh_connection_map]
+#pot_conn,x,y,ccu,scale,Lx = protect_variable()
+
+function hide_scope()
+    pop_size::UInt64=100
+    sim_type = Vector{Float32}(zeros(1))
+    #pop_size::Int32=100
+    sim_duration = 1.0second
+    u1 = Float32[10.0*abs(4.0*rand()) for i in 0:1ms:sim_duration]
+    
+    post_synaptic_targets = Array{Array{UInt64}}(undef,pop_size)
+    for i in 1:pop_size
+        post_synaptic_targets[i] = Array{UInt64}([])
+    end
+    @show(typeof(post_synaptic_targets))
+
+    E = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
+
+    I = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
 
 
+    EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
+    EI = SNN.SpikingSynapse(E, I,sim_type; σ = 160*0.27/1, p = 0.055)
+    IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.250)
+    II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.15)
+    P = [I, E]
+    C = [EE, EI, IE, II]
+
+    ##
+    # ToDO make a real interface that uses block arrays.
+    ## 
+    SNN.monitor([C], [:g])
+    SNN.monitor([E, I], [:fire])
+    inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
+    exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
+    connection_map = [exc_connection_map,inh_connection_map]
+    SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
+
+    print("simulation done !")
+    (times,nodes) = SNN.get_trains([E,I])
+    (times,nodes)
+end
+(times,nodes) = hide_scope()
 function get_plot(times,nodes)
     #times,nodes = get_()
     division_size = 10
@@ -82,10 +106,6 @@ function get_plot(times,nodes)
     return mat_of_distances
 end
 
-SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
-
-print("simulation done !")
-(times,nodes) = SNN.get_trains([E,I])#,Gx,Gy])
 mat_of_distances = get_plot(times,nodes)
 
 display(SNN.raster([E,I]))

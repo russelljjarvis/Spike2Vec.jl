@@ -7,8 +7,6 @@ abstract type AbstractIFNF end
 
 """
 A population of cells
-
-
 """
 mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: AbstractIFNF
     N::C
@@ -20,18 +18,18 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
     tr::L
     records::Dict
     post_synaptic_targets::Array{Array{UInt64}} # SVector
+
     function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
         new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
+
     end
 
-    function IFNF(N,fire,u,sim_type)
-        v = typeof(sim_type)(ones(N).-55.) 
+    function IFNF(N,fire,u,sim_type::Array)
+        v = typeof(sim_type)(ones(N).-55.0) 
         g = typeof(sim_type)(zeros(N))
         ge = typeof(sim_type)(zeros(N))
         gi = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
-        #K = length(N)
-
         
         post_synaptic_targets = Array{Array{UInt64}}(undef,N)
         for i in 1:N
@@ -44,26 +42,40 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
     end 
-
-    function IFNF(N,sim_type::CuArray,u)
+    function IFNF(N,fire,u,post_synaptic_targets::Vector{Array{UInt64}})
+        v = typeof(u)(ones(N).-55.) 
+        g = typeof(u)(zeros(N))
+        ge = typeof(u)(zeros(N))
+        gi = typeof(u)(zeros(N))       
+        tr = zeros(typeof(N),N)
+        records::Dict = Dict()
+        IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
+    end 
+    function IFNF(N,sim_type::CuArray,post_synaptic_targets)
         fire::CuArray{Bool} = zeros(Bool,N)
-        IFNF(N,fire,u,sim_type)
-    end 
- 
-    function IFNF(N,sim_type::Array,u)
-        fire::Array{Bool} = zeros(Bool,N)
-        IFNF(N,fire,u,sim_type)
-    end 
- 
-
-    function IFNF(N,sim_type)
         u = typeof(sim_type)(zeros(N))
-        IFNF(N,sim_type,u)
+
+        IFNF(N,fire,u,post_synaptic_targets)
     end 
-    
+ 
+    function IFNF(N,sim_type::Array,post_synaptic_targets)
+        fire::Array{Bool} = zeros(Bool,N)
+        u = typeof(sim_type)(zeros(N))
+
+        IFNF(N,fire,u,post_synaptic_targets)
+    end 
+
+
+    #function IFNF(N::Int,sim_type::Array)
+    #    u = typeof(sim_type)(zeros(N))
+    #    IFNF(N,sim_type,u)
+    #end 
+    #function IFNF(N::UInt64,fire::Array{Bool},sim_type::Array,post_synaptic_targets::Vector{Array{UInt64}})
+        #fire::Array{Bool} = zeros(Bool,N)
+    #    IFNF(N,post_synaptic_targets)
+    #end 
 
 end    
-
 """
     [Noise Free Integrate-And-Fire Neuron](https://neuronaldynamics.epfl.ch/online/Ch1.S3.html)
 """
