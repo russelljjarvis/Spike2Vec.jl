@@ -34,7 +34,6 @@ function julia_tonic_spike_cache()
     
     #events::Array{NTuple{5,Int64},1} = dataset.get_dataset_item(training_order[batch:batch+100-1])
     @inbounds @showprogress for ind in training_order
-        shuffle!(training_order)
         events,label = py"get_dataset_item"(py"dataset", ind)
         midway_events = convert(Array{Array{Int32}}, events)
         #n_events = length(midway_events)
