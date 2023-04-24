@@ -173,14 +173,15 @@ end
 Similar to the methods above except that cells and synapses are instantiated in place to cut down on code
 """
 function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
-    cntees=[]
-    cnteis=[]
-    cnties=[]
-    cntiis=[]
-    cnteet=[]
-    cnteit=[]
-    cntiet=[]
-    cntiit=[]
+    #cntees=[]
+    #cnteis=[]
+    #cnties=[]
+    #cntiis=[]
+    
+    cntet=[]
+    #cnteit=[]
+    cntit=[]
+    #cntiit=[]
 
     weightse=[]
     weightsi=[]
@@ -200,14 +201,14 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
                             if syn0==1
                                 if syn1==1
                                     cntee+=1 
-                                    append!(cntees,src)
-                                    append!(cnteet,tgt)
+                                    #append!(cntees,src)
+                                    append!(cntet,tgt)
                                     append!(weightse,jee)
 
                                     setindex!(Lee,jee, src,tgt)
                                 elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
-                                    append!(cnteis,src)
-                                    append!(cnteit,tgt)
+                                    append!(cntet,src)
+                                    #append!(cnteit,tgt)
           
                                     cntei+=1 
                                     setindex!(Lei,jei, src,tgt)
@@ -217,14 +218,14 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
                             elseif syn0==0         
                                 if syn1==1 
                                     cntie+=1 
-                                    append!(cnties,src)
-                                    append!(cntiet,tgt)
+                                    #append!(cnties,src)
+                                    append!(cntit,tgt)
                                     append!(weightse,jie)
         
                                     setindex!(Lie,wig, src,tgt)
                                 elseif syn1==0pop_size
-                                    append!(cntiis,src)
-                                    append!(cntiit,tgt)
+                                    #append!(cntiis,src)
+                                    append!(cntit,tgt)
                                     append!(weightse,jii)
 
                                     cntii+=1
@@ -254,8 +255,8 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
         end
 
     end
-    E_ = SNN.IFNF(cntepopsize,sim_type)
-    I_ = SNN.IFNF(cntipopsize,sim_type)
+    E_ = SNN.IFNF(cntepopsize,sim_type,post_synaptic_targets)
+    I_ = SNN.IFNF(cntipopsize,sim_type,post_synaptic_targets)
     #EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
 
 end
