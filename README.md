@@ -1,9 +1,12 @@
 
 [![CI](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/actions/workflows/ci.yml)
 
-# SpikeThroughput.jl
+# SpikeTime.jl
 
 ## About
+### TLDR
+SpikeTime is a high-throughput spiking simulator and a high-throughput analysis effort. The idea is to make a larger scale simulations, with the least amount of tech-debt.
+
 SpikeThroughput is a SNN simulator that supports high spike throughput processing. SpikeThoughput exploits modern Language features for larger and easier simulations of spiking neural betworks. Some gains in biologically faithful neuronal network simulation can be achieved merely by selecting and recombining recent computer language features. 
 
 * a simulation part, which was largely inherited and has since been improved for speed and efficiency.
