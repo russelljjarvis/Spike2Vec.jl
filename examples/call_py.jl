@@ -2,12 +2,13 @@ using PyCall
 using StaticArrays
 using ProgressMeter
 using JLD2
+using Random
+
 py"""
-from os.path import exists
 import os
 import tonic
 import torch
-dataset = tonic.datasets.SMNIST(os.getcwd()+'../datasets',train=False) #,train=True,num_neurons=999,dt=1.0)
+dataset = tonic.datasets.SMNIST(os.getcwd()+'../datasets',train=False,dt=0.1,num_neurons=121) #,train=True,num_neurons=999,dt=1.0)
 
 def get_info(dataset):
     return (len(dataset),dataset.sensor_size)
@@ -25,14 +26,19 @@ def get_dataset_item(dataset, index):
 
 function julia_tonic_spike_cache()
     (iter_num,dim) = py"get_info"(py"dataset")
-    @show(typeof(iter_num))
-    spikes = []#Array{Int32(iter_num),Tuple}
-    labels = []#Array{Int32(iter_num),Tuple}
-
-    @inbounds @showprogress for i in 1:100#iter_num
-        events,label = py"get_dataset_item"(py"dataset", i)
-        #@show(events)        
+    spikes = []::Vector{Any}#{Int32(iter_num),Tuple}
+    labels = []::Vector{Any}#Array{Int32(iter_num),Tuple}
+    first_layer_input_ch::Int32 = dim[3]
+    training_order = shuffle(1:100)
+    @show(training_order)
+    
+    #events::Array{NTuple{5,Int64},1} = dataset.get_dataset_item(training_order[batch:batch+100-1])
+    @inbounds @showprogress for ind in training_order
+        shuffle!(training_order)
+        events,label = py"get_dataset_item"(py"dataset", ind)
         midway_events = convert(Array{Array{Int32}}, events)
+        #n_events = length(midway_events)
+
         append!(spikes,midway_events)
         midway_label = convert(Int8, label)
         append!(labels,midway_label)
@@ -45,7 +51,17 @@ function julia_tonic_spike_cache()
     (spikes,labels)
 
 end
+#if !isfile("SMNISTspikey.jld")
 spikes,labels = julia_tonic_spike_cache()
+#else
+#    @load "SMNISTspikey.jld" spikes labels
+#end
+
+@inbounds @showprogress for (ind,(midway_events,label)) in enumerate(zip(spikes,labels))
+    @inbounds for (x,y,ts) in zip((i for i in midway_events[1,:]),(i for i in midway_events[2,:]),(i for i in midway_events[3,:]))
+        @show(x,y,ts,label)
+    end
+end
 
 #final = convert(Array{length(midway),{Tuple{Int32,3}}},midway)
 #pre_final = SArray{NTuple{3,Int32}}
