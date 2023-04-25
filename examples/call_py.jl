@@ -15,8 +15,19 @@ def get_info(dataset):
 
 def get_dataset_item(dataset, index):
     events, label = dataset[index]
-    return (events,label,len(dataset),dataset.sensor_size)
-"""
+    return (events,label)
+
+def get_dataset_item(dataset, indices):
+    events = []
+    labels = []
+    for index in indices
+       events_, label_ = dataset[index]
+       events.append(events_)
+       labels.append(label_)
+
+    return (events,labels)
+
+    """
 
 #self._dataset = tonic.datasets.SMNIST(os.getcwd()+"../datasets",train=False,num_neurons=999,dt=1.0,train=train, first_saccade_only=first_saccade_only,transform=transform))
 
