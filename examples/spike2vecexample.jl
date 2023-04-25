@@ -1,4 +1,4 @@
-using
+#using
 using DrWatson
 using Plots
 using SpikingNeuralNetworks
@@ -12,7 +12,8 @@ using ProgressMeter
 using ColorSchemes
 using PyCall
 using LinearAlgebra
-@quickactivate "spike2vec"
+using Ridgeline
+#@quickactivate "spike2vec"
 
 initialize_project("spike2vec"; authors="Dr Russell Jarvis", force=true)
 
@@ -123,6 +124,7 @@ function get_plot(times,nodes,division_size)
     end
     #nb %% A slide [code] {"slideshow": {"slide_type": "subslide"}}
     display(fig)
+    Ridgeline.ridgeline(mat_of_distances)
     #savefig("vectors_wrapped.png")
     return mat_of_distances,fig
 end
