@@ -10,8 +10,10 @@ SpikeTime is a high-throughput spiking simulator and a high-throughput analysis 
 SpikeThroughput is a SNN simulator that supports high spike throughput processing. SpikeThoughput exploits modern Language features for larger and easier simulations of spiking neural betworks. Some gains in biologically faithful neuronal network simulation can be achieved merely by selecting and recombining recent computer language features. 
 
 * a simulation part, which was largely inherited and has since been improved for speed and efficiency.
-* a structural analysis part, which also helps for things like load balancing the network.
+
 * a temporal analysis part.
+
+* a structural analysis part, which also helps for things like distributing newtwork representation to minimise spike traffic between simulation hardware nodes (FPGAs).
 
 ### Temporal Analysis
 Neural activity in a window can be represented as a coordinate in high-dimensional space. When mammal brains enact object recognition, encoded memories guide cortical neurons to “replay” previously seen neural states, which happen to be states that correspond to familiar scenes. 
