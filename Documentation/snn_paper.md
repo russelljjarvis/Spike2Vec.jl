@@ -1,5 +1,5 @@
 -----
-title: 'High ThroughPut Spiking Simulators: Exploiting Modern Language Features in Spiking Neural Networks Simulations.'
+title: 'Spike Time: Exploiting Modern Language Features for High Throughput Spiking Network Simulations, at a Lower Tech Debt '
 tags:
   - Simulation of Spiking Neural Networks.
   - Computational Neuroscience
