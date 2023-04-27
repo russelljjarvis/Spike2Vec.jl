@@ -66,12 +66,12 @@ function hide_scope(config)
     I = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
 
 
-    EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
-    EI = SNN.SpikingSynapse(E, I,sim_type; σ = 160*0.27/1, p = 0.055)
-    IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.250)
-    II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.15)
-    P = [I, E]
-    C = [EE, EI, IE, II]
+    #EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
+    #EI = SNN.SpikingSynapse(E, I,sim_type; σ = 160*0.27/1, p = 0.055)
+    #IE = SNN.SpikingSynapse(I, E,sim_type; σ = -160*0.27/1, p = 0.250)
+    #II = SNN.SpikingSynapse(I, I,sim_type; σ = -160*0.27/1, p = 0.15)
+    #P = [I, E]
+    #C = [EE, EI, IE, II]
 
     ##
     # ToDO make a real interface that uses block arrays.
