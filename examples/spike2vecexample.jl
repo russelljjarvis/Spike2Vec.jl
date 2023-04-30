@@ -15,8 +15,10 @@ using LinearAlgebra
 using Ridgeline
 using Makie
 using KernelDensity,Distributions
+using JLD
 using CairoMakie#,KernelDensity, Distributions
 #@quickactivate "spike2vec"
+#@load "all_mnmist.jld" storage
 
 initialize_project("spike2vec"; authors="Dr Russell Jarvis", force=true)
 
@@ -41,32 +43,30 @@ function protect_variable()
     scale = 1.0
     (pot_conn,x,y,ccu) = build_neurons_connections(scale)
     Lx = Vector{Int64}(zeros(size(pot_conn)))
-    return pot_conn,x,y,ccu,scale,Lx
-end;
+    return E,I
+include("../src/models/genPotjansWiring.jl")
+#potjans_weights(args)
 
+#=
 function potjans_weights(args)
     Ncells, g_strengths, ccu, scale = args
     (cumvalues,_,_,conn_probs,syn_pol) = potjans_params(ccu,scale)        
     Lxx = spzeros(Float32, (Ncells, Ncells))
     (jee,_,jei,_) = g_strengths 
     wig = Float32(-20*4.5) 
+    Lxx = spzeros(Float32, (Ncells, Ncells))
+    #Lie = spzeros(Float32, (Ncells, Ncells))
+    #Lei = spzeros(Float32, (Ncells, Ncells))
+    #Lii = spzeros(Float32, (Ncells, Ncells))
     return build_neurons_connections!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
 end;
+=#
 
 #pot_conn,x,y,ccu,scale,Lx = protect_variable()
 
 function hide_scope(config)
     @unpack pop_size,sim_duration = config
-    u1 = Float32[10.0*abs(4.0*rand()) for i in 0:1ms:sim_duration]
-    
-    post_synaptic_targets = Array{Array{UInt64}}(undef,pop_size)
-    for i in 1:pop_size
-        post_synaptic_targets[i] = Array{UInt64}([])
-    end
-
-    E = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
-
-    I = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
+    E,I = protect_variable()
 
 
     #EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
@@ -79,12 +79,12 @@ function hide_scope(config)
     ##
     # ToDO make a real interface that uses block arrays.
     ## 
-    SNN.monitor([C], [:g])
-    SNN.monitor([E, I], [:fire])
-    inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
-    exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
-    connection_map = [exc_connection_map,inh_connection_map]
-    SNN.sim!(P, C;conn_map= connection_map, current_stim = u1, duration = sim_duration)
+    #SNN.monitor([C], [:g])
+    #SNN.monitor([E, I], [:fire])
+    #inh_connection_map=[(E,EE,1,E),(E,EI,1,I)]
+    #exc_connection_map=[(I,IE,-1,E),(I,II,-1,I)]
+    #connection_map = [exc_connection_map,inh_connection_map]
+    SNN.sim!(P, duration = sim_duration)
 
     (times,nodes) = SNN.get_trains([E,I])
     (times,nodes,E,I)
@@ -167,8 +167,10 @@ function run_simulation(config)
     #@unpack pop_size,sim_duration,division_size = config
     
     #pyimport("tonic")
-
+    println("trying to simulate neurons")
     (times,nodes,E,I) = hide_scope(config)
+    println("succeeded to simulate neurons")
+
     @unpack division_size = config
     @time (mat_of_distances,f) = get_plot(times,nodes,division_size)
     display(f)

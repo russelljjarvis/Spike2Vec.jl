@@ -2,6 +2,12 @@ using KernelAbstractions
 using KernelAbstractions: @atomic, @atomicswap, @atomicreplace
 using Revise
 using StaticArrays
+using LoopVectorization
+using Unitful
+#import Unitful: V, s, ms, μs, A, Hz
+
+## https://github.com/PainterQubits/Unitful.jl/issues/644
+#import Unitful: ustrip
 
 abstract type AbstractIFNF end
 
@@ -105,6 +111,7 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
     vSS::Real =-55.
     v0::Real = -100. 
     tref = 10.0
+    #dt dt*ms
 
     @inbounds for i = 1:N
 
@@ -112,7 +119,7 @@ function integrate!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Ve
         gi[i] += dt * -gi[i] / τi
         g = ge[i] + gi[i]           
         v[i] = v[i] + (g+u[i]) * R / τ
-        v[i] += (dt/τ) * (-v[i] + vSS)
+        v[i] += (dt/τ) * (-v[i] + vSS)# *V
         if tr[i] > 0  # check if in refractory period
             v[i] = vSS  # set voltage to reset
             tr[i] = tr[i] - 1 # reduce running counter of refractory period

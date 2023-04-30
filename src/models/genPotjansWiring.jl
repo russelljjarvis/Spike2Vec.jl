@@ -172,7 +172,7 @@ end
 """
 Similar to the methods above except that cells and synapses are instantiated in place to cut down on code
 """
-function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
+function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
     #cntees=[]
     #cnteis=[]
     #cnties=[]
@@ -183,9 +183,10 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
     cntit=[]
     #cntiit=[]
 
-    weightse=[]
-    weightsi=[]
-    
+    weights=[]
+    #weightsi=[]
+    cnte = 0
+    cnti = 0
     
     @inbounds @showprogress for (i,v) in enumerate(cumvalues)
         @inbounds for (j,v1) in enumerate(cumvalues)
@@ -200,35 +201,35 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
 
                             if syn0==1
                                 if syn1==1
-                                    cntee+=1 
+                                    cnte+=1 
                                     #append!(cntees,src)
-                                    append!(cntet,tgt)
-                                    append!(weightse,jee)
+                                    push!(cntet,tgt)
+                                    push!(weights,jee)
 
                                     setindex!(Lee,jee, src,tgt)
                                 elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
-                                    append!(cntet,src)
+                                    push!(cntet,src)
                                     #append!(cnteit,tgt)
           
-                                    cntei+=1 
+                                    cnte+=1 
                                     setindex!(Lei,jei, src,tgt)
-                                    append!(weightse,jei)
+                                    push!(weights,jei)
 
                                 end
                             elseif syn0==0         
                                 if syn1==1 
-                                    cntie+=1 
+                                    cnti+=1 
                                     #append!(cnties,src)
-                                    append!(cntit,tgt)
-                                    append!(weightse,jie)
+                                    push!(cntit,tgt)
+                                    push!(weights,jie)
         
                                     setindex!(Lie,wig, src,tgt)
                                 elseif syn1==0pop_size
                                     #append!(cntiis,src)
-                                    append!(cntit,tgt)
-                                    append!(weightse,jii)
+                                    push!(cntit,tgt)
+                                    push!(weights,jii)
 
-                                    cntii+=1
+                                    cnti+=1
                                     setindex!(Lii,wig, src,tgt)
                                 end
                             end 
@@ -255,10 +256,25 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, Int64},Lei::Spa
         end
 
     end
-    E_ = SNN.IFNF(cntepopsize,sim_type,post_synaptic_targets)
-    I_ = SNN.IFNF(cntipopsize,sim_type,post_synaptic_targets)
-    #EE = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
+    symtype = Vector{Float32}(zeros(cntepopsize))
+   
+    post_synaptic_targets = Array{Array{UInt64}}(undef,pop_size)
+    for i in 1:pop_size
+        post_synaptic_targets[i] = Array{UInt64}([])
+    end
 
+    E_ = SNN.IFNF(cntepopsize,sim_type,post_synaptic_targets,weights)
+    I_ = SNN.IFNF(cntipopsize,sim_type,post_synaptic_targets,weights)
+
+    #u1 = Float32[10.0*abs(4.0*rand()) for i in 0:1ms:sim_duration]
+    
+   
+    #E = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
+    #I = SNN.IFNF(pop_size,sim_type,post_synaptic_targets)
+
+    #(E,I)
+    #potjans_pop = SNN.SpikingSynapse(E, E,sim_type; σ = 160*0.27/1, p = 0.025)
+    (E_,I_)
 end
 
 """

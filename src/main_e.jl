@@ -78,7 +78,7 @@ end
 # membrane.
 """
 function forwards_euler_weights!(post_targets::Array{Array{UInt64}},W::Array{Array{Float64}}, fireJ::Vector{Bool},g::Vector)    
-    @inbounds for (ind,cell) in enumerate(post_targets)
+    @inline for (ind,cell) in enumerate(post_targets)
         if fireJ[ind]
             for s in cell
                 if W[s]>0

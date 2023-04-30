@@ -7,7 +7,7 @@ using LinearAlgebra
 using SparseArrays
 using Requires
 using UnPack
-using CUDA
+#using CUDA
 using ProgressMeter
 using Setfield
 
