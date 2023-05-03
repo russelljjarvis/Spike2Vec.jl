@@ -124,6 +124,10 @@ function post_proc_viz(mat_of_distances)
     return angles0,distances0,angles1,distances1
 end
 
+
+"""
+Final plot where clustering should occur.
+"""
 function final_plots2(mat_of_distances)
     #normalize!(mat_of_distances[:,:])
     #fit!(ZScoreTransform, mat_of_distances, dims=2)
@@ -143,6 +147,12 @@ function final_plots2(mat_of_distances)
     #cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
     #plot!(angles1,distances1, proj=:polar)  |>display   
     plot!(angles1,distances1,marker =:circle, arrow=(:closed, 3.0)) 
+
+
+    ##
+    # do cl
+    # # 
+
     savefig("statemvements.png")   
     (angles1,distances1)
 end
