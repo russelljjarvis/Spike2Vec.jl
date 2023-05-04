@@ -1,19 +1,22 @@
 
 using SGtSNEpi, Random
+using Revise
 #import SGtSNEpi.neighbor_recall
 using CairoMakie, Colors, LinearAlgebra
 using GLMakie
 using Graphs
 #import Graphs.label_propagation
-using Leiden
+#using Leiden
 import StatsBase.mean
 
 GLMakie.activate!()
-include("genPotjansWiring.jl")
+include("../src/models/genPotjansWiring.jl")
 function protect_variable()
     scale = 1.0
     (pot_conn,x,y,ccu) = potjans_layer(scale)
+    @show(pot_conn)
     Lx = Vector{Int64}(zeros(size(pot_conn)))
+    
     return pot_conn,x,y,ccu,scale,Lx
 end
 pot_conn,x,y,ccu,scale,Lx = protect_variable()

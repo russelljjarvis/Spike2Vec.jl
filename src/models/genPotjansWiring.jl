@@ -154,11 +154,11 @@ function build_matrix_prot!(wig::Float32,jee::Float32,jei::Float32,Lxx::SparseMa
         end
     end
     #Lxx = Lee+Lei+Lii+Lie
-    Lxx[diagind(Lxx)] .= 0.0
+    #Lxx[diagind(Lxx)] .= 0.0
 
     #display(Lxx)
     ## Note to self function return annotations help.
-    #Lxx#,Lee,Lei,Lii,Lie
+    Lxx#,Lee,Lei,Lii,Lie
 end
 
 function make_proj(xx,pop)

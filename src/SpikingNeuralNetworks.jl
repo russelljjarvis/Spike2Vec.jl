@@ -7,7 +7,7 @@ using LinearAlgebra
 using SparseArrays
 using Requires
 using UnPack
-#using CUDA
+using CUDA
 using ProgressMeter
 using Setfield
 
@@ -22,6 +22,7 @@ export IFNF
 include("unit.jl")
 include("models/genPotjansWiring.jl")
 export potjans_layer
+export build_neurons_connections
 #include("plot.jl")
 #include("neuron/if.jl")
 #include("neuron/16bit_if.jl")
