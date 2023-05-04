@@ -2,6 +2,7 @@ using PyCall
 using SpikingNeuralNetworks
 using ProgressMeter
 using Revise
+using JLD
 py"""
 import feather
 def read():
@@ -12,7 +13,20 @@ def read():
 df = py"read"();
 times = df.t
 nodes = df.i
-division_size = maximum(times)/10.0
+function ragged_to_uniform(df)
+    nnn=[];
+    ttt=[];
+    for (i, t) in enumerate(times)
+        for tt in t
+            push!(nnn,i);push!(ttt,tt)
+        end
+    end
+    (nnn,ttt)
+end
+(nnn,ttt) = ragged_to_uniform(df)
+division_size = maximum(ttt)/10.0
+
+get_plot(ttt, nnn, division_size)
 
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
@@ -71,11 +85,3 @@ function get_plot(times,nodes,division_size)
     return mat_of_distances,f
 end
 
-get_plot(ttt, nnn, division_size[1])
-nnn=[];
-ttt=[];
-for (i, t) in enumerate(times)
-    for tt in t
-        push!(nnn,i);push!(ttt,tt)
-    end
-end
