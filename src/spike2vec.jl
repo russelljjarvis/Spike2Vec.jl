@@ -125,25 +125,9 @@ function post_proc_viz(mat_of_distances)
 end
 
 function final_plots2(mat_of_distances)
-    #normalize!(mat_of_distances[:,:])
-    #fit!(ZScoreTransform, mat_of_distances, dims=2)
-    #for (ind,row) in enumerate(eachcol(mat_of_distances))
-    #    mat_of_distances[:,ind].- mean.(mat_of_distances)./std.(mat_of_distances)
-    #end
-    #for (ind,_) in enumerate(eachcol(mat_of_distances))
-    #    mat_of_distances[:,ind] = mat_of_distances[:,ind].- mean(mat_of_distances)./std(mat_of_distances)
-    #end
-    #mat_of_distances[ind,:] = mat_of_distances[ind,:].- mean(mat_of_distances)./std(mat_of_distances)
-
-    #mat_of_distances ./ norm.(eachcol(mat_of_distances))'
-
     angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
-    #display(scatter(angles0,distances0))#,color=cs1))
-    #display(scatter(angles1,distances1))#,color=cs1))
-    #cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
-    #plot!(angles1,distances1, proj=:polar)  |>display   
     plot!(angles1,distances1,marker =:circle, arrow=(:closed, 3.0)) 
-    savefig("statemvements.png")   
+    savefig("statemvements_nmn.png")   
     (angles1,distances1)
 end
 
