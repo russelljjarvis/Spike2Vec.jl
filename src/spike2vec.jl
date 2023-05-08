@@ -11,7 +11,7 @@ using AngleBetweenVectors
 using Revise
 #using OnlineStats, Plots#, Random
 #using DataFrames
-#using UMAP
+using UMAP
 using Distances
 using StaticArrays
 
@@ -56,23 +56,12 @@ But it's also a good idea to use the networks most recently past windows as refe
 
 """
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
-    for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1)) 
-        #@show(minimum(n1_), maximum(n1_), sum(n1_))
-        #if length(n0_) != 0 
-        #    n0_ = LinRange(minimum(n1_), maximum(n1_), Int32(length(n0_)))[:]       
-            #n0_ = nxxx_
-            #@show(nxxx_)
-        #    @show(n0_)
-        
-        #end
-        
+    for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
         if length(n0_) != 0 && length(n1_) != 0
             pooledspikes = vcat(n0_,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
-
             t1_ = sort(unique(n0_))
             t0_ = sort(unique(n1_))
-
             t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
             self_distances[ind]=abs(sum(S))
         else
@@ -150,14 +139,7 @@ function surrogate_to_uniform(times_,segment_length,mean_spk_counts)
     spk_counts = []
     for (neuron, t) in enumerate(times_)#nxxx_
         append!(spk_counts,length(t))
-
-
     end
-
-    # x = LinRange(0, 1, 100) 
-    # temp = 4
-
-
     uniform_spike_setter!(times,times_,spk_counts,segment_length,mean_spk_counts)
     times
 end
@@ -183,6 +165,9 @@ function post_proc_viz(mat_of_distances)
     return angles0,distances0,angles1,distances1
 end
 
+"""
+Final plot where clustering should occur.
+"""
 function final_plots2(mat_of_distances)
     angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
     plot!(angles1,distances1,marker =:circle, arrow=(:closed, 3.0)) 

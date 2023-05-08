@@ -4,6 +4,7 @@ using Revise
 using StaticArrays
 using LoopVectorization
 using Unitful
+using CUDA
 #import Unitful: V, s, ms, μs, A, Hz
 
 ## https://github.com/PainterQubits/Unitful.jl/issues/644
