@@ -24,6 +24,8 @@ using Distances
 
 using Plots
 using StaticArrays
+using OnlineStats
+
 
 function filter_on_off(x,y,times,p,l,nodes)
     xo=[];yo=[];timeso=[];po=[];lo=[];nodeso=[]
@@ -171,7 +173,7 @@ function get_plot(storage)
     spike_distance_size = length(storage)
     n0ref = expected_spike_format(nodes,times)
     non_zero_spikings=[]
-    for tx in n0ref
+    @inbounds for tx in n0ref
         if length(tx)!=0
             push!(non_zero_spikings,length(tx)) 
         end
@@ -181,9 +183,25 @@ function get_plot(storage)
     linear_uniform_spikes = Vector{Float32}([i for i in temp])
 
     p = Plots.plot()
-    Plots.scatter(linear_uniform_spikes,[i for i in collect(1:length(unique(nodes)))])
+    @inbounds for xx in collect(1:length(unique(nodes)))
+        altitude = [xx for i in collect(1:length(unique(nodes)))]
+        Plots.scatter!(p,linear_uniform_spikes,altitude, legend = false,markersize=0.1)
+    end
     savefig("UniformSpikes.png")
-    p=nothing
+    #p=nothing
+    #p = Plots.plot()
+    #o = fit!(IndexedPartition(Float32, KHist(length(unique(nodes))), length(unique(nodes)), zip(nodes, times)))
+    #plot(o)
+
+    #@time o = IndexedPartition(Float64, KHist(100), 100)
+    #@time fit!(o,zip(convert(Vector{Float64},nodes),convert(Vector{Float64},times)))
+    #o = HeatMap(0:.1:maximum(times), 1:1:length(unique(nodes)))
+    #fit!(o, zip(linear_uniform_spikes, altitude))
+
+    #x, y = randn(10^6), 5 .+ randn(10^6)
+    #plot(o, marginals=false, legend=true)
+    #plot(o) 
+    #savefig("UniformLabelledSpikesPartition$l.png")
 
     return (linear_uniform_spikes,mean_spk_counts,nodes,length(storage))
 end
@@ -195,59 +213,87 @@ function expected_spike_format(nodes1,times1)
         push!(n0ref,[])
     end
     @inbounds for i in collect(1:length(unique(nodes1)))
-        for (neuron, t) in zip(nodes1,times1)#nxxx_
+        @inbounds for (neuron, t) in zip(nodes1,times1)
             if i == neuron
                 push!(n0ref[Int32(i)],Float32(t))
             end            
         end
-        @show(length(n0ref[Int32(i)]))
     end
     n0ref
 end
 
 function get_plot2(storage)
-
     (linear_uniform_spikes,mean_spk_counts,nodes,spike_distance_size) = get_plot(storage)
     p = Plots.plot()
-    mat_of_distances = Array{Float32}(zeros(spike_distance_size,length(nodes)+1))
+    #mat_of_distances = Array{Float32}(zeros(spike_distance_size,length(unique(nodes))+1))
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
+    list_lists = Vector{Any}([])
+    px = Plots.plot()
 
     @inbounds @showprogress for (ind,s) in enumerate(storage)
-        (times,nodes,labels) = (s[3],s[5],s[6])
+        (times,labels,nodes) = (s[3],s[5],s[6])
+        #(x,y,times,p,l,nodes) = (s[1],s[2],s[3],s[4],s[5],s[6])
+
+        #@show(times)
+        #@show(nodes)
+        #if length(nodes)>2
         ll=labels[1]
         l = convert(Int32,ll)
-        #@show(l,ind)
-        #Plots.scatter(times,nodes)
-        #savefig("NMIST_LABEL_SCATTER_$l.$ind.png")
+        p = Plots.plot()
+        Plots.scatter(times,nodes, legend = false,markersize=0.1)
+        savefig("LabelledSpikes$l.png")
+        p = Plots.plot()
+        #o = fit!(IndexedPartition(Float32, KHist(length(unique(nodes))), length(unique(nodes)), zip(nodes, times)))
+        #plot(o)
 
-        #(x,y,times,p,l,nodes,x1,y1,times1,p1,l1,nodes1) = filter_on_off(xx,yy,tt,pp,ll,nn)
-        self_distance_populate = Array{Float32}(zeros(length(nodes)+1))
+        #@time o = IndexedPartition(Float64, KHist(100), 100)
+        #@time fit!(o,zip(convert(Vector{Float64},nodes),convert(Vector{Float64},times)))
+        o = HeatMap(0:.1:maximum(times), 1:1:length(unique(nodes)))
+        fit!(o, zip(times, nodes))
+
+        #x, y = randn(10^6), 5 .+ randn(10^6)
+        plot(o, marginals=false, legend=true)
+        #plot(o) 
+        savefig("LabelledSpikesPartition$l.png")
+        self_distance_populate = Array{Float32}(zeros(length(unique(nodes))+1))
 
         if length(times) > 1
-
             times = expected_spike_format(nodes,times)
-            #@show(length(times[1]))
-            #@show(length(times))
-            # get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Any}, self_distances::Vector{Float32})
-
-            self_distance_populate = Array{Float32}(zeros(length(unique(nodes))+1))
-
             get_vector_coords_uniform!(linear_uniform_spikes,times,self_distance_populate)
-            #@show(self_distance_populate)
-            #mat_of_distances[ind,:] = self_distance_populate
-            #@show(self_distance_populate)
-            #@show(prev)
+            Plots.plot!(px,self_distance_populate.+prev,label="$l")
+            push!(list_lists,self_distance_populate)
+            prev += maximum(self_distance_populate)
 
-            #if ind>1
-            #    p = Plots.plot!(p,self_distance_populate.+prev,label="$ind")
-            #else
-            #    p = Plots.plot!(p,self_distance_populate,label="$ind.$l")
-            #end
-            #prev += maximum(self_distance_populate)
-            #Plots.plot!(legend=:outerbottom, legendcolumns=length(mat_of_distances))
-            #savefig("NMNIST_codes_$l.$ind.png")
+            #mat_of_distances[:,ind] = self_distance_populate
+
+            #size(mat_of_distances) = (300, 6972)
+            #size(mat_of_distances[ind, :]) = (6972,)
+            #size(self_distance_populate) = (8007,)
+            
+
         end
+
+    #end
     end
+    savefig("allFiguresCodes.png")
+
+    @save "matrix_vectors.jld" list_lists
+
+    return list_lists
+    #return mat_of_distances
+end
+#division_size=maximum(times)/10.0
+#label_inventory_size = length(unique(labels))
+
+function function_do(list_lists,storage)
+    ll = []
+
+    @inbounds @showprogress for (ind,s) in enumerate(storage)
+        labels = s[5]
+        push!(ll,labels)
+    end
+
+    mat_of_distances = Array{Float32}(zeros(list_lists,length(unique(list_lists[1]))+1))
     for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[ind,:] .= (col.-mean(col))./std(col)
     end
@@ -262,16 +308,23 @@ function get_plot2(storage)
         end
         prev += maximum(row)
     end
+    Plots.plot!(legend=:outerbottom, legendcolumns=length(mat_of_distances))
+
     savefig("NMNIST_codes.png")
-
-    return mat_of_distances
 end
-#division_size=maximum(times)/10.0
-#label_inventory_size = length(unique(labels))
-@load "all_mnmist.jld" storage
 
-mat_of_distances = get_plot2(storage)
 
+if isfile("matrix_vectors.jld")
+    @load "matrix_vectors.jld" list_lists 
+    @load "all_mnmist.jld" storage
+
+    function_do(list_lists,storage)
+else
+    @load "all_mnmist.jld" storage
+    list_lists = get_plot2(storage)
+    function_do(mat_of_distances)
+
+end
 function post_proc_viz(mat_of_distances)
     # ] add https://github.com/JeffreySarnoff/AngleBetweenVectors.jl
     # ] add Distances
