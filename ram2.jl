@@ -10,20 +10,19 @@ using SpikingNeuralNetworks
 #using Test
 using Revise
 using StatsBase
-#using ProgressMeter
+using ProgressMeter
 using ColorSchemes
 using PyCall
 using LinearAlgebra
 #using Ridgeline
-#using Makie
+using Makie
 #using KernelDensity,Distributions
 using JLD
-#using CairoMakie#,KernelDensity, Distributions
+using CairoMakie#,KernelDensity, Distributions
 using ProgressMeter
 using Distances
 
 using Plots
-using StaticArrays
 
 function filter_on_off(x,y,times,p,l,nodes)
     xo=[];yo=[];timeso=[];po=[];lo=[];nodeso=[]
@@ -64,6 +63,8 @@ function load_datasets()
     @showprogress for (ind,s) in enumerate(storage)
 
         (x,y,times,p,l,nodes) = (s[1],s[2],s[3],s[4],s[5],s[6])
+        (x,y,times,p,l,nodes,x1,y1,times1,p1,l1,nodes1) = filter_on_off(x,y,t,p,l,n)
+
         if  maximum(times) > window_size
             window_size = maximum(times)
         end
@@ -75,7 +76,7 @@ function load_datasets()
         append!(nn,nodes)
     end
 
-    (x,y,times,p,l,nodes,x1,y1,times1,p1,l1,nodes1) = filter_on_off(xx,yy,tt,pp,ll,nn)
+    #(x,y,times,p,l,nodes,x1,y1,times1,p1,l1,nodes1) = filter_on_off(xx,yy,tt,pp,ll,nn)
 
     #(xo,yo,timeso,po,lo,nodeso,x1,y1,times1,p1,l1,nodes1) = filter_on_off(x,y,times,p,l,nodes)
     #@show(p)
@@ -89,7 +90,7 @@ function load_datasets()
     y = [UInt32(y_+1) for y_ in y ]
     return (x,y,times,p,l,nodes,window_size)
 end
-#   (x,y,times,p,labels,nodes) = load_datasets()
+(x,y,times,p,labels,nodes,perm) = load_datasets()
 #labels = l
 #using UnicodePlots
 #using SparseArrays
@@ -152,126 +153,110 @@ function get_changes(times,labels)
     end
     time_break
 end
-#time_break = get_changes(times,labels)
+time_break = get_changes(times,labels)
 #@show(time_break)
 
+#display(Plots.scatter(times,nodes))
 #display(Plots.scatter(times,nodes,markersize=0.01))
-#p=Plots.scatter(times,nodes,markersize=0.01)
+p=Plots.scatter(times,nodes,markersize=0.01)
 #Plots.vline!(p,time_break,markersize=0.01)
-#savefig("nmist_raster_plot.png")
-#nodes = convert(Vector{Int32},nodes)
+savefig("nmist_raster_plot.png")
+nodes = convert(Vector{Int32},nodes)
 
 #dt = 0.1
 #tau = 0.4
 #plot_umap(nodes,times,dt,tau;file_name="UMAP_OF_NMNIST.png")
-
-
-function get_plot(storage)
-    times,nodes = storage[1][3],storage[1][6]
-    spike_distance_size = length(storage)
-    n0ref = expected_spike_format(nodes,times)
-    non_zero_spikings=[]
-    for tx in n0ref
-        if length(tx)!=0
-            push!(non_zero_spikings,length(tx)) 
-        end
-    end
-    mean_spk_counts = Int32(round(mean(non_zero_spikings)))
-    temp = LinRange(0.0, maximum(times), mean_spk_counts)
-    linear_uniform_spikes = Vector{Float32}([i for i in temp])
-
-    p = Plots.plot()
-    Plots.scatter(linear_uniform_spikes,[i for i in collect(1:length(unique(nodes)))])
-    savefig("UniformSpikes.png")
-    p=nothing
-
-    return (linear_uniform_spikes,mean_spk_counts,nodes,length(storage))
-end
-
-function expected_spike_format(nodes1,times1)
-    nodes1 = [i+1 for i in nodes1]
-    n0ref =  []
-    @inbounds for i in collect(1:length(unique(nodes1)))
-        push!(n0ref,[])
-    end
-    @inbounds for i in collect(1:length(unique(nodes1)))
-        for (neuron, t) in zip(nodes1,times1)#nxxx_
-            if i == neuron
-                push!(n0ref[Int32(i)],Float32(t))
-            end            
-        end
-        @show(length(n0ref[Int32(i)]))
-    end
-    n0ref
-end
-
-function get_plot2(storage)
-
-    (linear_uniform_spikes,mean_spk_counts,nodes,spike_distance_size) = get_plot(storage)
-    p = Plots.plot()
-    mat_of_distances = Array{Float32}(zeros(spike_distance_size,length(nodes)+1))
-    cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
-
-    @inbounds @showprogress for (ind,s) in enumerate(storage)
-        (times,nodes,labels) = (s[3],s[5],s[6])
-        ll=labels[1]
-        l = convert(Int32,ll)
-        #@show(l,ind)
-        #Plots.scatter(times,nodes)
-        #savefig("NMIST_LABEL_SCATTER_$l.$ind.png")
-
-        #(x,y,times,p,l,nodes,x1,y1,times1,p1,l1,nodes1) = filter_on_off(xx,yy,tt,pp,ll,nn)
-        self_distance_populate = Array{Float32}(zeros(length(nodes)+1))
-
-        if length(times) > 1
-
-            times = expected_spike_format(nodes,times)
-            #@show(length(times[1]))
-            #@show(length(times))
-            # get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Any}, self_distances::Vector{Float32})
-
-            self_distance_populate = Array{Float32}(zeros(length(unique(nodes))+1))
-
-            get_vector_coords_uniform!(linear_uniform_spikes,times,self_distance_populate)
-            #@show(self_distance_populate)
-            #mat_of_distances[ind,:] = self_distance_populate
-            #@show(self_distance_populate)
-            #@show(prev)
-
-            #if ind>1
-            #    p = Plots.plot!(p,self_distance_populate.+prev,label="$ind")
-            #else
-            #    p = Plots.plot!(p,self_distance_populate,label="$ind.$l")
-            #end
-            #prev += maximum(self_distance_populate)
-            #Plots.plot!(legend=:outerbottom, legendcolumns=length(mat_of_distances))
-            #savefig("NMNIST_codes_$l.$ind.png")
-        end
-    end
-    for (ind,col) in enumerate(eachcol(mat_of_distances))
-        mat_of_distances[ind,:] .= (col.-mean(col))./std(col)
-    end
-    p = Plots.plot()
-    prev=0.0
-
-    for (ind,row) in enumerate(eachrow(mat_of_distances))
-        if ind>1
-            p = Plots.plot!(p,row.+prev,label="$ind")
-        else
-            p = Plots.plot!(p,row,label="$ind.$l")
-        end
-        prev += maximum(row)
-    end
-    savefig("NMNIST_codes.png")
-
-    return mat_of_distances
-end
-#division_size=maximum(times)/10.0
-#label_inventory_size = length(unique(labels))
 @load "all_mnmist.jld" storage
 
-mat_of_distances = get_plot2(storage)
+function get_plot(storage)
 
+    xx=[]
+    yy=[]
+    tt = []
+    pp = []
+    ll = []
+    nn = []
+    window_size = 0
+    @showprogress for (ind,s) in enumerate(storage)
+
+        (x,y,times,p,l,nodes) = (s[1],s[2],s[3],s[4],s[5],s[6])
+        (x,y,times,p,l,nodes,x1,y1,times1,p1,l1,nodes1) = filter_on_off(x,y,t,p,l,n)
+
+        if  maximum(times) > window_size
+            window_size = maximum(times)
+        end
+    #step_size = maximum(times)/division_size
+    end_window = collect(step_size:step_size:step_size*division_size)
+    spike_distance_size = length(end_window)
+    start_windows = collect(0:step_size:step_size*division_size-1)
+    mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
+    #n0ref = divide_epoch(nodes,times,start_windows[3],end_window[3])
+
+    segment_length = end_window[3] - start_windows[3]
+    @show([length(times) for times in enumerate(n0ref)])
+
+    mean_spk_counts = Int32(round(mean([length(times) for times in enumerate(n0ref)])))
+
+    #@show(mean_spk_counts)
+    #mean_spk_counts=5
+    (times,nodes) = storage[1][3],storage[1][6]
+
+    n0ref
+
+    t0ref = surrogate_to_uniform(n0ref,segment_length,mean_spk_counts)
+    PP = []
+    @showprogress for (ind,toi) in enumerate(end_window)
+        self_distances = Array{Float32}(zeros(maximum(nodes)+1))
+        sw = start_windows[ind]
+        neuron0 = divide_epoch(nodes,times,sw,toi)    
+        self_distances = get_vector_coords(neuron0,t0ref,self_distances)
+        mat_of_distances[ind,:] = self_distances
+    end
+    cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
+    p=nothing
+    #mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))'
+    #mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))
+    
+    #mat_of_distances ./ norm.(eachrow(mat_of_distances))
+
+    #@showprogress for (ind,_) in enumerate(eachcol(mat_of_distances))
+    #    mat_of_distances[:,ind] = mat_of_distances[:,ind].- mean(mat_of_distances)./std(mat_of_distances)
+    #end
+
+
+    f = Figure()
+    Axis(f[1, 1], title = "State visualization",)#yticks = ((1:length(mat_of_distances)) ,String([Char(i) for i in collect(1:length(mat_of_distances))])))
+    p = Plots.plot()
+    prev=0.0
+    @showprogress for (ind,_) in enumerate(eachrow(mat_of_distances))
+        #d = kde(mat_of_distances[ind,:])
+        #if ind==1
+        if ind>1
+            p = Plots.plot!(p,mat_of_distances[ind,:].+prev,label="$ind")
+        else
+            p = Plots.plot!(p,mat_of_distances[ind,:],label="$ind")
+        end
+        prev += maximum(mat_of_distances[ind,:])
+
+        #d = density!(randn(200) .- 2sin((i+3)/6*pi), offset = i / 4,
+        #xs = collect(1:length(mat_of_distances[ind,:]))
+        #d = Makie.lines(xs,mat_of_distances[ind,:],offset=ind*2, colormap = :thermal, colorrange = (-10, 10),strokewidth = 1, strokecolor = :black,bw=100)#, bandwidth = 0.02)
+        # this helps with layering in GLMakie
+        #translate!(d, 0, 0, -0.1i)
+    end
+    Plots.plot!(legend=:outerbottom, legendcolumns=length(mat_of_distances))
+    savefig("NMNIST.png")
+    #title!("Trigonometric functions")
+    #xlabel!("x")
+    #ylabel!("y")
+    #display(p)
+    #save("ridgeline_numberss_nmn.png",f)
+
+    return mat_of_distances,f
+end
+#division_size=maximum(times)/10.0
+label_inventory_size = length(unique(labels))
+mat_of_distances,f = get_plot(times,nodes,label_inventory_size)
 function post_proc_viz(mat_of_distances)
     # ] add https://github.com/JeffreySarnoff/AngleBetweenVectors.jl
     # ] add Distances
