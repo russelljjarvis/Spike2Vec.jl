@@ -66,7 +66,7 @@ Neural activity in a window can be represented as a coordinate in high-dimension
 When a cortical neural network enacts object recognition encoded memories guide the network to replay neural states that correspond to familiar scenes. 
 The trajectory of the network between familiar and unfamiliar states can be tracked using a high-dimensional coordinate scheme. 
 A network’s ability to revisit an encoded coordinate is testable, and so a spike2vector test of object recognition could be construed as a formal hypothesis test.
-""
+"""
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
         if length(n0_) != 0 && length(n1_) != 0
@@ -82,6 +82,7 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
     end
     return self_distances
 end
+#=
 function looped!(times,t0,spk_counts,segment_length,temp)
     doonce = LinRange(0.0, segment_length, temp)[:]
     for (neuron, t) in enumerate(t0)
@@ -99,6 +100,7 @@ function surrogate_to_uniform(times_,segment_length)
     return times
 
 end
+=#
 
 function get_plot(;plot_time_chunked_train=false)
     times,nodes = get_()

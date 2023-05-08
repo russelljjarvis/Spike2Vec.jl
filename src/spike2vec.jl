@@ -9,10 +9,12 @@ using LinearAlgebra
 using ColorSchemes
 using AngleBetweenVectors
 using Revise
-using OnlineStats, Plots#, Random
+#using OnlineStats, Plots#, Random
 #using DataFrames
-using UMAP
+#using UMAP
 using Distances
+using StaticArrays
+
 using LinearAlgebra
 #import StatsBase.ZScoreTransform
 #import StatsBase.fit!
@@ -54,12 +56,23 @@ But it's also a good idea to use the networks most recently past windows as refe
 
 """
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
-    for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
+    for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1)) 
+        #@show(minimum(n1_), maximum(n1_), sum(n1_))
+        #if length(n0_) != 0 
+        #    n0_ = LinRange(minimum(n1_), maximum(n1_), Int32(length(n0_)))[:]       
+            #n0_ = nxxx_
+            #@show(nxxx_)
+        #    @show(n0_)
+        
+        #end
+        
         if length(n0_) != 0 && length(n1_) != 0
             pooledspikes = vcat(n0_,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
+
             t1_ = sort(unique(n0_))
             t0_ = sort(unique(n1_))
+
             t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
             self_distances[ind]=abs(sum(S))
         else
@@ -67,6 +80,42 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
         end
     end
     self_distances
+end
+function get_vector_coords_uniform!(uniform::SArray, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
+    for (ind,n1_) in enumerate(neuron1)
+        if length(n1_) != 0
+            pooledspikes = vcat(uniform,n1_)
+            maxt = maximum(sort!(unique(pooledspikes)))
+
+            t1_ = uniform
+            t0_ = sort(unique(n1_))
+
+            t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
+            self_distances[ind]=abs(sum(S))
+        else
+            self_distances[ind]=0
+        end
+    end
+end
+
+
+function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Any}, self_distances::Vector{Float32})
+    @inbounds for (ind,n1_) in enumerate(neuron1)
+        if length(n1_) != 0
+            pooledspikes = vcat(uniform,n1_)
+            maxt = maximum(sort!(unique(pooledspikes)))
+            @show(maxt)
+            @show(uniform)
+            t0_ = sort(unique(n1_))
+
+            t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+            self_distances[ind]=abs(sum(S))
+            @show(abs(sum(S)))
+
+        else
+            self_distances[ind]=0
+        end
+    end
 end
 """
 Just a helper method to get some locally stored spike data if it exists.
@@ -81,25 +130,35 @@ function fromHDF5spikes()
 end
 
 """
-For polar visualizations of spike distance vectors
+for uniform spikes
+linear_uniform_spikes should be a static array, it only needs to occur once.
 """
-function looped!(times,t0,spk_counts,segment_length,temp)
-    doonce = LinRange(0.0, segment_length, temp)[:]
+function uniform_spike_setter!(times,t0,spk_counts,segment_length,mean_spk_counts)
+    #range(0.0, stop=1.0, length=100)
+    
+    linear_uniform_spikes = collect(LinRange(0.0, segment_length, mean_spk_counts))[:]
+    #@show(doonce)
     for (neuron, t) in enumerate(t0)
-        times[neuron] = doonce
+        times[neuron] = linear_uniform_spikes
     end
 end
 """
 Generate uniform surrogate spike trains that fire at the networks mean firing rate
 """
-function surrogate_to_uniform(times_,segment_length)
+function surrogate_to_uniform(times_,segment_length,mean_spk_counts)
     times =  Array{}([Float32[] for i in 1:length(times_)])
     spk_counts = []
-    for (neuron, t) in enumerate(times_)
+    for (neuron, t) in enumerate(times_)#nxxx_
         append!(spk_counts,length(t))
+
+
     end
-    temp = 4
-    looped!(times,times_,spk_counts,segment_length,temp)
+
+    # x = LinRange(0, 1, 100) 
+    # temp = 4
+
+
+    uniform_spike_setter!(times,times_,spk_counts,segment_length,mean_spk_counts)
     times
 end
 
