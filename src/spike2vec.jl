@@ -87,20 +87,30 @@ function get_vector_coords_uniform!(uniform::SArray, neuron1::Vector{Vector{Floa
     end
 end
 
+function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
+    @inbounds for (ind,n1_) in enumerate(neuron1)
+        if length(n1_) != 0
+            pooledspikes = vcat(uniform,n1_)
+            maxt = maximum(sort!(unique(pooledspikes)))
+            t0_ = sort(unique(n1_))
+            t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+            self_distances[ind]=abs(sum(S))
+        else
+            self_distances[ind]=0
+        end
+        #@show(self_distances[ind])
+
+    end
+end
 
 function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Any}, self_distances::Vector{Float32})
     @inbounds for (ind,n1_) in enumerate(neuron1)
         if length(n1_) != 0
             pooledspikes = vcat(uniform,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
-            @show(maxt)
-            @show(uniform)
             t0_ = sort(unique(n1_))
-
             t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
             self_distances[ind]=abs(sum(S))
-            @show(abs(sum(S)))
-
         else
             self_distances[ind]=0
         end
