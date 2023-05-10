@@ -1,6 +1,6 @@
 using JLD
 using DrWatson
-using Plots
+#using Plots
 using SpikingNeuralNetworks
 using Revise
 using StatsBase
@@ -9,10 +9,14 @@ using PyCall
 using LinearAlgebra
 using ProgressMeter
 using Distances
-using Plots
+#using Plots
 using StaticArrays
 using OnlineStats
 
+#using Gadfly
+#import Cairo
+#using Compose
+#using SGtSNEpi, Random
 
 function filter_on_off(x,y,times,p,l,nodes)
     xo=[];yo=[];timeso=[];po=[];lo=[];nodeso=[]
@@ -270,49 +274,12 @@ end
 
 
 function function_do(list_lists,ll)
-    
-
-    #end
-    #mat_of_distances
-    #@inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
-    #    col .= (col.-mean(col))./std(col)
-    #end
     p = Plots.plot()
     prev=0.0
-    #cs1 = ColorScheme(distinguishable_colors(length(mat_of_distances), transform=protanopic))
-
     @inbounds @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
-        #if length(row) == 637
-        #mat_of_distances[ind,:] = row
-        #row = 
-
-        #mat_of_distances[ind,:] = row
-        #if ind< length(ll)
         l = ll[ind]
         Plots.plot!(p,row.+prev,label="$l")
-                #display(p)
-
-        #    else
-       #         Plots.plot!(p,row,label="$l")
-               # display(p)
-
-        #    end
-        #else
-            #@show(length(ll),ind)
-         #   if ind>1
-          #      Plots.plot!(p,row.+prev)
-                #display(p)
-
-           # else
-            #    Plots.plot!(p,row)
-                #display(p)
-
-            #end
-        #end
         prev += maximum(row)
-        #else
-        #    @show(length(row))
-        #end
 
     end
     Plots.plot!(p,legend=:outerbottom, legendcolumns=length(mat_of_distances))
@@ -331,13 +298,13 @@ function plot_lists(list_lists,ll)
     end
     savefig("vector_differences_another.png")
 end
+
 function get_matrix(list_lists,ll)
     min_ = Int(1000000)
     @inbounds @showprogress for (ind,l) in enumerate(list_lists)
         if Int(length(l)) < min_
             min_ = Int(length(l))   
         end
-
     end
     mat_of_distances = Array{Float32}(zeros(length(list_lists),1250))
     @inbounds @showprogress for (ind,l) in enumerate(list_lists)
@@ -345,7 +312,6 @@ function get_matrix(list_lists,ll)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     Plots.heatmap(mat_of_distances)#, axis=(xticks=(1:5, xs), yticks=(1:10, ys), xticklabelrotation = pi/4) ))
-
     savefig("Unormalised_heatmap.png")
     @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
@@ -363,42 +329,132 @@ end
 function post_proc_viz(mat_of_distances)
     # ] add https://github.com/JeffreySarnoff/AngleBetweenVectors.jl
     # ] add Distances
-
     angles0 = []
     distances0 = []
     @inbounds @showprogress for (ind,self_distances) in enumerate(eachrow(mat_of_distances))
         temp0 = mat_of_distances[ind,:]
-        temp1 = Vector{Float32}([2.0 for i in 1:length(temp0)])
+        temp1 = Vector{Float32}([0.01 for i in 1:length(temp0)])
         θ = angle(temp0,temp1)
         r = evaluate(Euclidean(),temp0, temp1)
-
         append!(angles0,θ)
         append!(distances0,r)        
     end
     @save "distances_angles.jld" angles0 distances0#,angles1,distances1
     return angles0,distances0#,angles1,distances1)
 end
-using Gadfly
-function final_plots2(mat_of_distances,ll)
-    cs1 = ColorScheme(distinguishable_colors(length(mat_of_distances), transform=protanopic))
+
+
+function final_plots(mat_of_distances,ll)
     p=nothing
     p = Plots.plot()
     angles0,distances0 = post_proc_viz(mat_of_distances)
-    @show(cs1)
-    @show(ll)
-    Gadfly.plot(x =distances0, y= angles, color = ll)
+    #Gadfly.plot(x =distances0, y= angles0, color = ll)
     savefig("relative_to_uniform_referenceNMMIST.png")  
      
 end
+using OnlineStats
+#using GigaSOM
+#using Gadfly
+using GigaScatter
+using Clustering
 
-#@load "matrix_vectors.jld" list_lists 
+function cluster_distances_graph_embedd(mat_of_distances,L)
+    #mat_of_distances = mat_of_distances
+    #mat_of_distances = copy(transpose(mat_of_distances))
+    dim = 2
 
+
+    #@show(size(mat_of_distances))
+
+
+    som = initGigaSOM(mat_of_distances, 20, 20)    # random initialization of the SOM codebook
+    som = trainGigaSOM(som, mat_of_distances)      # SOM training
+    clusters = mapToGigaSOM(som, mat_of_distances) # extraction of per-cell cluster IDs
+    e = embedGigaSOM(som, mat_of_distances)        # EmbedSOM projection to 2D
+    #import Pkg; Pkg.add("GigaScatter")
+    #using GigaScatter
+    #Plots.heatmap(e')
+    savePNG("Levine13-CD4.png",
+    solidBackground(rasterize((200,200),        # bitmap size
+    Matrix{Float64}(e'),                      # the embedding coordinates
+    expressionColors(
+    scaleNorm(Array{Float64}(L)),  # 5th column contains CD4 expressions
+    expressionPalette(100, alpha=1.0)))))   # colors for plotting (based on RdYlBu)
+    savefig("didit_work_NM.png")
+
+    #savePNG("Levine13-CD4.png",
+    #solidBackground(rasterize((100,100),        # bitmap size
+    #Matrix{Float64}(e'),                      # the embedding coordinates
+    #expressionColors(
+    #scaleNorm(Array{Float64}(L)),  # 5th column contains CD4 expressions
+    #expressionPalette(100, alpha=1.0)))))  
+    #savefig("didit_work_NM.png")
+    #savePNG("Levine13-CD4.png",Matrix{Float64}(e'))   # colors for plotting (based on RdYlBu)
+    #Y = sgtsnepi(mat_of_distances; d=dim, Y0 = Y0, max_iter = 500);
+
+
+    #- `lwd_in=0.5`: line width for internal edges
+    #- `lwd_out=0.3`: line width for external edges
+    #- `edge_alpha=0.2`: the alpha channel for the edges
+    #- `clr_in=nothing`: set color for all intra-cluster edges (if nothing, color by `cmap`)
+    #- `clr_out=colorant"#aabbbbbb"`: the color of inter-cluster edges
+    #show_embedding(Y, Lx ,clr_out=cmap,edge_alpha=0.5)#; A = pot_conn, res = (5000, 5000) )
+    #A = pot_conn
+    #Y0 = 0.01 * randn( size(A,1), 3 );
+    #Y = sgtsnepi(mat_of_distances; d = 2, Y0 = Y0, max_iter = 500);
+    #neighbor_recall(pot_conn, Y)
+    #sc = scatter( Y[:,1], Y[:,2], color = L, colormap = cmap, markersize = 5)
+    #savefig("reduced_dimension_clusters_NMINST.png")
+    #scene.center = false
+
+    #save("potjans_static_wiring_network_embedding.png")
+    #show_embedding( Y, L ; A = pot_conn)#, res = (5000, 5000) )
+end
+import OnlineStats
+function penultimate(angles0,distances0,ll)
+    #@load "distances_angles.jld" angles0 distances0
+    #@show(ll)
+    #myplot = Gadfly.plot(x =distances0, y= angles0, color = ll)
+    #@show(distances0)
+    #@show(angles0)
+    #compose(render(myplot), compose(context(), rectangle(), fill("white")))
+    #draw(PNG("classify_to_uniform_referenceNMMIST.png", 3inch, 3inch), myplot)   
+    
+    #angles0,distances0 = post_proc_viz(mat_of_distances)
+    #Gadfly.plot(x =distances0, y= angles0, color = ll)
+    #savefig("relative_to_uniform_referenceNMMIST.png")  
+    o = HeatMap(Float64(minimum(angles0)):.1:Float64(maximum(angles0)), 0:1:10)
+
+    #x, y = randn(10^6), 5 .+ randn(10^6)
+    
+    fit!(o, zip(Vector{Float64}(angles0), Vector{Float64}(ll)))
+    
+    #plot(o)
+
+    p = Plots.plot()
+    display(Plots.plot(x=angles0,y=ll,color=ll))#, color=ll)
+    #Plots.scatter(distances0,angles0, markercolor = ll)
+    #savefig("scatternmnist_angles.png")
+    
+    p = Plots.plot()
+    display(Plots.scatter(distances0,ll))#, color=ll)
+    #Plots.scatter(distances0,angles0, markercolor = ll)
+    savefig("scatternmnist_distances.png")
+    o
+end
+
+@load "matrix_vectors.jld" list_lists 
 @load "ll.jld" ll 
-#mat_of_distances = get_matrix(list_lists,ll)
+#post_proc_viz(mat_of_distances)
+mat_of_distances = get_matrix(list_lists,ll)
+angles0,distances0 = post_proc_viz(mat_of_distances)
+#cluster_distances_graph_embedd(mat_of_distances,ll)
+o = penultimate(angles0,distances0,ll)
+display(plot(o, marginals=false, legend=true))
+
 #@load "mat_of_distances.jld" mat_of_distances
 #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-@load "distances_angles.jld" angles0 distances0
-final_plots2(mat_of_distances,ll)
+#final_plots(mat_of_distances,ll)
 
 #=
 if isfile("matrix_vectors.jld")

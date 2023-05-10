@@ -19,6 +19,9 @@ using JLD
 using CairoMakie#,KernelDensity, Distributions
 using ProgressMeter
 using Distances
+#using Gadfly
+#using Gadfly
+using SGtSNEpi, Random
 
 using Plots
 #using PyCall
@@ -50,8 +53,6 @@ function load_datasets()
     (nodes,times) = ragged_to_uniform(nodes,times)
     return (nodes,times)
 end
-(nodes,times) = load_datasets()
-
 #display(Plots.scatter(times[1:Int32(round((length(times)/2000)))],nodes[1:Int32(round((length(times)/2000)))],markersize=0.05))
 #savefig("slice_one_window.png")
 
@@ -69,13 +70,6 @@ function make_spike_movie(x,y,times,l)
     y_l = []
 
     @showprogress for (t_,x_,y_) in zip(times,x,y,l)
-        #mymatrix = zeros((359,359))
-        #@show(maximum(x))
-        #@show(maximum(y))
-
-        #@show(x_,y_,t_)
-        #A = zeros((358,358))
-        #if cnt%10 == 0
         if l==l_old
             push!(x_l,x)
             push!(y_l,y)
@@ -86,31 +80,13 @@ function make_spike_movie(x,y,times,l)
 
             x_l = []
             y_l = []
-
-            #mymatrix .= 0
         end
-
-        #    mymatrix = zeros((359,359))
-
-        #end
         cnt+=1
         l_old=l
-        #mymatrix[!=0] .= mymatrix[!=0] .-exp(mymatrix[!=0])
-        #display(Plots.heatmap(mymatrix)) #which will also give you a color legend
 
     end
 end
-#make_spike_movie(x,y,times,l)
-#a[perm]
-#SpikeTime
-#=
-nodes = nodes[perm]
-times = times[perm]
-labels = labels[perm]
-x = x[perm]
-y = y[perm]
-=#
-#using UnicodePlots
+
 
 function get_changes(times,labels)
     time_break = []
@@ -135,7 +111,6 @@ function get_plot(times,nodes,division_size)
     mean_spk_counts = Int32(round(mean([length(times) for times in enumerate(n0ref)])))
     t0ref = surrogate_to_uniform(n0ref,segment_length,mean_spk_counts)
     PP = []
-
     #mean_spk_counts = Int32(round(mean(non_zero_spikings)))
     temp = LinRange(0.0, maximum(times), mean_spk_counts)
     linear_uniform_spikes = Vector{Float32}([i for i in temp])
@@ -150,23 +125,19 @@ function get_plot(times,nodes,division_size)
         mat_of_distances[ind,:] = self_distances
     end
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
-
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     Plots.heatmap(mat_of_distances)#, axis=(xticks=(1:5, xs), yticks=(1:10, ys), xticklabelrotation = pi/4) ))
-
     savefig("Unormalised_heatmap_pablo.png")
     @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-
     Plots.heatmap(mat_of_distances)
-    #
     savefig("Normalised_heatmap_pablo.png")
     p=nothing
     p = Plots.plot()
-    Plots.plot!(p,mat_of_distances[1,:].+prev,label="1")#, fmt = :svg)
-    Plots.plot!(p,mat_of_distances[9,:].+prev,label="2")#, fmt = :svg)
+    Plots.plot!(p,mat_of_distances[1,:],label="1")#, fmt = :svg)
+    Plots.plot!(p,mat_of_distances[9,:],label="2")#, fmt = :svg)
     savefig("just_two_pablo_raw_vectors.png")
     @save "pablo_matrix.jld" mat_of_distances
     return mat_of_distances
@@ -189,17 +160,53 @@ function post_proc_viz(mat_of_distances)
     @save "distances_angles_Pablo.jld" angles0 distances0#,angles1,distances1
     return angles0,distances0#,angles1,distances1)
 end
+using Clustering
+using GigaSOM
+using Gadfly
+using GigaScatter
+using UMAP
+function pablo_plots(mat_of_distances)
+    R = kmeans(mat_of_distances, 5; maxiter=100, display=:iter)
+    @assert nclusters(R) == 5 # verify the number of clusters
+    a = assignments(R) # get the assignments of points to clusters
+    c = counts(R) # get the cluster sizes
+    M = R.centers # get the cluster centers
+    @show(M)
+    som = initGigaSOM(mat_of_distances, 20, 20)    # random initialization of the SOM codebook
+    som = trainGigaSOM(som, mat_of_distances)      # SOM training
+    clusters = mapToGigaSOM(som, mat_of_distances) # extraction of per-cell cluster IDs
+    e = embedGigaSOM(som, mat_of_distances)        # EmbedSOM projection to 2D
+    #import Pkg; Pkg.add("GigaScatter")
+    #using GigaScatter
+    savePNG("Levine13-CD4.png",
+    solidBackground(rasterize((100,100),        # bitmap size
+    Matrix{Float64}(e'),                      # the embedding coordinates
+    expressionColors(
+    Array{Float64}(collect(1:),  # 5th column contains CD4 expressions
+    expressionPalette(100, alpha=1)))))  
+    savefig("didit_workpablo.png")
+    return M
+end
 
-function final_plots2(mat_of_distances)
+function final_plots2(distances0,angles0,ll)
     p=nothing
     p = Plots.plot()
-    angles0,distances0 = post_proc_viz(mat_of_distances)
-    Plots.scatter(distances0,angles0)#marker =:circle, arrow=(:closed, 3.0)))
-    savefig("relative_to_uniform_reference_Pablo.png")   
+    #angles0,distances0 = post_proc_viz(mat_of_distances)
+    pp = Gadfly.Plots.plot(distances0,angles0,Geom.point)#marker =:circle, arrow=(:closed, 3.0)))
+    img = SVG("iris_plot.svg", 6inch, 4inch)
+    draw(img, p)
+    #savefig("relative_to_uniform_reference_Pablo.png")   
 end
-mat_of_distances = get_plot(times,nodes,1000)
+(nodes,times) = load_datasets()
 
-final_plots2(mat_of_distances)#,label_inventory_size)
+
+#@load "ll.jld" ll
+#@save "distances_angles_Pablo.jld" angles0 distances0
+@load "pablo_matrix.jld" mat_of_distances
+#@load "distances_angles_Pablo.jld" angles0 distances0
+#mat_of_distances = get_plot(times,nodes,1000)
+pablo_plots(mat_of_distances)
+#final_plots2(mat_of_distances,ll)#,label_inventory_size)
 
 #mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))'
 #mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))
