@@ -36,5 +36,19 @@ Scalable methods for representing the transient behavior of large populations of
 Some preliminary code that performs the Spike2Vec analysis is avaialble at the following [link](https://github.com/russelljjarvis/SpikingNeuralNetworks.jl/blob/master/src/analysis.jl#L29-L83). the code is implemented in Julia, a modern language alternative to Python that makes large-scale model visualization and analysis more computationally tractable. A docker file is included.
 
 ### References
+@ARTICLE{Eliasmith:2007,
+AUTHOR = {Eliasmith, C. },
+TITLE   = {{A}ttractor network},
+YEAR    = {2007},
+JOURNAL = {Scholarpedia},
+VOLUME  = {2},
+NUMBER  = {10},
+PAGES   = {1380},
+DOI     = {10.4249/scholarpedia.1380},
+NOTE    = {revision \#91016}
+}
+
+
+
 B. Illing, W. Gerstner & J. Brea, Biologically plausible deep learning - but how far can we go with shallow networks?, Neural Networks 118 (2019) 90-101
 Lin, Hairong, et al. "A Review of Chaotic Systems Based on Memristive Hopfield Neural Networks." Mathematics 11.6 (2023): 1369.
