@@ -48,7 +48,23 @@ DOI     = {10.4249/scholarpedia.1380},
 NOTE    = {revision \#91016}
 }
 
+@article{illing2019biologically,
+  title={Biologically plausible deep learning—but how far can we go with shallow networks?},
+  author={Illing, Bernd and Gerstner, Wulfram and Brea, Johanni},
+  journal={Neural Networks},
+  volume={118},
+  pages={90--101},
+  year={2019},
+  publisher={Elsevier}
+}
 
-
-B. Illing, W. Gerstner & J. Brea, Biologically plausible deep learning - but how far can we go with shallow networks?, Neural Networks 118 (2019) 90-101
-Lin, Hairong, et al. "A Review of Chaotic Systems Based on Memristive Hopfield Neural Networks." Mathematics 11.6 (2023): 1369.
+@article{kim2020dynamics,
+  title={Dynamics of multiple interacting excitatory and inhibitory populations with delays},
+  author={Kim, Christopher M and Egert, Ulrich and Kumar, Arvind},
+  journal={Physical Review E},
+  volume={102},
+  number={2},
+  pages={022308},
+  year={2020},
+  publisher={APS}
+}
