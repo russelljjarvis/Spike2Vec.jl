@@ -161,9 +161,6 @@ function post_proc_viz(mat_of_distances)
     return angles0,distances0#,angles1,distances1)
 end
 using Clustering
-using GigaSOM
-using Gadfly
-using GigaScatter
 using UMAP
 function pablo_plots(mat_of_distances)
     R = kmeans(mat_of_distances, 5; maxiter=100, display=:iter)
@@ -171,20 +168,8 @@ function pablo_plots(mat_of_distances)
     a = assignments(R) # get the assignments of points to clusters
     c = counts(R) # get the cluster sizes
     M = R.centers # get the cluster centers
-    @show(M)
-    som = initGigaSOM(mat_of_distances, 20, 20)    # random initialization of the SOM codebook
-    som = trainGigaSOM(som, mat_of_distances)      # SOM training
-    clusters = mapToGigaSOM(som, mat_of_distances) # extraction of per-cell cluster IDs
-    e = embedGigaSOM(som, mat_of_distances)        # EmbedSOM projection to 2D
-    #import Pkg; Pkg.add("GigaScatter")
-    #using GigaScatter
-    savePNG("Levine13-CD4.png",
-    solidBackground(rasterize((100,100),        # bitmap size
-    Matrix{Float64}(e'),                      # the embedding coordinates
-    expressionColors(
-    Array{Float64}(collect(1:),  # 5th column contains CD4 expressions
-    expressionPalette(100, alpha=1)))))  
-    savefig("didit_workpablo.png")
+    #@show(sizeof(M))
+    #savefig("didit_workpablo.png")
     return M
 end
 
@@ -198,14 +183,27 @@ function final_plots2(distances0,angles0,ll)
     #savefig("relative_to_uniform_reference_Pablo.png")   
 end
 (nodes,times) = load_datasets()
+using UMAP
+using Plots
+function plot_umap(mat_of_distances; file_name::String="empty.png")
+    #model = UMAP_(mat_of_distances', 10)
+    #Q_embedding = transform(model, amatrix')
+    #cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
 
-
+    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
+    display(Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.05)),legend=true)))
+    #Plots.plot(scatter!(p,model.knns)
+    savefig(file_name)
+    Q_embedding
+end
 #@load "ll.jld" ll
 #@save "distances_angles_Pablo.jld" angles0 distances0
 @load "pablo_matrix.jld" mat_of_distances
+mat_of_distances = mat_of_distances[:,1:15000]
+plot_umap(mat_of_distances;file_name="pablo_umap.png")
 #@load "distances_angles_Pablo.jld" angles0 distances0
 #mat_of_distances = get_plot(times,nodes,1000)
-pablo_plots(mat_of_distances)
+#pablo_plots(mat_of_distances)
 #final_plots2(mat_of_distances,ll)#,label_inventory_size)
 
 #mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))'

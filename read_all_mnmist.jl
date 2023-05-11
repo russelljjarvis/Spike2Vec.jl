@@ -9,10 +9,18 @@ using PyCall
 using LinearAlgebra
 using ProgressMeter
 using Distances
-#using Plots
+using Plots
 using StaticArrays
 using OnlineStats
 
+#using Clustering
+
+#using OnlineStats
+#using GigaSOM
+#using Gadfly
+#using GigaScatter
+using Clustering
+import OnlineStats
 #using Gadfly
 #import Cairo
 #using Compose
@@ -84,8 +92,6 @@ function load_datasets()
 end
 #   (x,y,times,p,labels,nodes) = load_datasets()
 #labels = l
-#using UnicodePlots
-#using SparseArrays
 function make_spike_movie(x,y,times,labels)
     cnt=0
     l_old=1
@@ -352,12 +358,12 @@ function final_plots(mat_of_distances,ll)
     savefig("relative_to_uniform_referenceNMMIST.png")  
      
 end
-using OnlineStats
-#using GigaSOM
-#using Gadfly
-using GigaScatter
-using Clustering
 
+#function cluster()
+
+#end
+
+#=
 function cluster_distances_graph_embedd(mat_of_distances,L)
     #mat_of_distances = mat_of_distances
     #mat_of_distances = copy(transpose(mat_of_distances))
@@ -410,7 +416,7 @@ function cluster_distances_graph_embedd(mat_of_distances,L)
     #save("potjans_static_wiring_network_embedding.png")
     #show_embedding( Y, L ; A = pot_conn)#, res = (5000, 5000) )
 end
-import OnlineStats
+=#
 function penultimate(angles0,distances0,ll)
     #@load "distances_angles.jld" angles0 distances0
     #@show(ll)
@@ -442,16 +448,39 @@ function penultimate(angles0,distances0,ll)
     savefig("scatternmnist_distances.png")
     o
 end
+using ColorSchemes
+function umap_plots(mat_of_distances,ll)
+    cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
+
+    R = kmeans(mat_of_distances', 10; maxiter=2000, display=:iter)
+    a = assignments(R) # get the assignments of points to clusters
+    c = counts(R) # get the cluster sizes
+    M = R.centers # get the cluster centers
+    #@show(sizeof(M))
+    temp = [1.0 for i in ll]
+    Plots.plot(scatter(ll, temp, marker_z=R.assignments, legend=true))
+    savefig("clustering_NMNIST.png")
+
+    plot_umap(M,mat_of_distances,ll; file_name="umap_of_NMNIST_Data.png")
+    #savefig("didit_workpablo.png")
+    return M
+end
+
 
 @load "matrix_vectors.jld" list_lists 
 @load "ll.jld" ll 
 #post_proc_viz(mat_of_distances)
 mat_of_distances = get_matrix(list_lists,ll)
+umap_plots(mat_of_distances,ll)
+
+#=
 angles0,distances0 = post_proc_viz(mat_of_distances)
+
+
 #cluster_distances_graph_embedd(mat_of_distances,ll)
 o = penultimate(angles0,distances0,ll)
 display(plot(o, marginals=false, legend=true))
-
+=#
 #@load "mat_of_distances.jld" mat_of_distances
 #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
 #final_plots(mat_of_distances,ll)
