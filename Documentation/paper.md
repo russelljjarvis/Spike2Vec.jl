@@ -7,9 +7,14 @@ tags:
   - Computational Neuroscience
   - Big Data
 
-authors:
+authors (in no order or undecided order):
   - name: Russell Jarvis
     affiliation: International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University
+  - name: Yeshwanth Bethi
+    affiliation: International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University
+  - name: Pablo de Abreu Urbizagastegui
+    affiliation: International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University
+
 date: June  2023
 
 Bibliography: paper.bib
