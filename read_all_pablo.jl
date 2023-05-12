@@ -21,7 +21,11 @@ using ProgressMeter
 using Distances
 #using Gadfly
 #using Gadfly
-using SGtSNEpi, Random
+#using SGtSNEpi, Random
+
+using Clustering
+using UMAP
+
 
 using Plots
 #using PyCall
@@ -61,7 +65,7 @@ end
 
 #display(Plots.scatter(times[2*Int32(round((length(times)/2000))):3*Int32(round((length(times)/2000)))],nodes[2*Int32(round((length(times)/2000))):3*Int32(round((length(times)/2000)))],markersize=0.05))
 #savefig("slice_three_window.png")
-
+#=
 function make_spike_movie(x,y,times,l)
     mymatrix = zeros((359,359))
     cnt=1
@@ -87,7 +91,6 @@ function make_spike_movie(x,y,times,l)
     end
 end
 
-
 function get_changes(times,labels)
     time_break = []
     l_old=0
@@ -99,12 +102,14 @@ function get_changes(times,labels)
     end
     time_break
 end
+=#
 
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
-    start_windows = collect(0:step_size:step_size*division_size-1)
+    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+
     mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
     n0ref = divide_epoch(nodes,times,last(start_windows),last(end_window))
     segment_length = end_window[3] - start_windows[3]
@@ -142,6 +147,7 @@ function get_plot(times,nodes,division_size)
     @save "pablo_matrix.jld" mat_of_distances
     return mat_of_distances
 end
+#=
 function post_proc_viz(mat_of_distances)
     # ] add https://github.com/JeffreySarnoff/AngleBetweenVectors.jl
     # ] add Distances
@@ -160,8 +166,6 @@ function post_proc_viz(mat_of_distances)
     @save "distances_angles_Pablo.jld" angles0 distances0#,angles1,distances1
     return angles0,distances0#,angles1,distances1)
 end
-using Clustering
-using UMAP
 function pablo_plots(mat_of_distances)
     R = kmeans(mat_of_distances, 5; maxiter=100, display=:iter)
     @assert nclusters(R) == 5 # verify the number of clusters
@@ -182,9 +186,9 @@ function final_plots2(distances0,angles0,ll)
     draw(img, p)
     #savefig("relative_to_uniform_reference_Pablo.png")   
 end
-(nodes,times) = load_datasets()
-using UMAP
-using Plots
+
+=#
+
 function plot_umap(mat_of_distances; file_name::String="empty.png")
     #model = UMAP_(mat_of_distances', 10)
     #Q_embedding = transform(model, amatrix')
@@ -198,11 +202,166 @@ function plot_umap(mat_of_distances; file_name::String="empty.png")
 end
 #@load "ll.jld" ll
 #@save "distances_angles_Pablo.jld" angles0 distances0
-@load "pablo_matrix.jld" mat_of_distances
-#mat_of_distances = mat_of_distances[:,1:10000]
-plot_umap(mat_of_distances;file_name="pablo_umap1_1000.png")
+#@load "pablo_matrix.jld" mat_of_distances
+#Plots.heatmap(mat_of_distances)
+#savefig("heatmap_before.png")
+mat_of_distances = mat_of_distances[:,1:10000]
+#Plots.heatmap(mat_of_distances)
+#savefig("heatmap_after.png")
+
+
+
+function label_online(mat_of_distances)
+    classes = 50
+    R = kmeans(mat_of_distances', classes; maxiter=9000)
+    idx = sortperm(assignments(R)) # get the assignments of points to clusters
+    c = counts(R) # get the cluster sizes
+    M = R.centers # get the cluster centers
+
+    
+    #idx =  sortperm(assignments(R))
+    M = mat_of_distances[:,idx]
+    Plots.heatmap(M)
+    savefig("cluster_sort_pablo.png")
+
+    
+
+    labelled_mat_of_distances = zeros(size(mat_of_distances))
+    ref_mat_of_distances = zeros(size(mat_of_distances))
+
+    scatter_indexs = []
+    scatter_class_colors = []
+    yes = []
+    @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
+        flag = false
+        for ix in collect(1:classes)
+            best_distance = 100000.0
+            current_centre = M[:,ix]
+            distance = sum(abs.(row .- current_centre))
+            if distance<best_distance
+                best_distance = distance
+                best_index = ind
+                best_index_class = ix
+            end
+            if best_distance < 100.5
+                flag = true
+                labelled_mat_of_distances[best_index,:] .= best_index_class
+                ref_mat_of_distances[best_index,:] = copy(mat_of_distances[best_index,:])
+                push!(scatter_indexs,best_index)
+                push!(scatter_class_colors,best_index_class)
+            else 
+                flag = false
+            end
+        if flag
+            push!(yes,last(best_index_class))
+        else
+            push!(yes,-1.0)
+        end
+        flag = false
+        end
+    end
+    #@show(length(yes))
+    #zerotonan(x) = x == 0 ? NaN : x
+    #c = cgrad([:blue,:white,:red])
+    p1 = Plots.heatmap(mat_of_distances,legend = :none,c = cgrad([:white,:red,:blue]))
+    #savefig("reference_labelled_mat_of_distances_song_bird.png")
+    p2 = Plots.heatmap(labelled_mat_of_distances,legend = :none, c = cgrad([:white,:red,:blue]))
+    p4 = Plots.heatmap(ref_mat_of_distances,legend = :none, c = cgrad([:white,:red,:blue]))
+
+    p3 = Plots.plot()
+    prev = 0
+    for (ix_,iy_) in zip(scatter_indexs,scatter_class_colors)
+        
+        temp0 = mat_of_distances[ix_,:].-mean(mat_of_distances[ix_,:])
+        temp0 = temp0.+ix_
+        #temp1 = [ix_ for i in collect(1:length(mat_of_distances[ix_,:])) ]  
+        #@show(length(temp1))
+
+        #@show(length(temp0))
+        Plots.plot!(p3,temp0,legend = :none,color=iy_)
+        #prev = 
+    end
+    #display(p3)
+    #Plots.plot(scatter(ll, temp, marker_z=R.assignments, legend=true))
+
+    Plots.plot(p1,p2,p3,p4,legend = :none)
+    savefig("both_labelled_mat_of_distances_pablo.png")
+
+    #return M
+    (scatter_indexs,yes)
+end
+#mat_of_distances = get_plot(times,nodes,2000)
+resolution = 2000
+#nnn,ttt = load_datasets()
+#label_online(mat_of_distances)
+scatter_indexs,yes = label_online(mat_of_distances)
+#plot_umap(mat_of_distances;file_name="pablo_umap1_1000.png")
+function get_division_scatter(times,nodes,scatter_indexs,division_size,yes)
+    step_size = maximum(times)/division_size
+    end_window = collect(step_size:step_size:step_size*division_size)
+    spike_distance_size = length(end_window)
+    #start_windows = collect(0:step_size:step_size*division_size-1)
+    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+
+    mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
+    #segment_length = end_window[3] - start_windows[3]
+    p=Plots.plot(legend = :none)
+    #p=Plots.scatter(times,nodes,legend=true)
+
+    @showprogress for (ind,toi) in enumerate(end_window)
+        sw = start_windows[ind]
+        spikes = divide_epoch(nodes,times,sw,toi)    
+        Nx=Vector{Int32}([])
+        Tx=Vector{Float32}([])
+        for (i, t) in enumerate(spikes)
+            if i<=10000
+                for tt in t
+                    if length(t)!=0
+                            push!(Nx,i);
+                            push!(Tx,Float32(sw+tt))
+                        end
+                    end
+                end
+            end
+        end
+        if yes[ind]>0.0
+            p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none)
+         
+        end
+    end
+    display(p)
+    savefig("repeated_pattern_pablo.png")
+
+    @showprogress for (ind,toi) in enumerate(end_window[1:12])
+        sw = start_windows[ind]
+        spikes = divide_epoch(nodes,times,sw,toi)    
+        Nx=Vector{Int32}([])
+        Tx=Vector{Float32}([])
+        for (i, t) in enumerate(spikes)
+            if i<=10000
+                for tt in t
+
+                    if length(t)!=0
+                        push!(Nx,i);
+                        push!(Tx,Float32(sw+tt))
+                    end
+                end
+            end
+        end
+        p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none)
+         
+    end
+    display(p)
+    savefig("everything_includinding_repeated_pattern_pablo.png")
+
+end
+(nnn,ttt) = load_datasets()
+
+get_division_scatter(ttt,nnn,scatter_indexs,resolution,yes)
+#nnn,ttt = load_datasets()
+#label_online(mat_of_distances)
+
 #@load "distances_angles_Pablo.jld" angles0 distances0
-#mat_of_distances = get_plot(times,nodes,1000)
 #pablo_plots(mat_of_distances)
 #final_plots2(mat_of_distances,ll)#,label_inventory_size)
 

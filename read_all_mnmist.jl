@@ -505,7 +505,7 @@ function label_online(mat_of_distances,ll)
         end
     end
     Plots.heatmap(labelled_mat_of_distances)
-    savefig("labelled_mat_of_distances.png")
+    savefig("labelled_mat_of_distancesNMINST.png")
     #return M
 end
 label_online(mat_of_distances,ll)
