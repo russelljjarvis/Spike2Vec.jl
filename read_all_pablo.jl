@@ -190,7 +190,7 @@ function plot_umap(mat_of_distances; file_name::String="empty.png")
     #Q_embedding = transform(model, amatrix')
     #cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
 
-    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
+    Q_embedding = umap(mat_of_distances,20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
     display(Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.05)),legend=true)))
     #Plots.plot(scatter!(p,model.knns)
     savefig(file_name)
@@ -199,8 +199,8 @@ end
 #@load "ll.jld" ll
 #@save "distances_angles_Pablo.jld" angles0 distances0
 @load "pablo_matrix.jld" mat_of_distances
-mat_of_distances = mat_of_distances[:,1:15000]
-plot_umap(mat_of_distances;file_name="pablo_umap.png")
+#mat_of_distances = mat_of_distances[:,1:10000]
+plot_umap(mat_of_distances;file_name="pablo_umap1_1000.png")
 #@load "distances_angles_Pablo.jld" angles0 distances0
 #mat_of_distances = get_plot(times,nodes,1000)
 #pablo_plots(mat_of_distances)

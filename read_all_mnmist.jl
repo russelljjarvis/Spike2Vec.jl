@@ -12,7 +12,7 @@ using Distances
 using Plots
 using StaticArrays
 using OnlineStats
-
+using Heatmap
 #using Clustering
 
 #using OnlineStats
@@ -330,6 +330,9 @@ function get_matrix(list_lists,ll)
     Plots.plot!(p,mat_of_distances[10,:])
     Plots.plot!(p,mat_of_distances[20,:])
     savefig("vector_differences_another_NMNIST.png")
+
+    @save "mat_of_distances.jld" mat_of_distances
+
     return mat_of_distances
 end
 function post_proc_viz(mat_of_distances)
@@ -448,14 +451,10 @@ function penultimate(angles0,distances0,ll)
     savefig("scatternmnist_distances.png")
     o
 end
+
 using ColorSchemes
 function umap_plots(mat_of_distances,ll)
     cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
-
-    R = kmeans(mat_of_distances', 10; maxiter=2000, display=:iter)
-    a = assignments(R) # get the assignments of points to clusters
-    c = counts(R) # get the cluster sizes
-    M = R.centers # get the cluster centers
     #@show(sizeof(M))
     temp = [1.0 for i in ll]
     Plots.plot(scatter(ll, temp, marker_z=R.assignments, legend=true))
@@ -467,11 +466,70 @@ function umap_plots(mat_of_distances,ll)
 end
 
 
-@load "matrix_vectors.jld" list_lists 
+#@load "matrix_vectors.jld" list_lists 
 @load "ll.jld" ll 
+#mat_of_distances = get_matrix(list_lists,ll)
+
+@load "mat_of_distances.jld" mat_of_distances
 #post_proc_viz(mat_of_distances)
-mat_of_distances = get_matrix(list_lists,ll)
-umap_plots(mat_of_distances,ll)
+
+#M = umap_plots(mat_of_distances,ll)
+
+function label_online(mat_of_distances,ll)
+    classes = 10
+    R = kmeans(mat_of_distances', classes; maxiter=2000, display=:iter)
+    a = assignments(R) # get the assignments of points to clusters
+    c = counts(R) # get the cluster sizes
+    M = R.centers # get the cluster centers
+    #M = copy(M'[:])
+    labelled_mat_of_distances = copy(mat_of_distances)
+    for (ind,row) in enumerate(eachrow(mat_of_distances))
+
+        for ix in collect(1:classes)
+            current_centre = M[:,ix]
+            distance = sum(abs.(row .- current_centre))
+            #@show(distance,ind)
+            #@show(size(centre))
+            if distance < 960.0
+                labelled_mat_of_distances[ind,:] .= ll[ind]
+            else
+                distance = 10000.0
+
+                #@show(distance)
+                #@show(ind)
+                #@show(ll[ind])
+                #@show(ix)
+                #@show(centre)
+            end
+
+        end
+    end
+    Plots.heatmap(labelled_mat_of_distances)
+    savefig("labelled_mat_of_distances.png")
+    #return M
+end
+label_online(mat_of_distances,ll)
+#set_default_plot_size(8inch, 6inch)
+#mtcars = dataset("datasets", "mtcars")
+#Z = zscore(Matrix{Float64}(mtcars[:,2:11]),1)
+#xx=[i for i in collect(1:length(mat_of_distances))]
+#using Heatmap, Gadfly, StatsBase
+#using Clustering
+#using StatsPlots
+#using Distances
+
+#hm = Heatmap
+
+#Generate distance matrix, perform hierarchical clustering, plot
+#dist_mat = pairwise(Euclidean(1e-12), mat_of_distances, dims=2)
+#hcl1 = hclust(dist_mat, linkage=:ward)
+#dg = Plots.plot(hcl1, xticks=false, yticks=true)
+#display(plot!(size=(800,200)))
+#display()
+#display(Gadfly.plot(z=dist_mat, hm.heatmap(matrix="raw"),
+#    Geom.rectbin, hm.dendrogram(dendrogram="both"),
+# Scale.color_continuous(colormap=Scale.lab_gradient("steelblue3","white","darkred"))
+#))
 
 #=
 angles0,distances0 = post_proc_viz(mat_of_distances)
@@ -503,7 +561,7 @@ if isfile("matrix_vectors.jld")
     #@show(mat_of_distances)
     #display(mat_of_distances)
     @save "mat_of_distances.jld" mat_of_distances
-    @load "mat_of_distances.jld" mat_of_distances
+    
 
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     r = evaluate(Euclidean(),mat_of_distances[1,:], Vector{Float32}([0.0 for i in 1:length(mat_of_distances[1,:])]))
