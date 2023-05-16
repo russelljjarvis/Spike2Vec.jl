@@ -45,8 +45,6 @@ function potjans_params(ccu, scale=1.0::Float64)
     end
     for (k,v) in pairs(ccu)
         ## update the cummulative cell count
-        #cumulative[k]=collect(v_old:v+v_old)
-        #@show(length(collect(v_old:v+v_old)[:]))
         push!(cum_array,Vector{UInt32}(collect(v_old:v+v_old)[:]))
         v_old=v+v_old
     end    
@@ -71,7 +69,6 @@ While Int64 might seem excessive when cell counts are between 1million to a bill
 Only dealing with positive count entities so Usigned is fine.
 """
 function auxil_potjans_param(scale=1.0::Float32)
-
 	ccu = Dict{String, UInt32}("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
@@ -86,7 +83,6 @@ function auxil_potjans_param(scale=1.0::Float32)
     Ni = UInt64(Ncells - Ne)
     Ncells, Ne, Ni, ccu
 end
-
 """
 The entry point to building the whole Potjans model in SNN.jl
 Also some of the current density parameters needed to adjust synaptic gain initial values.
