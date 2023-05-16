@@ -2,7 +2,6 @@ using SparseArrays
 using StaticArrays
 using ProgressMeter
 using LinearAlgebra
-#using UnicodePlots
 
 """
 This file contains a function stack that creates a network with Potjans and Diesmann wiring likeness in Julia using SpikingNeuralNetworks.jl to simulate
@@ -86,6 +85,9 @@ end
 """
 The entry point to building the whole Potjans model in SNN.jl
 Also some of the current density parameters needed to adjust synaptic gain initial values.
+Some of the following calculations and parameters are borrowed from this repository:
+https://github.com/SpikingNetwork/TrainSpikingNet.jl/blob/master/src/param.jl
+"""
 """
 function potjans_layer(scale)
     Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
