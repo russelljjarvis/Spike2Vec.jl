@@ -213,7 +213,7 @@ function label_online(mat_of_distances)
     sort_idx =  sortperm(assignments(R))
     M = mat_of_distances'[:,sort_idx]
     p1=Plots.heatmap(M')
-    #savefig("cluster_sort_song_birds.png")
+    savefig("cluster_sort_song_birds.png")
 
     p2=Plots.heatmap(mat_of_distances)
     Plots.plot(p1,p2)
@@ -300,6 +300,7 @@ plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
 # 75 chanels and 25 seconds
 ##
 function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_idx)
+    #yes = yes[sort_idx]
     step_size = maximum(times)/division_size
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
@@ -328,20 +329,22 @@ function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_
                     #push!(Tx,Float32(tt))
                     ##
                     ###
+                    ##
                     push!(Tx,Float32(sw+tt))
+                    ##
                 end
             end
         end
         #if yes[ind]>0.0
-        p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none)
+        p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none, markersize = 0.65)
             
         #end
     end
-    display(p)
+    #display(p)
     savefig("repeated_pattern_song_bird.png")
 end
 get_division_scatter(ttt,nnn,scatter_indexs,resolution,yes,sort_idx)
-display(Plots.scatter!(ttt,nnn))
+Plots.scatter!(ttt,nnn, markersize = 0.65)
 savefig("normal.png")
 #nnn,ttt = load_datasets()
 #label_online(mat_of_distances)
