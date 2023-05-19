@@ -54,7 +54,8 @@ function filter_on_off(x,y,times,p,l,nodes)
 end
 
 function load_datasets()
-    @load "all_mnmist.jld" storage
+    #@load "all_mnmist.jld" storage
+    @load "all_mnmist_complete.jld" temp_container_store
     xx=[]
     yy=[]
     tt = []
@@ -90,7 +91,6 @@ function load_datasets()
     y = [UInt32(y_+1) for y_ in y ]
     return (x,y,times,p,l,nodes,window_size)
 end
-#   (x,y,times,p,labels,nodes) = load_datasets()
 #labels = l
 function make_spike_movie(x,y,times,labels)
     cnt=0
@@ -105,14 +105,14 @@ function make_spike_movie(x,y,times,labels)
 
         end
         if l!=l_old && length(x_l)>1 && length(y_l)>1
-            @show(length(x_l))
-            @show(length(y_l))
-            @show(l)
-            @show(l_old)
-            @show(mymatrix[x_l,y_l]) #.= 10.0
+            #@show(length(x_l))
+            #@show(length(y_l))
+            #@show(l)
+            #@show(l_old)
+            #@show(mymatrix[x_l,y_l]) #.= 10.0
             #display(UnicodePlots.spy(mymatrix))
-            Plots.heatmap(mymatrix)
-            Plots.savefig("NMNIST_matrix$l.png")
+            display(Plots.heatmap(mymatrix))
+            #Plots.savefig("NMNIST_matrix$l.png")
     
             mymatrix = zeros((359,359))
             x_l = []
@@ -202,7 +202,10 @@ function get_plot_uniform(storage)
 
     return (linear_uniform_spikes,mean_spk_counts,nodes,length(storage))
 end
+@load "all_mnmist_complete.jld" temp_container_store
 
+#(x,y,times,p,labels,nodes) = load_datasets()
+get_plot_uniform(temp_container_store)
 function expected_spike_format(nodes1,times1)
     nodes1 = [i+1 for i in nodes1]
     n0ref =  []
@@ -467,10 +470,10 @@ end
 
 
 #@load "matrix_vectors.jld" list_lists 
-@load "ll.jld" ll 
-#mat_of_distances = get_matrix(list_lists,ll)
+#@load "ll.jld" ll 
+mat_of_distances = get_matrix(list_lists,ll)
 
-@load "mat_of_distances.jld" mat_of_distances
+#@load "mat_of_distances.jld" mat_of_distances
 #post_proc_viz(mat_of_distances)
 
 #M = umap_plots(mat_of_distances,ll)
@@ -482,6 +485,16 @@ function label_online(mat_of_distances,ll)
     c = counts(R) # get the cluster sizes
     M = R.centers # get the cluster centers
     #M = copy(M'[:])
+    p1=Plots.heatmap(mat_of_distances')
+
+    savefig("not_cluster_sort_MNMIST.png")
+
+    sort_idx =  sortperm(assignments(R))
+    M_ = mat_of_distances'[:,sort_idx]
+    p1=Plots.heatmap(M_)
+    savefig("cluster_sort_MNMIST.png")
+
+
     labelled_mat_of_distances = copy(mat_of_distances)
     for (ind,row) in enumerate(eachrow(mat_of_distances))
 
@@ -543,28 +556,28 @@ display(plot(o, marginals=false, legend=true))
 #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
 #final_plots(mat_of_distances,ll)
 
-#=
-if isfile("matrix_vectors.jld")
-    #(linear_uniform_spikes,mean_spk_counts,nodes,spike_distance_size) = get_plot_uniform(storage)
-    #list_lists = get_plot2(storage)
 
-    @load "matrix_vectors.jld" list_lists 
+#if isfile("matrix_vectors.jld")
+(linear_uniform_spikes,mean_spk_counts,nodes,spike_distance_size) = get_plot_uniform(storage)
+list_lists = get_plot2(storage)
+
+    #@load "matrix_vectors.jld" list_lists 
     #plot_lists(list_lists)
 
     #@load "all_mnmist.jld" storage
     #ll = get_labels(storage)
     #@save "ll.jld" ll
 
-    @load "ll.jld" ll 
-    mat_of_distances = get_matrix(list_lists,ll)
+#    @load "ll.jld" ll 
+mat_of_distances = get_matrix(list_lists,ll)
     
     #@show(mat_of_distances)
     #display(mat_of_distances)
-    @save "mat_of_distances.jld" mat_of_distances
+@save "mat_of_distances.jld" mat_of_distances
     
 
-    mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-    r = evaluate(Euclidean(),mat_of_distances[1,:], Vector{Float32}([0.0 for i in 1:length(mat_of_distances[1,:])]))
+    #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+    #r = evaluate(Euclidean(),mat_of_distances[1,:], Vector{Float32}([0.0 for i in 1:length(mat_of_distances[1,:])]))
 
     #@show(ll)
     
