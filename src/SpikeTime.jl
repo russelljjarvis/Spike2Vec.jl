@@ -1,7 +1,7 @@
 module SpikeTime
 
-export ST
-const ST = SpikeTime
+#export ST
+#const ST = SpikeTime
 
 using LinearAlgebra
 using SparseArrays
@@ -9,7 +9,7 @@ using Requires
 using UnPack
 using CUDA
 using ProgressMeter
-#using Setfield
+using Setfield
 
 using StatsPlots
 #using StatsBase

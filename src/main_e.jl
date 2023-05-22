@@ -14,7 +14,7 @@ end
 
 #function sim!(P, C;conn_map=nothing, dt = 0.1ms, duration = 10ms,current_stim=nothing)
 
-function count_syn(C::Vector{SpikingSynapse},testval::SpikingNeuralNetworks.SpikingSynapse{SparseMatrixCSC})
+function count_syn(C::Vector{SpikingSynapse},testval::SpikeTime.SpikingSynapse{SparseMatrixCSC})
     cnt_synapses=0
     for sparse_connections in C
         cnt_synapses+=length(sparse_connections.W.nzval)
@@ -22,7 +22,7 @@ function count_syn(C::Vector{SpikingSynapse},testval::SpikingNeuralNetworks.Spik
     println("synapses to be simulated: ",cnt_synapses)
 end
 
-function count_syn(C,testval::SpikingNeuralNetworks.SpikingSynapse{CuArray})
+function count_syn(C,testval::SpikeTime.SpikingSynapse{CuArray})
     cnt_synapses=0
     for sparse_connections in C
         cnt_synapses+=length(sparse_connections.W)

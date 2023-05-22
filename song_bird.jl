@@ -3,7 +3,9 @@ using JLD
 #using
 #using DrWatson
 using Plots
-using SpikingNeuralNetworks
+using SpikeTime
+#ST = SpikeTime.ST
+#using ST
 #using OnlineStats
 #using SparseArrays
 #SNN.@load_units
