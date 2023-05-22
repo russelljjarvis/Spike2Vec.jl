@@ -10,7 +10,7 @@ using CUDA
 # * Stored the post synaptic targets of each pre-synaptic cell populations cell struct for the reason described below
 ## TODO, as needed: 
 # * Since each cuda kernel has a cost, do as much work as possible per cuda kernel call.
-# to do as much work as possible in a cuda kernel, use code macros as a way to update both: `$V_{m} $` 
+# to do as much work as possible in a cuda kernel, use code macros as a way to update both: `V_{m} ` 
 # and weights together in the same loop, to make the folding together of synaptic weight updates with Vm updates, store the post
 # synaptic targets of each pre-synaptic cell populations cell struct.
 Note the CUDA kernels execute and produce results, but they are not yet as fast, or faster than CPU. To make the CUDA kernels 

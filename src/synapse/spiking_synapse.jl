@@ -42,7 +42,7 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
     end
 
 
-    
+    #=    
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w,delays)
         #g = zeros(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
         #g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
@@ -93,7 +93,7 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         #@show(g)
         new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records,delays)
     end
-    #=
+    
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array; σ = 0.0, p = 0.0)
         w = σ * sprand(post.N, pre.N, p) 
         w[diagind(w)] .= 0.0
