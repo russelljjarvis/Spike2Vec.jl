@@ -84,13 +84,11 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
 end
 
 """
-Preallocation for get time surface
+Pre-allocation for get time surface
 """
-function get_ts(nodes,times)
-    dt = 100
-    tau = 400
-    num_neurons = Int(length(unique(nodes)))+1#int(df.max(axis=0)['x1'])
-    total_time =  Int(maximum(times))
+function get_ts(nodes,times,dt,tau)
+    num_neurons = Int(length(nodes))+1
+    total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
     # Final output. 
     final_timesurf = zeros((num_neurons, time_resolution+1))
@@ -106,10 +104,15 @@ get time surface
 """
 function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
     last_t = 0
-    @inbounds for (tt,nn) in zip(times,nodes)
+
+    @showprogress for (tt,nn) in zip(times,nodes)
+
         #Get the current spike
-        neuron = Int(nn) 
-        time = Int(tt)        
+        neuron = Int(round(nn))
+        #@show(neuron)
+        #@show(length(mv))
+
+        time = Int(trunc(Int32,tt))       
         # If time of the next spikes leaps over, make sure to generate 
         # timesurfaces for all the intermediate dt time intervals and fill the 
         # final_timesurface.
@@ -128,7 +131,7 @@ function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,ti
     end
     # Generate the time surface for the rest of the time if there exists no other spikes. 
     timesurf = similar(final_timesurf[:,1])
-    @inbounds for t in collect(last_t:dt:total_time)
+    @showprogress for t in collect(last_t:dt:total_time)
         @. timesurf = mv*exp((timestamps-t)/tau)
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
     end
@@ -136,7 +139,7 @@ end
 
 
 
-function color_time_plot(nodes::Vector{UInt32}, times::Vector{Float32}, file_name::String)
+function color_time_plot(nodes::Vector{Int32}, times::Vector{Float32}, file_name::String)
 
     perm = sortperm(times)
     nodes = nodes[perm]
@@ -145,7 +148,7 @@ function color_time_plot(nodes::Vector{UInt32}, times::Vector{Float32}, file_nam
     cmap = :balance
 
     Plots.plot(scatter(times,nodes,zcolor=CList, title="Color Time Plot", marker=(2, 2, :auto, stroke(0.0005)),legend=false))
-    Plots.savefig("color_time.png")
+    Plots.savefig("$file_name.color_time.png")
     return CList::Vector{Float32}
 end
 
@@ -172,7 +175,7 @@ function get_mean_isis(times,nodes)
     #@show(StatsBase.mean(all_isis))
     mean_isi = StatsBase.mean(all_isis)
 end
-function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}; file_name::String="empty.png")
+function plot_umap(nodes::Vector{Int32}, times::Vector{Float32},dt,tau; file_name::String="empty.png")
     perm = sortperm(times)
     nodes = nodes[perm]
     times = times[perm]
@@ -186,7 +189,7 @@ function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}; file_name::Str
     #Plots.savefig("color_time.png")
     time_end = Int(length(times))
     cmap = :balance
-    final_timesurf = get_ts(nodes,times);
+    final_timesurf = get_ts(nodes,times,dt,tau);
     normalize!(final_timesurf)
     Plots.heatmap(final_timesurf)
     Plots.savefig("TimeSurface.png")
@@ -196,7 +199,7 @@ function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}; file_name::Str
     #Plots.heatmap(final_timesurf)
     #Plots.savefig("heatmap.png")
 
-    res_jl = umap(final_timesurf',n_neighbors=20, min_dist=0.001, n_epochs=100)
+    @time res_jl = umap(final_timesurf',n_neighbors=20, min_dist=0.001, n_epochs=100)
     #@show(size(final_timesurf'))
     CList_ = [maximum(CList)/i for i in collect(1:length(final_timesurf')) ]
 
@@ -204,8 +207,8 @@ function plot_umap(nodes::Vector{UInt32}, times::Vector{Float32}; file_name::Str
     #@show(length(res_jl))
     #CList = collect(0:length(times)/length(res_jl):length(times))
 
-    display(Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList_, title="Spike Rate: UMAP", marker=(2, 2, :auto, stroke(3.5)),legend=false)))
-    Plots.savefig(file_name)
+    display(Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList_, title="Spike Timing: UMAP", marker=(2, 2, :auto, stroke(3.5)),legend=false)))
+    @time Plots.savefig(file_name)
     
     #return 
 end

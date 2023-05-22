@@ -9,10 +9,12 @@ using LinearAlgebra
 using ColorSchemes
 using AngleBetweenVectors
 using Revise
-using OnlineStats, Plots#, Random
+#using OnlineStats, Plots#, Random
 #using DataFrames
 using UMAP
 using Distances
+using StaticArrays
+
 using LinearAlgebra
 #import StatsBase.ZScoreTransform
 #import StatsBase.fit!
@@ -68,6 +70,52 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
     end
     self_distances
 end
+function get_vector_coords_uniform!(uniform::SArray, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
+    for (ind,n1_) in enumerate(neuron1)
+        if length(n1_) != 0
+            pooledspikes = vcat(uniform,n1_)
+            maxt = maximum(sort!(unique(pooledspikes)))
+
+            t1_ = uniform
+            t0_ = sort(unique(n1_))
+
+            t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
+            self_distances[ind]=abs(sum(S))
+        else
+            self_distances[ind]=0
+        end
+    end
+end
+
+function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
+    @inbounds for (ind,n1_) in enumerate(neuron1)
+        if length(n1_) != 0
+            pooledspikes = vcat(uniform,n1_)
+            maxt = maximum(sort!(unique(pooledspikes)))
+            t0_ = sort(unique(n1_))
+            t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+            self_distances[ind]=abs(sum(S))
+        else
+            self_distances[ind]=0
+        end
+        #@show(self_distances[ind])
+
+    end
+end
+
+function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Any}, self_distances::Vector{Float32})
+    @inbounds for (ind,n1_) in enumerate(neuron1)
+        if length(n1_) != 0
+            pooledspikes = vcat(uniform,n1_)
+            maxt = maximum(sort!(unique(pooledspikes)))
+            t0_ = sort(unique(n1_))
+            t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+            self_distances[ind]=abs(sum(S))
+        else
+            self_distances[ind]=0
+        end
+    end
+end
 """
 Just a helper method to get some locally stored spike data if it exists.
 """
@@ -81,25 +129,28 @@ function fromHDF5spikes()
 end
 
 """
-For polar visualizations of spike distance vectors
+for uniform spikes
+linear_uniform_spikes should be a static array, it only needs to occur once.
 """
-function looped!(times,t0,spk_counts,segment_length,temp)
-    doonce = LinRange(0.0, segment_length, temp)[:]
+function uniform_spike_setter!(times,t0,spk_counts,segment_length,mean_spk_counts)
+    #range(0.0, stop=1.0, length=100)
+    
+    linear_uniform_spikes = collect(LinRange(0.0, segment_length, mean_spk_counts))[:]
+    #@show(doonce)
     for (neuron, t) in enumerate(t0)
-        times[neuron] = doonce
+        times[neuron] = linear_uniform_spikes
     end
 end
 """
 Generate uniform surrogate spike trains that fire at the networks mean firing rate
 """
-function surrogate_to_uniform(times_,segment_length)
+function surrogate_to_uniform(times_,segment_length,mean_spk_counts)
     times =  Array{}([Float32[] for i in 1:length(times_)])
     spk_counts = []
-    for (neuron, t) in enumerate(times_)
+    for (neuron, t) in enumerate(times_)#nxxx_
         append!(spk_counts,length(t))
     end
-    temp = 4
-    looped!(times,times_,spk_counts,segment_length,temp)
+    uniform_spike_setter!(times,times_,spk_counts,segment_length,mean_spk_counts)
     times
 end
 
@@ -124,36 +175,13 @@ function post_proc_viz(mat_of_distances)
     return angles0,distances0,angles1,distances1
 end
 
-
 """
 Final plot where clustering should occur.
 """
 function final_plots2(mat_of_distances)
-    #normalize!(mat_of_distances[:,:])
-    #fit!(ZScoreTransform, mat_of_distances, dims=2)
-    #for (ind,row) in enumerate(eachcol(mat_of_distances))
-    #    mat_of_distances[:,ind].- mean.(mat_of_distances)./std.(mat_of_distances)
-    #end
-    #for (ind,_) in enumerate(eachcol(mat_of_distances))
-    #    mat_of_distances[:,ind] = mat_of_distances[:,ind].- mean(mat_of_distances)./std(mat_of_distances)
-    #end
-    #mat_of_distances[ind,:] = mat_of_distances[ind,:].- mean(mat_of_distances)./std(mat_of_distances)
-
-    #mat_of_distances ./ norm.(eachcol(mat_of_distances))'
-
     angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
-    #display(scatter(angles0,distances0))#,color=cs1))
-    #display(scatter(angles1,distances1))#,color=cs1))
-    #cs1 = ColorScheme(distinguishable_colors(size(mat_of_distances)[1], transform=protanopic))
-    #plot!(angles1,distances1, proj=:polar)  |>display   
     plot!(angles1,distances1,marker =:circle, arrow=(:closed, 3.0)) 
-
-
-    ##
-    # do cl
-    # # 
-
-    savefig("statemvements.png")   
+    savefig("statemvements_nmn.png")   
     (angles1,distances1)
 end
 

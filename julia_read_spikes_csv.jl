@@ -1,3 +1,4 @@
+using PyCall
 using SpikingNeuralNetworks
 using ProgressMeter
 using Revise
@@ -14,16 +15,14 @@ py"""
 import feather
 #import pandas as pd
 def read():
-    df = feather.read_dataframe("spikes.feather")
+    df = feather.read_dataframe("~/git/brian2-sims/sim_data/ai_exp_latest/win2.5_bg60/spikes.feather")
     return df
 """
 
 df = py"read"();
-println("read in data")
-function ragged_to_uniform_col_vec(df)
-    times = df.t
-    nodes = df.i
-    
+times = df.t
+nodes = df.i
+function ragged_to_uniform(df)
     nnn=[];
     ttt=[];
     @showprogress for (i, t) in enumerate(times)
@@ -33,6 +32,11 @@ function ragged_to_uniform_col_vec(df)
     end
     (nnn,ttt)
 end
+
+(nnn,ttt) = ragged_to_uniform_col_vec(df)
+@save "pablos_spikes.jld" nnn ttt
+println("gets here")
+division_size = maximum(ttt)/10.0
 
 (nnn,ttt) = ragged_to_uniform_col_vec(df)
 @save "pablos_spikes.jld" nnn ttt
@@ -66,9 +70,17 @@ function get_plot(times,nodes,division_size)
     Axis(f[1, 1], title = "State visualization",)#yticks = ((1:length(mat_of_distances)) ,String([Char(i) for i in collect(1:length(mat_of_distances))])))
     @showprogress for (ind,_) in enumerate(eachrow(mat_of_distances))
         d = Makie.density!(mat_of_distances[ind,:],offset=ind*2,color = :x, colormap = :thermal, colorrange = (-10, 10),strokewidth = 1, strokecolor = :black, bandwidth = 0.02)
+
     end
     save("ridgeline.png",f)
     return mat_of_distances,f
 end
 
 get_plot(ttt, nnn, division_size[1])
+nnn=[];
+ttt=[];
+for (i, t) in enumerate(times)
+    for tt in t
+        push!(nnn,i);push!(ttt,tt)
+    end
+end
