@@ -42,8 +42,8 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
     end
 
 
-    
-    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w,delays)
+    #=
+    function SpikingSynapse(pre::SpikeTime.IFNF, post::SpikeTime.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w,delays)
         #g = zeros(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
         #g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
        # EE = SNN.SpikingSynapse(E, E,sim_type; σ = 60*0.27/1, p = 0.015)
@@ -53,7 +53,7 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         SpikingSynapse(rowptr,colptr,I,J,index,w,g,pre,post,delays)
     end
 
-    function SpikingSynapse(pre::SpikingNeuralNetworks.Poisson, post::SpikingNeuralNetworks.IFNF,sim_type::Any; σ = 0.0, p = 0.0)
+    function SpikingSynapse(pre::SpikeTime.Poisson, post::SpikeTime.IFNF,sim_type::Any; σ = 0.0, p = 0.0)
         w = σ * sprand(post.N, pre.N, p) 
         #delays = abs.(rand(post.N))
 
@@ -63,7 +63,7 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         V::typeof(sim_type) = convert(typeof(sim_type),V)
         SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)#,delays)
     end
-    function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Any; σ = 0.0, p = 0.0)
+    function SpikingSynapse(pre::SpikeTime.IFNF, post::SpikeTime.IFNF,sim_type::Any; σ = 0.0, p = 0.0)
         w = σ * sprand(post.N, pre.N, p) 
         #delays = abs.(rand(post.N))
         #delays 
@@ -78,7 +78,7 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         SpikingSynapse(rowptr,colptr,I,J,index,V,g,pre,post)#,delays)
     end
 
-    function SpikingSynapseReliable(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Any; σ = 0.0)
+    function SpikingSynapseReliable(pre::SpikeTime.IFNF, post::SpikeTime.IFNF,sim_type::Any; σ = 0.0)
         w = σ * sparse(ones(post.N, pre.N)) 
         #delays = abs.(rand(post.N))
 
@@ -93,7 +93,6 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         #@show(g)
         new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records,delays)
     end
-    #=
     function SpikingSynapse(pre::SpikingNeuralNetworks.IFNF, post::SpikingNeuralNetworks.IFNF,sim_type::Array; σ = 0.0, p = 0.0)
         w = σ * sprand(post.N, pre.N, p) 
         w[diagind(w)] .= 0.0

@@ -10,6 +10,7 @@ end
 function set_syn_values!(container::SpikingSynapse, new_values::Array{Bool})
     @set  container.fireJ = new_values
 end
+#=
 
 
 #function sim!(P, C;conn_map=nothing, dt = 0.1ms, duration = 10ms,current_stim=nothing)
@@ -21,7 +22,6 @@ function count_syn(C::Vector{SpikingSynapse},testval::SpikeTime.SpikingSynapse{S
     end    
     println("synapses to be simulated: ",cnt_synapses)
 end
-
 function count_syn(C,testval::SpikeTime.SpikingSynapse{CuArray})
     cnt_synapses=0
     for sparse_connections in C
@@ -29,7 +29,7 @@ function count_syn(C,testval::SpikeTime.SpikingSynapse{CuArray})
     end    
     println("synapses to be simulated: ",cnt_synapses)
 end
-
+=#
 function integrate_neuron!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,fire::Vector{Bool},u::Vector{<:Real},tr::Vector{<:Number})
     τm = 20ms
     τe = 5ms
