@@ -58,6 +58,7 @@ function potjans_constructor(scale::Float64)
 		    "23I"=>5834,
 		    "5I"=>1065,
 		    "4I"=>5479)
+
 	ccu = Dict{String, UInt32}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
     v_old=1
     K = length(keys(ccu))
@@ -132,14 +133,13 @@ function build_matrix_prot!(jee::Float32,jei::Float32,wig::Float32,Lxx::SparseMa
     @inbounds @showprogress for (i,v) in enumerate(cum_array)
 
         @inbounds for (j,v1) in enumerate(cum_array)
+            prob = conn_probs[i,j]
 
             @inbounds for src in v
                 @inbounds for tgt in v1
 
                     if src!=tgt
-                        prob = conn_probs[i][j]
-
-
+                        
                         if rand()<prob
 
                             syn1 = syn_pol[j]
@@ -150,12 +150,12 @@ function build_matrix_prot!(jee::Float32,jei::Float32,wig::Float32,Lxx::SparseMa
                                 if syn1==true
                                     #Lxx[src,tgt] = jee
                                     setindex!(Lxx,jee, src,tgt)
-                                elseif syn1==true# meaning if the same as a logic: Inhibitory post synapse  is true                   
+                                else# meaning if the same as a logic: Inhibitory post synapse  is true                   
                                     setindex!(Lxx,jei, src,tgt)
                                     #Lxx[src,tgt] = jei
 
                                 end
-                            elseif syn0==false     
+                            else syn0==false     
                                 #Lxx[src,tgt] = jei
                                 #println("gets here a")
                                 #Lxx[src,tgt] = wig
@@ -173,7 +173,6 @@ function build_matrix_prot!(jee::Float32,jei::Float32,wig::Float32,Lxx::SparseMa
                     end
                 end
             end
-            #display(Lxx)            
         end
     end
     #Lxx[diagind(Lxx)] .= 0.0
