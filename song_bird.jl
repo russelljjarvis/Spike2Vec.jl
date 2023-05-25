@@ -318,12 +318,16 @@ function label_online_distmat(mat_of_distances,nclasses)
     #mat_of_distances = copy(mat_of_distances'[:])
 
     distance_matrix = zeros(length(eachrow(mat_of_distances)),length(eachrow(mat_of_distances)))
+    all_perm_pairs = []
+
     @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
+        push!(all_perm_pairs,[])
         for (ind2,row2) in enumerate(eachrow(mat_of_distances))
             if ind!=ind2
                 best_distance = 100000.0
                 distance = evaluate(Euclidean(),row,row2)
-                if distance<8.5
+                if distance<7.5
+                    push!(all_perm_pairs[ind],ind2)
                     distance_matrix[ind,ind2] = distance
                 else
                     distance_matrix[ind,ind2] = -10.0
@@ -335,6 +339,7 @@ function label_online_distmat(mat_of_distances,nclasses)
         end
     end
     display(Plots.heatmap(distance_matrix))
+    @show(all_perm_pairs)
     distance_matrix
  end
 
