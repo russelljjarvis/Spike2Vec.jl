@@ -37,9 +37,9 @@ import DelimitedFiles: readdlm
 using Clustering
 using UMAP
 # Songbird metadata
-num_neurons = 75
-max_time = 22.2
-
+#num_neurons = 75
+#max_time = 22.2
+using DrWatson
 # Randomly permute neuron labels.
 # (This hides the sequences, to make things interesting.)
 #_p = Random.randperm(num_neurons)
@@ -203,9 +203,11 @@ end
 
 
 
-function label_online(mat_of_distances)
-    classes = 10
-    R = kmeans(mat_of_distances', classes; maxiter=2000, display=:iter)
+function label_online(mat_of_distances,nclasses)
+    
+    #R = Clustering.mcl(mat_of_distances'; maxiter=2000, display=:iter)
+    R = kmeans(mat_of_distances', nclasses; maxiter=2000, display=:iter)
+
     #a = assignments(R) # get the assignments of points to clusters
     #c = counts(R) # get the cluster sizes
     M = R.centers # get the cluster centers
@@ -230,32 +232,28 @@ function label_online(mat_of_distances)
     #mat_of_distances = copy(mat_of_distances'[:])
     @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
         flag = false
-        for ix in collect(1:classes)
+        for ix in collect(1:nclasses)
             best_distance = 100000.0
             current_centre = M[:,ix]
-            distance = sum(abs.(row .- current_centre))
+            #distance = sum(abs.(row .- current_centre))
+            distance = evaluate(Euclidean(),row,current_centre)
             if distance<best_distance
                 best_distance = distance
                 best_index = ind
                 best_index_class = ix
             end
             #if best_distance < 6.5
-            if best_distance < 27.5
-
-                flag = true
+            if best_distance < 6.5
+                best_distance = distance
+                best_index = ind
+                best_index_class = ix
+                #flag = true
                 labelled_mat_of_distances[best_index,:] .= best_index_class
                 ref_mat_of_distances[best_index,:] = view(mat_of_distances,best_index,:)
                 push!(scatter_indexs,best_index)
                 push!(scatter_class_colors,best_index_class)
-            else 
-                flag = false
+                push!(yes,ix)
             end
-        if flag
-            push!(yes,last(best_index_class))
-        else
-            push!(yes,-1.0)
-        end
-        flag = false
         end
     end
     #@show(length(yes))
@@ -291,17 +289,67 @@ function label_online(mat_of_distances)
     (scatter_indexs,yes,sort_idx)
 end
 
+function label_online_distmat(mat_of_distances,nclasses)
+    
+    #R = Clustering.mcl(mat_of_distances'; maxiter=2000, display=:iter)
+    R = kmeans(mat_of_distances', nclasses; maxiter=2000, display=:iter)
+
+    #a = assignments(R) # get the assignments of points to clusters
+    #c = counts(R) # get the cluster sizes
+    M = R.centers # get the cluster centers
+    #M = copy(M'[:])
+
+    #c = kmeans(M,4)
+    sort_idx =  sortperm(assignments(R))
+    M = mat_of_distances'[:,sort_idx]
+    p1=Plots.heatmap(M')
+    savefig("cluster_sort_song_birds.png")
+
+    p2=Plots.heatmap(mat_of_distances)
+    Plots.plot(p1,p2)
+    savefig("cluster_sort_song_birds.png")
+
+    labelled_mat_of_distances = zeros(size(mat_of_distances))
+    ref_mat_of_distances = zeros(size(mat_of_distances))
+
+    scatter_indexs = []
+    scatter_class_colors = []
+    yes = []
+    #mat_of_distances = copy(mat_of_distances'[:])
+
+    distance_matrix = zeros(length(eachrow(mat_of_distances)),length(eachrow(mat_of_distances)))
+    @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
+        for (ind2,row2) in enumerate(eachrow(mat_of_distances))
+            if ind!=ind2
+                best_distance = 100000.0
+                distance = evaluate(Euclidean(),row,row2)
+                if distance<8.5
+                    distance_matrix[ind,ind2] = distance
+                else
+                    distance_matrix[ind,ind2] = -10.0
+                end
+
+            else
+                distance_matrix[ind,ind2] = -10.0
+            end
+        end
+    end
+    display(Plots.heatmap(distance_matrix))
+    distance_matrix
+ end
+
+
 (nnn,ttt)= load_datasets()
 display(Plots.scatter(ttt,nnn))
-resolution = 90
+resolution = 150
 mat_of_distances = get_plot(ttt,nnn,resolution)
 plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
+nclasses=10
+(scatter_indexs,yes,sort_idx) = label_online(mat_of_distances,nclasses)
+distmat = label_online_distmat(mat_of_distances,nclasses)
+display(Plots.heatmap(distmat))
 
-(scatter_indexs,yes,sort_idx) = label_online(mat_of_distances)
-##
-# 75 chanels and 25 seconds
-##
-function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_idx)
+function get_division_scatter2(times,nodes,division_size,distmat)
     #yes = yes[sort_idx]
     step_size = maximum(times)/division_size
     end_window = collect(step_size:step_size:step_size*division_size)
@@ -311,7 +359,9 @@ function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_
 
     mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
     segment_length = end_window[3] - start_windows[3]
-    p=Plots.plot(legend = :none)
+    fig = Figure(backgroundcolor=RGBf(0.6, 0.6, 0.96))
+
+    p=Plots.scatter(backgroundcolor=RGBf(0.6, 0.6, 0.96))
     #p=Plots.scatter(times,nodes,legend=true)
     end_window = end_window[sort_idx]
     start_windows = start_windows[sort_idx]
@@ -336,16 +386,94 @@ function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_
                     ##
                 end
             end
+            #@show(last(sw))
+
         end
+        for xx in distmat[ind,:]
+            if abs(xx)<2
+                Plots.scatter!(p,Tx,Nx,marker_z=ind,legend = false, markersize = 2,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2)
+            end
+        end
+
+        #if ind in yes
+        #    Plots.vline!(p,[first(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+
+        #    Plots.vline!(p,[last(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+        #end
         #if yes[ind]>0.0
-        p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none, markersize = 0.65)
+            
+        #Plots.scatter!(p,Tx,Nx,marker_z=1, markersize = 0.75,markerstrokewidth=0,alpha=0.25)
+        #end
+
+    end
+
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID",backgroundcolor=RGBf(0.6, 0.6, 0.96))
+    #display(p)
+    savefig("repeated_pattern_song_bird2.png")
+end
+get_division_scatter2(ttt,nnn,resolution,distmat)
+
+
+##
+# 75 chanels and 25 seconds
+##
+function get_division_scatter(times,nodes,division_size,yes,sort_idx)
+    #yes = yes[sort_idx]
+    step_size = maximum(times)/division_size
+    end_window = collect(step_size:step_size:step_size*division_size)
+    spike_distance_size = length(end_window)
+    #start_windows = collect(0:step_size:step_size*division_size-1)
+    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+
+    mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
+    segment_length = end_window[3] - start_windows[3]
+    p=Plots.scatter()
+    #p=Plots.scatter(times,nodes,legend=true)
+    end_window = end_window[sort_idx]
+    start_windows = start_windows[sort_idx]
+
+    @showprogress for (ind,toi) in enumerate(end_window)
+        sw = start_windows[ind]
+        spikes = divide_epoch(nodes,times,sw,toi)    
+        Nx=Vector{Int32}([])
+        Tx=Vector{Float32}([])
+        for (i, t) in enumerate(spikes)
+            for tt in t
+                if length(t)!=0
+                    push!(Nx,i)
+                    ###
+                    ##
+                    ##
+                    #push!(Tx,Float32(tt))
+                    ##
+                    ###
+                    ##
+                    push!(Tx,Float32(sw+tt))
+                    ##
+                end
+            end
+            if ind in yes
+                Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = false, markersize = 2,markerstrokewidth=0,alpha=1.0)
+            end
+            #@show(last(sw))
+
+        end
+        #if ind in yes
+        #    Plots.vline!(p,[first(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+
+        #    Plots.vline!(p,[last(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+        #end
+        #if yes[ind]>0.0
+        Plots.scatter!(p,Tx,Nx,marker_z=1, markersize = 0.75,markerstrokewidth=0,alpha=0.25)
             
         #end
     end
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID")
+
     #display(p)
     savefig("repeated_pattern_song_bird.png")
 end
-get_division_scatter(ttt,nnn,scatter_indexs,resolution,yes,sort_idx)
+get_division_scatter(ttt,nnn,resolution,yes,sort_idx)
 Plots.scatter!(ttt,nnn, markersize = 0.65)
 savefig("normal.png")
 #nnn,ttt = load_datasets()
