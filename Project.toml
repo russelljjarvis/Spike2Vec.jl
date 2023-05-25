@@ -1,6 +1,6 @@
 name = "SpikeTime"
 uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
-version = "0.1.1"
+version = "0.1.0"
 
 [deps]
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
@@ -28,8 +28,8 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
-
-
+Attractors = "f3fd9213-ca85-4dba-9dfd-7fc91308fec7"
+DynamicalSystemsBase = "6e36e845-645a-534a-86f2-f5d4aa5a06b4"
 [compat]
 Requires = "0.5, 1"
 UnPack = "1"

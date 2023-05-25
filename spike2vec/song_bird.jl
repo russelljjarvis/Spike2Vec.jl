@@ -5,9 +5,14 @@ using DynamicalSystems
 import Attractors#.DiscreteDynamicalSystem
 import Attractors#.AttractorsViaRecurrence
 using DelayEmbeddings
+using DynamicalSystemsBase # to simulate Lorenz63
 
 using Attractors
 using StaticArrays
+using ChaosTools, CairoMakie
+using CairoMakie
+
+using DelayEmbeddings: embed, estimate_delay
 #using
 #using DrWatson
 #using Plots
@@ -49,6 +54,7 @@ using UMAP
 # Songbird metadata
 #num_neurons = 75
 #max_time = 22.2
+using DelayEmbeddings
 
 # Randomly permute neuron labels.
 # (This hides the sequences, to make things interesting.)
@@ -107,18 +113,18 @@ function load_datasets()
 end
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
-    @show(step_size)
+    #@show(step_size)
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
 
     mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
     
-    @show(last(start_windows),last(end_window))
+    #@show(last(start_windows),last(end_window))
     n0ref = divide_epoch(nodes,times,last(start_windows),last(end_window))
     
     segment_length = end_window[2] - start_windows[2]
-    @show(segment_length)
+    #@show(segment_length)
     mean_spk_counts = Int32(round(mean([length(times) for times in enumerate(n0ref)])))
     t0ref = surrogate_to_uniform(n0ref,segment_length,mean_spk_counts)
     PP = []
@@ -152,7 +158,7 @@ function get_plot(times,nodes,division_size)
     savefig("just_two_song_bird_raw_vectors.png")
     #@save "song_bird_matrix.jld" mat_of_distances
     #zeros(spike_distance_size,maximum(unique(nodes))+1)
-    return SMatrix{maximum(unique(nodes))+1,spike_distance_size}(mat_of_distances)
+    return mat_of_distances
 end
 #=
 function post_proc_viz(mat_of_distances)
@@ -297,18 +303,102 @@ function label_online(mat_of_distances)
 
     Plots.plot(p1,p2,p3,p4,legend = :none)
     savefig("both_labelled_mat_of_distances_song_bird.png")
-    @show(yes)
+    #@show(yes)
     #return M
     (scatter_indexs,yes,sort_idx)
 end
 
 (nnn,ttt)= load_datasets()
 display(Plots.scatter(ttt,nnn))
-resolution = 90
+resolution = 400
 mat_of_distances = get_plot(ttt,nnn,resolution)
-sss = StateSpaceSet(mat_of_distances)
-embed = embed(sss)
-@show(sss)
+#mat_of_distances = copy(mat_of_distances)
+#Y_mt, τ_vals_mt, ts_vals_mt, Ls_mt, εs_mt = pecuzal_embedding(mat_of_distances;
+#    τs = 0:Tmax, L_threshold = 0.2, w = theiler, econ = true
+#mat_of_distances = mat_of_distances'
+display(Plots.heatmap(mat_of_distances))
+
+sss = StateSpaceSet([row for (i,row) in enumerate(eachcol(mat_of_distances))])
+Tmax = 20
+#@show(sss)
+#display(sss)
+theiler = estimate_delay(vec(reduce(vcat,mat_of_distances)), "mi_min") # estimate a Theiler window
+
+
+Y, τ_vals, ts_vals, Ls, εs = pecuzal_embedding(sss; τs = 0:Tmax , w = theiler, econ = true)
+fig = Figure(resolution = (1000,500) )
+ax1 = Axis3(fig[1,1], title = "PECUZAL reconstructed")
+ts_str = ["x", "y", "z"]
+lines!(ax1, Y[:,1], Y[:,2], Y[:,3]; linewidth = 1.0)
+save("song_embedStandard.png", fig) # size = 800 x 600 px
+U, S = broomhead_king(mat_of_distances, 3)
+fig = Figure()
+axs = [Axis3(fig[1, i]) for i in 1:2]
+lines!(axs[1], U[:, 1], U[:, 2], U[:, 3])
+axs[1].title = "Broomhead-King of s"
+save("song_embedBroomhead.png",fig)
+#R = embed(sss, 3,theiler)
+#lines!(axs[2], columns(R)...)
+#axs[2].title = "2D embedding of s"
+#display(fig)
+
+#StateSpaceSet(row for (i,row) in enumerate(mat_of_distances))
+#sss = StateSpaceSet(mat_of_distances)
+
+#Y_mt, τ_vals_mt, ts_vals_mt, Ls_mt, εs_mt = pecuzal_embedding(sss;
+#          τs = 0:Tmax, L_threshold = 0.2, econ = false
+
+#@show(size(Y_mt))
+#println(τ_vals_mt)
+#println(ts_vals_mt)
+
+#ax1.azimuth = 3π/2 + π/4
+
+#ax2 = Axis3(fig[1,2], title = "original")
+#lines!(ax2, mat_of_distances[:,1], mat_of_distances[:,2], mat_of_distances[:,3]; linewidth = 1.0, color = Cycled(2))
+#ax2.xlabel = "x(t)"
+#ax2.ylabel = "y(t)"
+##ax2.zlabel = "z(t)"
+#a#x2.azimuth = π/2 + π/4
+
+#=
+using DynamicalSystems
+using Attractors
+using Basins
+
+function newton_map(u,mat_of_distances)
+    temp = mat_of_distances[u,:]
+    sized=size(temp)    
+    return SVector{sized[1]}(temp)
+end
+
+
+# dummy Jacobian function to keep the initializator happy
+function newton_map_J(J,z0, p, n)
+   return
+end
+
+ds = DiscreteDynamicalSystem(newton_map,[0, 10], [3] , newton_map_J)
+integ  = integrator(ds)
+
+xg=range(0),10,length=200)
+yg=range(0,10,length=200)
+
+bsn=basin_discrete_map(xg, yg, integ)
+
+basins, attractors = basins_of_attraction(mat_of_distances; show_progress = true)
+
+function henon_rule(u,mat_of_distances)
+    temp = mat_of_distances[u,:]
+    sized=size(temp)    
+    return SVector{sized[1]}(temp)
+end
+u0 = [0,length(mat_of_distances)]
+henon = DeterministicIteratedMap(henon_rule, u0,mat_of_distances)
+
+
+#embed = embed(sss)
+#@show(sss)
 #N = 2000; dt = 0.05
 #tr = trajectory(sss, N*dt; dt = dt, Ttr = 10.0)
 
@@ -329,7 +419,8 @@ xg = yg = range(0, maximum(sss); length = length(sss))
 mapper = AttractorsViaRecurrences(ds, (xg, yg);
     sparse = false, mx_chk_lost = 1000
 )
-
+=#
+#=
 plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
 
 (scatter_indexs,yes,sort_idx) = label_online(mat_of_distances)
@@ -385,3 +476,4 @@ Plots.scatter!(ttt,nnn, markersize = 0.65)
 savefig("normal.png")
 #nnn,ttt = load_datasets()
 #label_online(mat_of_distances)
+=#
