@@ -12,7 +12,7 @@ import StatsBase.mean
 GLMakie.activate!()
 include("../src/models/genPotjansWiring.jl")
 function protect_variable()
-    scale = 1.0
+    scale = 0.5
     (pot_conn,x,y,ccu) = potjans_layer(scale)
     @show(pot_conn)
     Lx = Vector{Int64}(zeros(size(pot_conn)))
@@ -79,7 +79,7 @@ Y = sgtsnepi(pot_conn; d=dim, Y0 = Y0, max_iter = 500);
 #- `edge_alpha=0.2`: the alpha channel for the edges
 #- `clr_in=nothing`: set color for all intra-cluster edges (if nothing, color by `cmap`)
 #- `clr_out=colorant"#aabbbbbb"`: the color of inter-cluster edges
-show_embedding( Y, Lx ,clr_out=cmap,clr_out=cmap,edge_alpha=0.5)#; A = pot_conn, res = (5000, 5000) )
+show_embedding(Y, Lx ,clr_out=cmap,clr_out=cmap,edge_alpha=0.5)#; A = pot_conn, res = (5000, 5000) )
 A = pot_conn
 Y0 = 0.01 * randn( size(A,1), 3 );
 Y = sgtsnepi(A; d = 3, Y0 = Y0, max_iter = 500);

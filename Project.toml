@@ -3,6 +3,7 @@ uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
 version = "0.1.1"
 
 [deps]
+OhMyREPL = "5fb14364-9ced-5910-84b2-373655c76a03"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"

@@ -2,7 +2,7 @@ module SpikeTime
 
 #export ST
 #const ST = SpikeTime
-
+using OhMyREPL
 using LinearAlgebra
 using SparseArrays
 using Requires
