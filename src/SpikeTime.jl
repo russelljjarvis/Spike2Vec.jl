@@ -42,6 +42,7 @@ export get_state_transitions
 export state_transition_trajectory
 export get_division_scatter_identify_via_recurrence_mat
 export get_repeated_scatter
+export spike_matrix_divided
 #export post_proc_viz
 #export final_plots
 export get_divisions

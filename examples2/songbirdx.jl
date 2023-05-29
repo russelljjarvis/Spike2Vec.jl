@@ -55,13 +55,13 @@ distmat = label_online_distmat(mat_of_distances;threshold= ε)#,nclasses)
 (R,_,assign) = cluster_distmat(distmat)
 assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,distmat,assign;threshold= ε)
 
-#assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,distmat,assign;threshold=threshold)
 repeated_windows = state_transition_trajectory(start_windows,end_windows,distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="songbird.png")
 nslices=length(start_windows)
-#@show(repeated_windows)
 get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices,file_name="songbird.png")
 get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,plots=true,file_name="songbird.png";threshold= ε)
-get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_windows,end_windows,nodes,times;file_name::String="recurrence_bird.png",ε::Real=5)
+#get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_windows,end_windows,nodes,times;file_name::String="recurrence_bird.png",ε::Real=5)
+rqa,xs, ys,sss = get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assign,nlist,tlist,start_windows,end_windows,nodes,times;file_name="recurrence_pfc.png",ε=5)
+#
 #display(Plots.scatter(assing_progressions))
 
 #=

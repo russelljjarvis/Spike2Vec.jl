@@ -4,64 +4,65 @@ using SpikeTime
 using DrWatson
 using ProgressMeter
 using RecurrenceAnalysis
+using GraphMakie, CairoMakie
 
 import DelimitedFiles: readdlm
-
-function load_song_bird()
-
+function load_datasets_pfc()
     spikes = []
-    
-    nodes = [n for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))]
-    for _ in 1:maximum(unique(nodes))+1
+    file_read_list =  readdlm("../data2/150628_SpikeData.dat", '\t', Float64, '\n')
+    nodes = [n for (t, n) in eachrow(file_read_list)]
+    numb_neurons=Int(maximum(nodes))+1
+    @inbounds for _ in 1:numb_neurons
         push!(spikes,[])
     end
-
-    for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))
+    @inbounds for (t, n) in eachrow(file_read_list)
         push!(spikes[Int32(n)],t)
     end
-    nnn=Vector{Int32}([])
-    ttt=Vector{Float32}([])
-    for (i, t) in enumerate(spikes)
-        for tt in t
+    nnn_scatter=Vector{UInt32}([])
+    ttt_scatter=Vector{Float32}([])
+    @inbounds @showprogress for (i, t) in enumerate(spikes)
+        @inbounds for tt in t
             if length(t)!=0
-                push!(nnn,i);
-                push!(ttt,Float32(tt))
+                push!(nnn_scatter,i)
+                push!(ttt_scatter,Float32(tt))
             end
         end
     end
-    numb_neurons=Int(maximum(nodes))+1
-
-    maxt = (maximum(ttt))    
-    (nnn,ttt,spikes,numb_neurons,maxt)
+    maxt = (maximum(ttt_scatter))    
+    (nnn_scatter,ttt_scatter,spikes,numb_neurons,maxt)
+    
 end
-
-(nodes,times,spikes,numb_neurons,maxt)= load_song_bird()
-resolution = 100 # 65
-ε=10.5
+(nodes,times,spikes,numb_neurons,maxt)= load_datasets_pfc()
+resolution = 50 # 65
+ε=5
+div_spike_mat=spike_matrix_divided(nodes,times,spikes,resolution,numb_neurons,maxt)
+#@show(div_spike_mat)
 
 (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false)
 
-
-#get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,plots=true,file_name="songbird.png";threshold= ε)
-
-#fig, ax = 
-#display(Plots.scatter(xs, ys; markersize = 1))
-#ax.aspect = 1
-#display(fig)
-
-
-plot_umap_of_dist_vect(mat_of_distances; file_name="umap_songbird.png")
-distmat = label_online_distmat(mat_of_distances;threshold= ε)#,nclasses)
+plot_umap_of_dist_vect(mat_of_distances; file_name="umap_PFC.png")
+distmat = label_online_distmat(mat_of_distances)#,nclasses)
 (R,_,assign) = cluster_distmat(distmat)
+#sss =  StateSpaceSet(hcat(mat_of_distances))
+#R = RecurrenceMatrix(sss, ε; metric = Euclidean(), parallel=true)
+#display(RecurrenceAnalysis.recurrenceplot(R; ascii = true))
+#rqa(R)
+#xs, ys = RecurrenceAnalysis.coordinates(R)# -> xs, ys
+#network = RecurrenceAnalysis.SimpleGraph(R)
+#display(graphplot(network))
+                                       #function get_state_transitions(start_windows,end_windows,distmat,assign;threshold::Real=5)
+
 assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,distmat,assign;threshold= ε)
 
 #assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,distmat,assign;threshold=threshold)
-repeated_windows = state_transition_trajectory(start_windows,end_windows,distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="songbird.png")
+repeated_windows = state_transition_trajectory(start_windows,end_windows,distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="pfcpfc.png")
 nslices=length(start_windows)
 #@show(repeated_windows)
-get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices,file_name="songbird.png")
-get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,plots=true,file_name="songbird.png";threshold= ε)
-get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_windows,end_windows,nodes,times;file_name::String="recurrence_bird.png",ε::Real=5)
+get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices,file_name="pfcpfc.png")
+get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,file_name="pfcpfc.png";threshold= ε)
+rqa,xs, ys,sss = get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assign,nlist,tlist,start_windows,end_windows,nodes,times;file_name="recurrence_pfc.png",ε=5)
+#get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_windows,end_windows,nodes,times;file_name::String="empty.png",ε::Real=5)
+
 #display(Plots.scatter(assing_progressions))
 
 #=
@@ -179,7 +180,7 @@ function get_division_scatter(times,nodes,division_size,yes,)
     Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID")
 
     #display(p)
-    savefig("repeated_pattern__songbird.png")
+    savefig("repeated_pattern__pfc.png")
 end
 =#
 #get_division_scatter(ttt,nnn,resolution,yes,)

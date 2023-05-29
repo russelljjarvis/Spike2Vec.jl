@@ -10,6 +10,7 @@ using SpikeTime
 #using SparseArrays
 #SNN.@load_units
 #using Test
+using DimensionalData
 using Revise
 using StatsBase
 using ProgressMeter
@@ -25,6 +26,10 @@ using Distances
 #using Gadfly
 #using SGtSNEpi, Random
 
+using SimpleWeightedGraphs, Graphs
+#using GraphPlot
+using Plots, GraphRecipes
+
 using Plots
 #using PyCall
 using UMAP
@@ -37,7 +42,7 @@ import DelimitedFiles: readdlm
 using Clustering
 using UMAP
 # Songbird metadata
-#num_neurons = 75
+#num_neurons = 77
 #max_time = 22.2
 using DrWatson
 # Randomly permute neuron labels.
@@ -46,6 +51,7 @@ using DrWatson
 
 # Load spikes.
 #spikes = seq.Spike[]
+
 function load_datasets()
 
     spikes = []
@@ -58,7 +64,6 @@ function load_datasets()
     for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))
         push!(spikes[Int32(n)],t)
     end
-    #@show(spikes)
     nnn=Vector{Int32}([])
     ttt=Vector{Float32}([])
     for (i, t) in enumerate(spikes)
@@ -69,31 +74,7 @@ function load_datasets()
             end
         end
     end
-    maxt = maximum(ttt)
-    for (i, t) in enumerate(spikes)
-        for tt in t
-            if length(t)!=0
-                push!(nnn,i);
-                txt = Float32(tt+maxt)
-                push!(ttt,txt)
-                #@show(i,txt)
-            end
-        end
-    end
-    maxt = maximum(ttt)
-    for (i, t) in enumerate(spikes)
-        for tt in t
-            if length(t)!=0
-                push!(nnn,i);
-                txt = Float32(tt+maxt)
-                push!(ttt,txt)
-                #@show(i,txt)
-            end
-        end
-    end
-
     (nnn,ttt)
-    #(spikes,nnn)
 end
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
@@ -125,14 +106,19 @@ function get_plot(times,nodes,division_size)
         #self_distances = get_vector_coords(neuron0,t0ref,self_distances)
         mat_of_distances[ind,:] = self_distances
     end
+    
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-    Plots.heatmap(mat_of_distances)#, axis=(xticks=(1:5, xs), yticks=(1:10, ys), xticklabelrotation = pi/4) ))
+    Plots.heatmap(mat_of_distances)#, axis=(xticks=(1:7, xs), yticks=(1:10, ys), xticklabelrotation = pi/4) ))
     savefig("Unormalised_heatmap_song_bird.png")
+    mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+
     @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+
+    #=
     Plots.heatmap(mat_of_distances)
     savefig("Normalised_heatmap_song_bird.png")
     p=nothing
@@ -141,6 +127,8 @@ function get_plot(times,nodes,division_size)
     Plots.plot!(p,mat_of_distances[9,:],label="2")#, fmt = :svg)
     savefig("just_two_song_bird_raw_vectors.png")
     @save "song_bird_matrix.jld" mat_of_distances
+    =#
+    display(mat_of_distances)
     return mat_of_distances
 end
 #=
@@ -164,8 +152,8 @@ function post_proc_viz(mat_of_distances)
 end
 =##=
 function song_bird_plots(mat_of_distances)
-    R = kmeans(mat_of_distances, 5; maxiter=100, display=:iter)
-    @assert nclusters(R) == 5 # verify the number of clusters
+    R = kmeans(mat_of_distances, 7; maxiter=100, display=:iter)
+    @assert nclusters(R) == 7 # verify the number of clusters
     a = assignments(R) # get the assignments of points to clusters
     c = counts(R) # get the cluster sizes
     M = R.centers # get the cluster centers
@@ -191,7 +179,7 @@ function plot_umap(mat_of_distances; file_name::String="empty.png")
     #cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
 
     Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
-    display(Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.05)),legend=true)))
+    display(Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.07)),legend=true)))
     #Plots.plot(scatter!(p,model.knns)
     savefig(file_name)
     Q_embedding
@@ -242,8 +230,8 @@ function label_online(mat_of_distances,nclasses)
                 best_index = ind
                 best_index_class = ix
             end
-            #if best_distance < 6.5
-            if best_distance < 6.5
+            #if best_distance < 6.7
+            if best_distance < 7
                 best_distance = distance
                 best_index = ind
                 best_index_class = ix
@@ -289,8 +277,8 @@ function label_online(mat_of_distances,nclasses)
     (scatter_indexs,yes,sort_idx)
 end
 
-function label_online_distmat(mat_of_distances,nclasses)
-    
+function label_online_distmat(mat_of_distances)#,nclasses)
+    #=
     #R = Clustering.mcl(mat_of_distances'; maxiter=2000, display=:iter)
     R = kmeans(mat_of_distances', nclasses; maxiter=2000, display=:iter)
 
@@ -315,46 +303,63 @@ function label_online_distmat(mat_of_distances,nclasses)
     scatter_indexs = []
     scatter_class_colors = []
     yes = []
+    =#
     #mat_of_distances = copy(mat_of_distances'[:])
 
     distance_matrix = zeros(length(eachrow(mat_of_distances)),length(eachrow(mat_of_distances)))
+    display(distance_matrix)
     all_perm_pairs = []
+
 
     @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
         push!(all_perm_pairs,[])
         for (ind2,row2) in enumerate(eachrow(mat_of_distances))
-            if ind!=ind2
+            #if ind!=ind2
                 best_distance = 100000.0
                 distance = evaluate(Euclidean(),row,row2)
-                if distance<7.5
+                if distance<7
                     push!(all_perm_pairs[ind],ind2)
                     distance_matrix[ind,ind2] = distance
                 else
                     distance_matrix[ind,ind2] = -10.0
                 end
-
-            else
-                distance_matrix[ind,ind2] = -10.0
-            end
+            #end
+            #else
+            #    distance_matrix[ind,ind2] = -10.0
+            #end
         end
     end
     display(Plots.heatmap(distance_matrix))
-    @show(all_perm_pairs)
+    #@show(all_perm_pairs)
     distance_matrix
  end
-
+function cluster_distmat(mat_of_distances)
+    display(mat_of_distances)
+    R = affinityprop(mat_of_distances)
+    #M = R.centers # get the cluster centers
+    sort_idx =  sortperm(assignments(R))
+    #M_ = mat_of_distances[:,sort_idx]
+    #display(Plots.heatmap(M_))
+    assign = R.assignments
+    R,sort_idx,assign
+end
 
 (nnn,ttt)= load_datasets()
 display(Plots.scatter(ttt,nnn))
-resolution = 150
+resolution = 90
 mat_of_distances = get_plot(ttt,nnn,resolution)
-plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
-nclasses=10
-(scatter_indexs,yes,sort_idx) = label_online(mat_of_distances,nclasses)
-distmat = label_online_distmat(mat_of_distances,nclasses)
+#plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
+#nclasses=10
+#(scatter_indexs,yes,sort_idx) = label_online(mat_of_distances,nclasses)
+display(mat_of_distances)
+#@show(mat_of_distances)
+#using CategoricalArrays
+distmat = label_online_distmat(mat_of_distances)#,nclasses)
+display(distmat)
+(R,sort_idx,assign) = cluster_distmat(distmat)
 display(Plots.heatmap(distmat))
-
-function get_division_scatter2(times,nodes,division_size,distmat)
+#using ColorSchemes
+function get_division_scatter2(times,nodes,division_size,distmat,sort_idx,assign)
     #yes = yes[sort_idx]
     step_size = maximum(times)/division_size
     end_window = collect(step_size:step_size:step_size*division_size)
@@ -368,9 +373,10 @@ function get_division_scatter2(times,nodes,division_size,distmat)
 
     p=Plots.scatter(backgroundcolor=RGBf(0.6, 0.6, 0.96))
     #p=Plots.scatter(times,nodes,legend=true)
-    end_window = end_window[sort_idx]
-    start_windows = start_windows[sort_idx]
-
+    #end_window = end_window[sort_idx]
+    #start_windows = start_windows[sort_idx]
+    #@show(length(unique(sort_idx)))
+    witnessed_unique=[]
     @showprogress for (ind,toi) in enumerate(end_window)
         sw = start_windows[ind]
         spikes = divide_epoch(nodes,times,sw,toi)    
@@ -380,48 +386,250 @@ function get_division_scatter2(times,nodes,division_size,distmat)
             for tt in t
                 if length(t)!=0
                     push!(Nx,i)
-                    ###
-                    ##
-                    ##
-                    #push!(Tx,Float32(tt))
-                    ##
-                    ###
-                    ##
                     push!(Tx,Float32(sw+tt))
-                    ##
                 end
             end
-            #@show(last(sw))
-
         end
-        for xx in distmat[ind,:]
-            if abs(xx)<2
-                Plots.scatter!(p,Tx,Nx,marker_z=ind,legend = false, markersize = 2,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2)
-            end
+        for (ii,xx) in enumerate(distmat[ind,:])
+            if abs(xx)<7
+                push!(witnessed_unique,assign[ii])
+                
+                Plots.scatter!(p,Tx,Nx, markercolor=assign[ii],legend = false, markersize = 2.0,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue)#, marker=:auto)#,group=categorical(length(unique(sort_idx))))
+                #else
+             end
         end
 
         #if ind in yes
-        #    Plots.vline!(p,[first(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+        #    Plots.vline!(p,[first(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.7)
 
-        #    Plots.vline!(p,[last(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+        #    Plots.vline!(p,[last(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.7)
         #end
         #if yes[ind]>0.0
             
-        #Plots.scatter!(p,Tx,Nx,marker_z=1, markersize = 0.75,markerstrokewidth=0,alpha=0.25)
+        #Plots.scatter!(p,Tx,Nx,marker_z=1, markersize = 0.77,markerstrokewidth=0,alpha=0.27)
         #end
+        #Plots.scatter!(p,Tx,Nx, markercolor=:snow2,legend = false, markersize = 0.227,markerstrokewidth=0,alpha=0.33, bgcolor=:snow2)#,group=categorical(length(unique(sort_idx))))
 
     end
+    nunique = length(unique(witnessed_unique))
 
-    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID",backgroundcolor=RGBf(0.6, 0.6, 0.96))
-    #display(p)
+    #
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
+    #Plots.plot!(p,
+    #titlefont = font(0.017, "Courier")
+    #)
+    #display(p)R,M,sort_idx
+    #end
+    p2 = Plots.scatter(times,nodes,legend = false, markersize = 1.9,markerstrokewidth=0,alpha=0.7, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)#,group=categorical(length(unique(sort_idx))))
+    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
+
+    Plots.plot(p,p2, layout = (2, 1))
+
     savefig("repeated_pattern_song_bird2.png")
 end
-get_division_scatter2(ttt,nnn,resolution,distmat)
+get_division_scatter2(ttt,nnn,resolution,distmat,sort_idx,assign)
+
+function get_state_transitions(times,nodes,division_size,distmat,sort_idx,assign)
+    step_size = maximum(times)/division_size
+    end_window = collect(step_size:step_size:step_size*division_size)
+    spike_distance_size = length(end_window)
+    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+    nunique = length(unique(assign))
+    assing_progressions=[]
+    assing_progressions_times=[]
+
+    @showprogress for (ind,toi) in enumerate(end_window)
+        sw = start_windows[ind]
+        push!(assing_progressions_times,sw)
+    end
+    for row in eachrow(distmat)
+        for (ii,xx) in enumerate(row)
+            if abs(xx)<7
+                push!(assing_progressions,assign[ii])
+ 
+            end
+        end
+    end
+    assing_progressions,assing_progressions_times
+end
+get_division_scatter2(ttt,nnn,resolution,distmat,sort_idx,assign)
+assing_progressions,assing_progressions_times = get_state_transitions(ttt,nnn,resolution,distmat,sort_idx,assign)
 
 
+#using SimpleWeightedGraphs, Graphs
+nunique = length(unique(assign))
+#using Plots, GraphRecipes
+empty = zeros(nunique,nunique)
+for (ind,x) in enumerate(assing_progressions)
+    if ind < length(assing_progressions)
+        empty[x,assing_progressions[ind+1]]+=1
+    end 
+end
+repeated_windows = Vector{UInt32}([])
+repititions = zeros(size(empty))
+for (ind,_) in enumerate(eachrow(empty))
+    for (y,val) in enumerate(empty[ind,:])
+        if val==1
+            #@show(ind,y)
+            repititions[ind,y] = 0.0
+
+        elseif val>1
+            repititions[ind,y] = val 
+
+            push!(repeated_windows,ind)
+
+
+        end 
+
+    end
+end
+
+@show(store_non_zero)
+display(Plots.heatmap(empty))
+
+assing_progressions[unique(i -> assing_progressions[i], 1:length(assing_progressions))].=-1
+
+#display(Plots.scatter(assing_progressions))
+
+#display(empty)
+#empty = empty./maximum(empty)
+#display(empty)
+#using gplot
+p1 =Plots.plot()
+Plots.scatter!(p1,assing_progressions,legend=false)
+#https://github.com/open-risk/transitionMatrix
+
+Plots.plot!(p1,assing_progressions,legend=false)
+display(p1)
+savefig("state_transition_trajectory.png")
+g = SimpleWeightedDiGraph(empty)
+
+edge_label = Dict((i,j) => string(empty[i,j]) for i in 1:size(empty, 1), j in 1:size(empty, 2))
+
+graphplot(g; names = 1:length(empty), weights=empty)#,line_z=empty)#, edge_label)
+savefig("state_transition_matrix.png")
+
+function get_repeated_scatter(times,nodes,division_size,repeated_windows)
+    step_size = maximum(times)/division_size
+    end_window = collect(step_size:step_size:step_size*division_size)
+    spike_distance_size = length(end_window)
+    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+
+    segment_length = end_window[3] - start_windows[3]
+    fig = Figure(backgroundcolor=RGBf(0.6, 0.6, 0.96))
+
+    p=Plots.scatter(backgroundcolor=RGBf(0.6, 0.6, 0.96))
+    @showprogress for (ind,toi) in enumerate(end_window)
+
+    #for (ind,repeat_window) in enumerate(repeated_windows)
+        if repeated_windows[ind]!=-1
+            toi = end_window[ind]
+            sw = start_windows[ind]
+            spikes = divide_epoch(nodes,times,sw,toi)    
+            Nx=Vector{Int32}([])
+            Tx=Vector{Float32}([])
+            for (i, t) in enumerate(spikes)
+                for tt in t
+                    if length(t)!=0
+                        push!(Nx,i)
+                        push!(Tx,Float32(sw+tt))
+                    end
+                end
+            end
+            #for (ii,xx) in enumerate(distmat[ind,:])
+                #if abs(xx)<7.7
+                    #push!(witnessed_unique,assign[ii])
+                    
+            Plots.scatter!(p,Tx,Nx,legend = false, markercolor=repeated_windows[ind],markersize = 2.0,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue, xlims=(0, 22.2))#, marker=:auto)#,group=categorical(length(unique(sort_idx))))
+                    #else
+                #end
+            #end
+        end
+
+    end
+    nunique = length(unique(repeated_windows))
+
+    #
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique", xlims=(0, 22.2))##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
+    #Plots.plot!(p,
+    #titlefont = font(0.017, "Courier")
+    #)
+    #display(p)R,M,sort_idx
+    #end
+    p2 = Plots.scatter(times,nodes,legend = false, markersize = 1.9,markerstrokewidth=0,alpha=0.7, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)#,group=categorical(length(unique(sort_idx))))
+    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
+
+    Plots.plot(p,p2, layout = (2, 1))
+
+    savefig("genuinely_repeated_pattern_song_bird.png")
+end
+@show(assing_progressions)
+get_repeated_scatter(ttt,nnn,resolution,assing_progressions)
+#assing_progressions[(i -> assing_progressions[i]==0, 1:length(assing_progressions))].=0
+
+display(Plots.scatter(assing_progressions))
+
+#=
+
+
+
+using SparseArrays
+import Graphs: DiGraph,add_edge!, inneighbors,outneighbors, nv, ne, weights, is_strongly_connected,strongly_connected_components,edges,degree_histogram
+function plot_stn(stn;filename="stn.pdf",nodesize=1,nodefillc="orange",linetype="straight",max_edgelinewidth=1,nodelabels=false)
+    g = SimpleWeightedDiGraph(stn)
+
+    nr_vertices = nv(g)
+	x = []
+	y = []
+		
+	#for i in 1:nr_vertices
+	#	ilabel = label_for(stn,i)
+	#	push!(x,stn[ilabel][:x])
+#		push!(y,stn[ilabel][:y])
+	#end
+	#x = Int32.(x)
+	#y = Int32.(y)
+	
+	w = sparse(stn)
+	
+	gp = gplot(g,edgelinewidth = reduce(vcat, [w[i,:].nzval for i in 1:nv(g)]) .^ 0.33,
+		nodelabel = if nodelabels 1:nv(g) else nothing end,
+		nodesize=nodesize,
+		nodefillc=nodefillc,
+		linetype=linetype,
+		EDGELINEWIDTH=max_edgelinewidth)
+	
+	draw(PDF(filename),gp)
+
+end
+#stn = sparse(empty)
+#plot_stn(empty)
+
+#m = [0.8 0.2; 0.1 0.9]
+
+=#
+#using GLMakie, SGtSNEpi#, SNAPDatasets
+
+#GLMakie.activate!()
+
+#g = loadsnap(:as_caida)
+#y = sgtsnepi(empty);
+#show_embedding(y;
+#  A = adjacency_matrix(empty),        # show edges on embedding
+#  mrk_size = 1,                   # control node sizes
+#  lwd_in = 0.01, lwd_out = 0.001, # control edge widths
+#  edge_alpha = 0.03 )             # control edge transparency
+
+#g = SimpleWeightedDiGraph(m)
+
+#edge_label = Dict((i,j) => string(m[i,j]) for i in 1:size(m, 1), j in 1:size(m, 2))
+
+#graphplot(g; names = 1:length(m), edge_label)
+
 ##
-# 75 chanels and 25 seconds
+# 77 chanels and 27 seconds
 ##
+#=
 function get_division_scatter(times,nodes,division_size,yes,sort_idx)
     #yes = yes[sort_idx]
     step_size = maximum(times)/division_size
@@ -464,12 +672,12 @@ function get_division_scatter(times,nodes,division_size,yes,sort_idx)
 
         end
         #if ind in yes
-        #    Plots.vline!(p,[first(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+        #    Plots.vline!(p,[first(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.7)
 
-        #    Plots.vline!(p,[last(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.5)
+        #    Plots.vline!(p,[last(sw),0,70],markersize = 0.7,markerstrokewidth=0.7,alpha=0.7)
         #end
         #if yes[ind]>0.0
-        Plots.scatter!(p,Tx,Nx,marker_z=1, markersize = 0.75,markerstrokewidth=0,alpha=0.25)
+        Plots.scatter!(p,Tx,Nx,marker_z=1, markersize = 0.77,markerstrokewidth=0,alpha=0.27)
             
         #end
     end
@@ -478,8 +686,9 @@ function get_division_scatter(times,nodes,division_size,yes,sort_idx)
     #display(p)
     savefig("repeated_pattern_song_bird.png")
 end
-get_division_scatter(ttt,nnn,resolution,yes,sort_idx)
-Plots.scatter!(ttt,nnn, markersize = 0.65)
-savefig("normal.png")
+=#
+#get_division_scatter(ttt,nnn,resolution,yes,sort_idx)
+#Plots.scatter!(ttt,nnn, markersize = 0.67)
+#savefig("normal.png")
 #nnn,ttt = load_datasets()
 #label_online(mat_of_distances)
