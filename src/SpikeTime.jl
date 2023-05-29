@@ -2,7 +2,7 @@ module SpikeTime
 
 #export ST
 #const ST = SpikeTime
-using OhMyREPL
+#using OhMyREPL
 using LinearAlgebra
 using SparseArrays
 using Requires
@@ -10,6 +10,8 @@ using UnPack
 using CUDA
 using ProgressMeter
 using Setfield
+using DrWatson
+using StaticArrays
 
 using StatsPlots
 #using StatsBase
@@ -33,8 +35,17 @@ export divide_epoch
 export get_vector_coords
 export get_vector_coords_uniform!
 export surrogate_to_uniform
-export post_proc_viz
-export final_plots
+export label_online_distmat
+export cluster_distmat
+export get_division_scatter_identify
+export get_state_transitions
+export state_transition_trajectory
+export get_division_scatter_identify_via_recurrence_mat
+export get_repeated_scatter
+#export post_proc_viz
+#export final_plots
+export get_divisions
+export plot_umap_of_dist_vect
 include("util.jl")
 include("neuron/poisson.jl")
 

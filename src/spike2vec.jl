@@ -365,6 +365,8 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
 
     #end
 end
+using GraphMakie, CairoMakie
+
 """
 https://juliadynamics.github.io/RecurrenceAnalysis.jl/stable/quantification/#RQA-Measures
 :RR: recurrence rate (see recurrencerate)
@@ -387,6 +389,9 @@ function get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_wind
     R = RecurrenceMatrix(sss, ε; metric = Euclidean(), parallel=true)
     xs, ys = RecurrenceAnalysis.coordinates(R)# -> xs, ys
 
+    network = RecurrenceAnalysis.SimpleGraph(R)
+    graphplot(network)
+    savefig("sanity_check_markov.png")
     @inbounds @showprogress for (ind,toi) in enumerate(end_windows)
         sw = start_windows[ind]
         @inbounds for (ii,xx) in enumerate(R[ind,:])
@@ -395,19 +400,20 @@ function get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_wind
             if abs(xx)<ε
 
                 Plots.scatter!(p,Tx,Nx, markercolor=Int(assign[ii]),legend = false, markersize = 0.70,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue)
-            
+            end
         end
     end
     nunique = length(unique(witnessed_unique))
-    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
-    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.5,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)#,group=categorical(length(unique(sort_idx))))
-    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")
+    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.5,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)
+    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")
 
     Plots.plot(p,p2, layout = (2, 1))
 
     savefig("identified_unique_pattern_via_recurrence$file_name.png")
-    return rqa(R),xs, ys
+    return rqa(R),xs, ys,sss
 end
+         #
 
 
 function get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name::String="empty.png",threshold::Real=5)
@@ -430,9 +436,9 @@ function get_division_scatter_identify(nlist,tlist,start_windows,end_windows,dis
         end
     end
     nunique = length(unique(witnessed_unique))
-    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
-    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.5,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)#,group=categorical(length(unique(sort_idx))))
-    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")##,backgroundcolor=RGBf(0.6, 0.6, 0.96))
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")
+    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.5,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)
+    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")
 
     Plots.plot(p,p2, layout = (2, 1))
 
@@ -441,7 +447,7 @@ end
 
 
 
-function get_state_transitions(start_windows,end_windows,distmat,sort_idx,assign;threshold::Real=5)
+function get_state_transitions(start_windows,end_windows,distmat,assign;threshold::Real=5)
     nunique = length(unique(assign))
     assing_progressions=[]
     assing_progressions_times=[]
@@ -462,7 +468,7 @@ function get_state_transitions(start_windows,end_windows,distmat,sort_idx,assign
     end
     assing_progressions,assing_progressions_times
 end
-function state_transition_trajectory(start_windows,end_windows,distmat,sort_idx,assign,assing_progressions,assing_progressions_times;plot=false, file_name::String="stateTransMat.png")
+function state_transition_trajectory(start_windows,end_windows,distmat,assign,assing_progressions,assing_progressions_times;plot=false, file_name::String="stateTransMat.png")
 
     repeated_windows = Vector{UInt32}([])
 
