@@ -36,9 +36,10 @@ end
 
 (nodes,times,spikes,numb_neurons,maxt)= load_song_bird()
 resolution = 150 # 65
+threshold=5.5
+
 (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false)
 plot_umap_of_dist_vect(mat_of_distances; file_name="umap_songbird.png")
-threshold=10.5
 distmat = label_online_distmat(mat_of_distances;threshold=threshold)#,nclasses)
 (R,sort_idx,assign) = cluster_distmat(distmat)
 assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,distmat,sort_idx,assign;threshold=threshold)
@@ -48,7 +49,7 @@ repeated_windows = state_transition_trajectory(start_windows,end_windows,distmat
 nslices=length(start_windows)
 #@show(repeated_windows)
 get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices,file_name="songbird.png")
-get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,sort_idx,assign,nodes,times,plots=true,file_name="songbird.png";threshold=threshold)
+get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,sort_idx,assign,nodes,times,repeated_windows,plots=true,file_name="songbird.png";threshold=threshold)
 
 #display(Plots.scatter(assing_progressions))
 
