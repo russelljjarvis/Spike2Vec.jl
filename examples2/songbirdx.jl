@@ -4,7 +4,7 @@ using SpikeTime
 using DrWatson
 using ProgressMeter
 using RecurrenceAnalysis
-
+using Clustering
 import DelimitedFiles: readdlm
 
 function load_song_bird()
