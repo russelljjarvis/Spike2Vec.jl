@@ -8,14 +8,9 @@ using Graphs
 import StatsBase.mean
 using Plots
 include("../src/models/genPotjansWiring.jl")
-#function protect_variable()
+
 scale = 0.05
-#using Plots
-    
-#    pot_conn,x,y,ccu,scale
-#end
-#pot_conn,x,y,ccu,scale = protect_variable()
-#scale = 1.0
+
 pot_conn = potjans_layer(scale)
 display(pot_conn)
 #@show(pot_conn)
@@ -35,17 +30,12 @@ function scoped_fix(ccu,Lx,scale)
         Lx[val] .= ind_ 
     end
 end
-#display(Plots.heatmap(pot_conn))
+
 Lx = Vector{Int64}(zeros(size(pot_conn[1,:])))
-#Lx = Vector{Int64}(zeros(size(pot_conn[1])))
-#display(Plots.heatmap(pot_conn))
 
-#scoped_fix(ccu,Lx,scale)
+
 Lx = convert(Vector{Int64},Lx)
-#Lx = Lx[(Lx.!=0)]
-#L = convert(Vector{Int64},Lx)
-
-#$Random.seed!(0);
+# The Graph Network analysis can't handle negative weight values so upset every weight to make weights net positive.
 stored_min = abs(minimum(pot_conn))
 for (ind,row) in enumerate(eachrow(pot_conn))
     for (j,colind) in enumerate(row)

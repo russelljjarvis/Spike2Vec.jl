@@ -5,7 +5,8 @@ using OnlineStats
 using UMAP
 using LinearAlgebra
 import LinearAlgebra: normalize
-
+using Plots
+using ColorSchemes
 function normalised_2dhist(data)
     foreach(normalize!, eachcol(data'))
     return data
@@ -140,13 +141,11 @@ end
 
 
 function color_time_plot(nodes::Vector{Int32}, times::Vector{Float32}, file_name::String)
-
     perm = sortperm(times)
     nodes = nodes[perm]
     times = times[perm]
     CList = Vector{Float32}(collect(0:1:length(times)))
     cmap = :balance
-
     Plots.plot(scatter(times,nodes,zcolor=CList, title="Color Time Plot", marker=(2, 2, :auto, stroke(0.0005)),legend=false))
     Plots.savefig("$file_name.color_time.png")
     return CList::Vector{Float32}
@@ -157,12 +156,9 @@ function get_mean_isis(times,nodes)
     for n in unique(nodes)
         spike_dict[n] = []
     end
-
-
     for (st,n) in zip(times,nodes)
         append!(spike_dict[n],st)
     end
-
     all_isis = []
     for (k,v) in pairs(spike_dict)
         time_old = 0
@@ -172,10 +168,21 @@ function get_mean_isis(times,nodes)
             time_old = time
         end
     end
-    #@show(StatsBase.mean(all_isis))
     mean_isi = StatsBase.mean(all_isis)
 end
-function plot_umap(nodes::Vector{Int32}, times::Vector{Float32},dt,tau; file_name::String="empty.png")
+
+function plot_umap(amatrix,mat_of_distances, CList_; file_name::String="empty.png")
+    #model = UMAP_(mat_of_distances', 10)
+    #Q_embedding = transform(model, amatrix')
+    #cs1 = ColorScheme(distinguishable_colors(length(CList_), transform=protanopic))
+
+    Q_embedding = umap(mat_of_distances',10,n_neighbors=10, n_epochs=5000)#, min_dist=0.01, n_epochs=100)
+    Plots.plot(scatter(Q_embedding[1,:], Q_embedding[2,:],zcolor=CList_, title="NMNIST Spike Distance UMAP", marker=(1, 1, :auto, stroke(1.0)),legend=true))
+    #Plots.plot(scatter!(p,model.knns)
+    savefig(file_name)
+    Q_embedding
+end
+function plot_umap_ts(nodes::Vector{Int32}, times::Vector{Float32},dt,tau; file_name::String="empty.png")
     perm = sortperm(times)
     nodes = nodes[perm]
     times = times[perm]

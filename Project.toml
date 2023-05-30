@@ -1,8 +1,13 @@
 name = "SpikeTime"
 uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
+SimpleWeightedDiGraph = "47aef6b3-ad0c-573a-a1e2-d07658019622"
+GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
@@ -28,8 +33,9 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
-Attractors = "f3fd9213-ca85-4dba-9dfd-7fc91308fec7"
-DynamicalSystemsBase = "6e36e845-645a-534a-86f2-f5d4aa5a06b4"
+RecurrenceAnalysis = "639c3291-70d9-5ea2-8c5b-839eba1ee399"
+
+
 [compat]
 Requires = "0.5, 1"
 UnPack = "1"

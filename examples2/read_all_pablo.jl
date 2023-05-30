@@ -3,9 +3,7 @@ using JLD
 #using
 #using DrWatson
 using Plots
-using SpikeTime
-#ST = SpikeTime.ST
-#using ST
+using SpikingNeuralNetworks
 #using OnlineStats
 #using SparseArrays
 #SNN.@load_units
@@ -25,43 +23,18 @@ using Distances
 #using Gadfly
 #using SGtSNEpi, Random
 
-using Plots
-#using PyCall
-using UMAP
-using Plots
-# Other Imports
-#import PyPlot: plt
-import DelimitedFiles: readdlm
-#import Random
-#import StatsBase: quantile
 using Clustering
 using UMAP
-# Songbird metadata
-num_neurons = 75
-max_time = 22.2
 
-# Randomly permute neuron labels.
-# (This hides the sequences, to make things interesting.)
-#_p = Random.randperm(num_neurons)
 
-# Load spikes.
-#spikes = seq.Spike[]
-function load_datasets()
-
-    spikes = []
-    
-    nodes = [n for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))]
-    for _ in 1:maximum(unique(nodes))+1
-        push!(spikes,[])
-    end
-
-    for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))
-        push!(spikes[Int32(n)],t)
-    end
-    #@show(spikes)
+using Plots
+#using PyCall
+#odes = df.i
+#division_size = maximum(times)/10.0
+function ragged_to_uniform(nodes,times)
     nnn=Vector{Int32}([])
     ttt=Vector{Float32}([])
-    for (i, t) in enumerate(spikes)
+    for (i, t) in enumerate(times)
         for tt in t
             if length(t)!=0
                 push!(nnn,i);
@@ -69,46 +42,77 @@ function load_datasets()
             end
         end
     end
-    maxt = maximum(ttt)
-    for (i, t) in enumerate(spikes)
-        for tt in t
-            if length(t)!=0
-                push!(nnn,i);
-                txt = Float32(tt+maxt)
-                push!(ttt,txt)
-                #@show(i,txt)
-            end
-        end
-    end
-    maxt = maximum(ttt)
-    for (i, t) in enumerate(spikes)
-        for tt in t
-            if length(t)!=0
-                push!(nnn,i);
-                txt = Float32(tt+maxt)
-                push!(ttt,txt)
-                #@show(i,txt)
-            end
-        end
-    end
-
     (nnn,ttt)
-    #(spikes,nnn)
 end
+function load_datasets()
+
+    py"""
+    import pickle
+    def get_pablo_sim():
+
+        temp = pickle.load(open("pablo_conv.p","rb"))
+        return (temp[0],temp[1])
+    """
+    (nodes,times) = py"get_pablo_sim"()
+    (nodes,times) = ragged_to_uniform(nodes,times)
+    return (nodes,times)
+end
+#display(Plots.scatter(times[1:Int32(round((length(times)/2000)))],nodes[1:Int32(round((length(times)/2000)))],markersize=0.05))
+#savefig("slice_one_window.png")
+
+#display(Plots.scatter(times[Int32(round((length(times)/2000))):2*Int32(round((length(times)/2000)))],nodes[Int32(round((length(times)/2000))):2*Int32(round((length(times)/2000)))],markersize=0.05))
+#savefig("slice_two_window.png")
+
+#display(Plots.scatter(times[2*Int32(round((length(times)/2000))):3*Int32(round((length(times)/2000)))],nodes[2*Int32(round((length(times)/2000))):3*Int32(round((length(times)/2000)))],markersize=0.05))
+#savefig("slice_three_window.png")
+#=
+function make_spike_movie(x,y,times,l)
+    mymatrix = zeros((359,359))
+    cnt=1
+    l_old=1
+    x_l = []
+    y_l = []
+
+    @showprogress for (t_,x_,y_) in zip(times,x,y,l)
+        if l==l_old
+            push!(x_l,x)
+            push!(y_l,y)
+
+        end
+        if l!=l_old
+            mymatrix[x_l,y_l] .= 100.0
+
+            x_l = []
+            y_l = []
+        end
+        cnt+=1
+        l_old=l
+
+    end
+end
+
+function get_changes(times,labels)
+    time_break = []
+    l_old=0
+    @showprogress for (t,l) in zip(times,labels)
+        if l!=l_old
+            push!(time_break,Float32(t))
+        end
+        l_old = l
+    end
+    time_break
+end
+=#
+
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
-    @show(step_size)
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
 
     mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
-    
-    @show(last(start_windows),last(end_window))
     n0ref = divide_epoch(nodes,times,last(start_windows),last(end_window))
-    
-    segment_length = end_window[2] - start_windows[2]
-    @show(segment_length)
+    segment_length = end_window[3] - start_windows[3]
     mean_spk_counts = Int32(round(mean([length(times) for times in enumerate(n0ref)])))
     t0ref = surrogate_to_uniform(n0ref,segment_length,mean_spk_counts)
     PP = []
@@ -128,19 +132,19 @@ function get_plot(times,nodes,division_size)
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     Plots.heatmap(mat_of_distances)#, axis=(xticks=(1:5, xs), yticks=(1:10, ys), xticklabelrotation = pi/4) ))
-    savefig("Unormalised_heatmap_song_bird.png")
+    savefig("Unormalised_heatmap_pablo.png")
     @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     Plots.heatmap(mat_of_distances)
-    savefig("Normalised_heatmap_song_bird.png")
+    savefig("Normalised_heatmap_pablo.png")
     p=nothing
     p = Plots.plot()
     Plots.plot!(p,mat_of_distances[1,:],label="1")#, fmt = :svg)
     Plots.plot!(p,mat_of_distances[9,:],label="2")#, fmt = :svg)
-    savefig("just_two_song_bird_raw_vectors.png")
-    @save "song_bird_matrix.jld" mat_of_distances
+    savefig("just_two_pablo_raw_vectors.png")
+    @save "pablo_matrix.jld" mat_of_distances
     return mat_of_distances
 end
 #=
@@ -159,20 +163,20 @@ function post_proc_viz(mat_of_distances)
         append!(angles0,θ)
         append!(distances0,r)        
     end
-    @save "distances_angles_song_bird.jld" angles0 distances0#,angles1,distances1
+    @save "distances_angles_Pablo.jld" angles0 distances0#,angles1,distances1
     return angles0,distances0#,angles1,distances1)
 end
-=##=
-function song_bird_plots(mat_of_distances)
+function pablo_plots(mat_of_distances)
     R = kmeans(mat_of_distances, 5; maxiter=100, display=:iter)
     @assert nclusters(R) == 5 # verify the number of clusters
     a = assignments(R) # get the assignments of points to clusters
     c = counts(R) # get the cluster sizes
     M = R.centers # get the cluster centers
     #@show(sizeof(M))
-    #savefig("didit_worksong_bird.png")
+    #savefig("didit_workpablo.png")
     return M
 end
+
 function final_plots2(distances0,angles0,ll)
     p=nothing
     p = Plots.plot()
@@ -180,9 +184,9 @@ function final_plots2(distances0,angles0,ll)
     pp = Gadfly.Plots.plot(distances0,angles0,Geom.point)#marker =:circle, arrow=(:closed, 3.0)))
     img = SVG("iris_plot.svg", 6inch, 4inch)
     draw(img, p)
-    #savefig("relative_to_uniform_reference_song_bird.png")   
+    #savefig("relative_to_uniform_reference_Pablo.png")   
 end
-#(nodes,times) = load_datasets()
+
 =#
 
 function plot_umap(mat_of_distances; file_name::String="empty.png")
@@ -190,36 +194,37 @@ function plot_umap(mat_of_distances; file_name::String="empty.png")
     #Q_embedding = transform(model, amatrix')
     #cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
 
-    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
+    Q_embedding = umap(mat_of_distances,20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
     display(Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.05)),legend=true)))
     #Plots.plot(scatter!(p,model.knns)
     savefig(file_name)
     Q_embedding
 end
 #@load "ll.jld" ll
-#@save "distances_angles_song_bird.jld" angles0 distances0
-#@load "song_bird_matrix.jld" mat_of_distances
-#mat_of_distances = mat_of_distances[:,1:10000]
+#@save "distances_angles_Pablo.jld" angles0 distances0
+#@load "pablo_matrix.jld" mat_of_distances
+#Plots.heatmap(mat_of_distances)
+#savefig("heatmap_before.png")
+mat_of_distances = mat_of_distances[:,1:10000]
+#Plots.heatmap(mat_of_distances)
+#savefig("heatmap_after.png")
 
 
 
 function label_online(mat_of_distances)
-    classes = 10
-    R = kmeans(mat_of_distances', classes; maxiter=2000, display=:iter)
-    #a = assignments(R) # get the assignments of points to clusters
-    #c = counts(R) # get the cluster sizes
+    classes = 50
+    R = kmeans(mat_of_distances', classes; maxiter=9000)
+    idx = sortperm(assignments(R)) # get the assignments of points to clusters
+    c = counts(R) # get the cluster sizes
     M = R.centers # get the cluster centers
-    #M = copy(M'[:])
 
-    #c = kmeans(M,4)
-    sort_idx =  sortperm(assignments(R))
-    M = mat_of_distances'[:,sort_idx]
-    p1=Plots.heatmap(M')
-    savefig("cluster_sort_song_birds.png")
+    
+    #idx =  sortperm(assignments(R))
+    M = mat_of_distances[:,idx]
+    Plots.heatmap(M)
+    savefig("cluster_sort_pablo.png")
 
-    p2=Plots.heatmap(mat_of_distances)
-    Plots.plot(p1,p2)
-    savefig("cluster_sort_song_birds.png")
+    
 
     labelled_mat_of_distances = zeros(size(mat_of_distances))
     ref_mat_of_distances = zeros(size(mat_of_distances))
@@ -227,7 +232,6 @@ function label_online(mat_of_distances)
     scatter_indexs = []
     scatter_class_colors = []
     yes = []
-    #mat_of_distances = copy(mat_of_distances'[:])
     @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
         flag = false
         for ix in collect(1:classes)
@@ -239,12 +243,10 @@ function label_online(mat_of_distances)
                 best_index = ind
                 best_index_class = ix
             end
-            #if best_distance < 6.5
-            if best_distance < 27.5
-
+            if best_distance < 100.5
                 flag = true
                 labelled_mat_of_distances[best_index,:] .= best_index_class
-                ref_mat_of_distances[best_index,:] = view(mat_of_distances,best_index,:)
+                ref_mat_of_distances[best_index,:] = copy(mat_of_distances[best_index,:])
                 push!(scatter_indexs,best_index)
                 push!(scatter_class_colors,best_index_class)
             else 
@@ -264,16 +266,14 @@ function label_online(mat_of_distances)
     p1 = Plots.heatmap(mat_of_distances,legend = :none,c = cgrad([:white,:red,:blue]))
     #savefig("reference_labelled_mat_of_distances_song_bird.png")
     p2 = Plots.heatmap(labelled_mat_of_distances,legend = :none, c = cgrad([:white,:red,:blue]))
-    
-
-    p4 = Plots.heatmap(ref_mat_of_distances[sort_idx,:],legend = :none, c = cgrad([:white,:red,:blue]))
+    p4 = Plots.heatmap(ref_mat_of_distances,legend = :none, c = cgrad([:white,:red,:blue]))
 
     p3 = Plots.plot()
     prev = 0
     for (ix_,iy_) in zip(scatter_indexs,scatter_class_colors)
         
         temp0 = mat_of_distances[ix_,:].-mean(mat_of_distances[ix_,:])
-        temp0 = (temp0./std(temp0)).+ix_
+        temp0 = temp0.+ix_
         #temp1 = [ix_ for i in collect(1:length(mat_of_distances[ix_,:])) ]  
         #@show(length(temp1))
 
@@ -285,24 +285,18 @@ function label_online(mat_of_distances)
     #Plots.plot(scatter(ll, temp, marker_z=R.assignments, legend=true))
 
     Plots.plot(p1,p2,p3,p4,legend = :none)
-    savefig("both_labelled_mat_of_distances_song_bird.png")
-    @show(yes)
+    savefig("both_labelled_mat_of_distances_pablo.png")
+
     #return M
-    (scatter_indexs,yes,sort_idx)
+    (scatter_indexs,yes)
 end
-
-(nnn,ttt)= load_datasets()
-display(Plots.scatter(ttt,nnn))
-resolution = 90
-mat_of_distances = get_plot(ttt,nnn,resolution)
-plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
-
-(scatter_indexs,yes,sort_idx) = label_online(mat_of_distances)
-##
-# 75 chanels and 25 seconds
-##
-function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_idx)
-    #yes = yes[sort_idx]
+#mat_of_distances = get_plot(times,nodes,2000)
+resolution = 2000
+#nnn,ttt = load_datasets()
+#label_online(mat_of_distances)
+scatter_indexs,yes = label_online(mat_of_distances)
+#plot_umap(mat_of_distances;file_name="pablo_umap1_1000.png")
+function get_division_scatter(times,nodes,scatter_indexs,division_size,yes)
     step_size = maximum(times)/division_size
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
@@ -310,11 +304,9 @@ function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
 
     mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
-    segment_length = end_window[3] - start_windows[3]
+    #segment_length = end_window[3] - start_windows[3]
     p=Plots.plot(legend = :none)
     #p=Plots.scatter(times,nodes,legend=true)
-    end_window = end_window[sort_idx]
-    start_windows = start_windows[sort_idx]
 
     @showprogress for (ind,toi) in enumerate(end_window)
         sw = start_windows[ind]
@@ -322,31 +314,103 @@ function get_division_scatter(times,nodes,scatter_indexs,division_size,yes,sort_
         Nx=Vector{Int32}([])
         Tx=Vector{Float32}([])
         for (i, t) in enumerate(spikes)
-            for tt in t
-                if length(t)!=0
-                    push!(Nx,i)
-                    ###
-                    ##
-                    ##
-                    #push!(Tx,Float32(tt))
-                    ##
-                    ###
-                    ##
-                    push!(Tx,Float32(sw+tt))
-                    ##
+            if i<=10000
+                for tt in t
+                    if length(t)!=0
+                            push!(Nx,i);
+                            push!(Tx,Float32(sw+tt))
+                        end
+                    end
                 end
             end
         end
-        #if yes[ind]>0.0
-        p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none, markersize = 0.65)
-            
-        #end
+        if yes[ind]>0.0
+            p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none)
+         
+        end
     end
-    #display(p)
-    savefig("repeated_pattern_song_bird.png")
+    display(p)
+    savefig("repeated_pattern_pablo.png")
+
+    @showprogress for (ind,toi) in enumerate(end_window[1:12])
+        sw = start_windows[ind]
+        spikes = divide_epoch(nodes,times,sw,toi)    
+        Nx=Vector{Int32}([])
+        Tx=Vector{Float32}([])
+        for (i, t) in enumerate(spikes)
+            if i<=10000
+                for tt in t
+
+                    if length(t)!=0
+                        push!(Nx,i);
+                        push!(Tx,Float32(sw+tt))
+                    end
+                end
+            end
+        end
+        p=Plots.scatter!(p,Tx,Nx,marker_z=yes[ind],legend = :none)
+         
+    end
+    display(p)
+    savefig("everything_includinding_repeated_pattern_pablo.png")
+
 end
-get_division_scatter(ttt,nnn,scatter_indexs,resolution,yes,sort_idx)
-Plots.scatter!(ttt,nnn, markersize = 0.65)
-savefig("normal.png")
+(nnn,ttt) = load_datasets()
+
+get_division_scatter(ttt,nnn,scatter_indexs,resolution,yes)
 #nnn,ttt = load_datasets()
 #label_online(mat_of_distances)
+
+#@load "distances_angles_Pablo.jld" angles0 distances0
+#pablo_plots(mat_of_distances)
+#final_plots2(mat_of_distances,ll)#,label_inventory_size)
+
+#mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))'
+#mat_of_distances .= mat_of_distances ./ norm.(eachcol(mat_of_distances))
+
+#mat_of_distances ./ norm.(eachrow(mat_of_distances))
+
+#@showprogress for (ind,_) in enumerate(eachcol(mat_of_distances))
+#    mat_of_distances[:,ind] = (mat_of_distances[:,ind].- mean(mat_of_distances))./std(mat_of_distances)
+
+#end
+#@showprogress for (ind,row) in enumerate(eachcol(mat_of_distances'))
+#    mat_of_distances[ind,:] = (row.- mean(mat_of_distances))./std(mat_of_distances)
+#end
+
+#f = Figure()
+#Axis(f[1, 1], title = "State visualization",)#yticks = ((1:length(mat_of_distances)) ,String([Char(i) for i in collect(1:length(mat_of_distances))])))
+
+#=
+@showprogress for (ind,_) in enumerate(eachrow(mat_of_distances))
+    #d = kde(mat_of_distances[ind,:])
+    #@show(ind)
+    #if ind==1
+    if ind>1
+        p = Plots.plot!(p,mat_of_distances[ind,:].+prev,label="$ind")#, fmt = :svg)
+    else
+        p = Plots.plot!(p,mat_of_distances[ind,:],label="$ind")#, fmt = :svg)
+    end
+    prev += maximum(mat_of_distances[ind,:])
+    
+    #d = density!(randn(200) .- 2sin((i+3)/6*pi), offset = i / 4,
+    #xs = collect(1:length(mat_of_distances[ind,:]))
+    #d = Makie.lines(xs,mat_of_distances[ind,:],offset=ind*2, colormap = :thermal, colorrange = (-10, 10),strokewidth = 1, strokecolor = :black,bw=100)#, bandwidth = 0.02)
+    # this helps with layering in GLMakie
+    #translate!(d, 0, 0, -0.1i)
+end
+#Plots.plot!(legend=:outerbottom, legendcolumns=length(mat_of_distances))
+savefig("pablo_raw_vectors.png")
+=#   
+
+#title!("Trigonometric functions")
+#xlabel!("x")
+#ylabel!("y")
+#display(p)
+#save("ridgeline_numberss_nmn.png",f)
+
+#division_size=maximum(times)/10.0
+
+#label_inventory_size = length(unique(labels))
+#label_inventory_size = 200
+
