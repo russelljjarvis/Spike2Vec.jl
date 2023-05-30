@@ -35,9 +35,13 @@ export divide_epoch
 export get_vector_coords
 export get_vector_coords_uniform!
 export surrogate_to_uniform
-export label_online_distmat
+export label_online_distmat!
 export cluster_distmat
+export cluster_distmat!
+export get_division_via_recurrence
+
 export get_division_scatter_identify
+export get_division_scatter_identify2
 export get_state_transitions
 export state_transition_trajectory
 export get_division_scatter_identify_via_recurrence_mat

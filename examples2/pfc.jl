@@ -47,7 +47,7 @@ div_spike_mat=spike_matrix_divided(nodes,times,spikes,resolution,numb_neurons,ma
 
 (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false)
 
-function sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt)
+function sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt,spikes)
     horizontalR = kmeans(distmat,3)
     horizontalR_sort_idx =  sortperm(assignments(horizontalR))
     spikes = spikes[horizontalR_sort_idx]
@@ -64,7 +64,7 @@ function sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt)
     end
     (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false)
 end
-(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt)
+(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt,spikes)
 distmat = distmat[horizontalR_sort_idx,:]
 div_spike_mat = div_spike_mat[horizontalR_sort_idx,:]
 sqr_distmat = label_online_distmat!(distmat)#,nclasses)

@@ -22,6 +22,9 @@ using Clustering
 using ProgressMeter
 using LoopVectorization
 using RecurrenceAnalysis
+using StatsBase
+using GraphMakie, CairoMakie
+using SimpleWeightedGraphs
 
 """
 Augment by lengthening with duplication useful for sanity checking algorithm.
@@ -46,39 +49,85 @@ end
 """
 Divide epoch into windows.
 """
-function divide_epoch(nodes::Vector,times::Vector{Float32},sw::Real,toi::Real)
-    t1=[]
-    n1=[]
-    t0=[]
-    n0=[]
+#=
+function divide_epoch(nodes::AbstractVector,times::AbstractVector,sw::Real,toi::Real)
+    #t1=[]
+    #n1=[]
+    t0=Vector{Float32}([])
+    n0=Vector{UInt32}([])
     @assert sw< toi
     third = toi-sw
     @inbounds for (n,t) in zip(nodes,times)
-        if sw<=t && t<toi
-            append!(t0,t-sw)
+        if sw<=t && t<=toi+third
+            append!(t0,abs(t-toi))
             append!(n0,n)            
         elseif t>=toi && t<=toi+third
-            append!(t1,abs(t-toi))
-            @assert t-toi>=0
-            append!(n1,n)
+            append!(t0,abs(t-toi))
+            append!(n0,n)
         end
     end
-    neuron0 =  Array{}([Vector{Float32}([]) for i in 1:maximum(nodes)+1])
+    time_raster =  Array{}([Vector{Float32}([]) for i in 1:maximum(nodes)+1])
     for (neuron,t) in zip(n0,t0)
-        append!(neuron0[neuron],t)        
+        append!(time_raster[neuron],t)        
     end
     #=
+    #time_raster =  Array{}([SVector{Float32}([]) for i in 1:maximum(nodes)+1])
+    
     static_fast = Array{SVector}([])
-    for neuron in n0
-        temp = SVector{length(neuron0[neuron]),Float32}(neuron0[neuron])
+    for neuron in time_raster
+        temp = SVector{length(neuron0[neuron]),Float32}(time_raster[neuron])
         push!(static_fast,temp)
     end
     #neuron0
     =#
     #static_fast
-    neuron0
+    time_raster
+end
+=#
+function divide_epoch(nodes::AbstractVector,times::AbstractVector,start::Real,stop::Real)
+    n0=Vector{UInt32}([])
+    t0=Vector{Float32}([])
+    #@#show(start,stop)
+    window_size = stop-start
+    @inbounds for (n,t) in zip(nodes,times)
+        if start<=t && t<=stop
+            append!(t0,t-start)
+            append!(n0,n)
+        end
+    end
+    #@show(t0)
+    time_raster =  Array{}([Float32[] for i in 1:maximum(nodes)+1])
+    for (neuron,t) in zip(n0,t0)
+        append!(time_raster[neuron],t)        
+    end
+    #@show(time_raster)
+    time_raster
 end
 
+
+#=
+function divide_epoch(nodes::SVector,times::SVector,sw::Real,toi::Real)
+    t0=Vector{Float32}([])
+    n0=Vector{UInt32}([])
+    #@assert sw< toi
+    third = toi-sw
+    @inbounds for (n,t) in zip(nodes,times)
+        if sw<=t && t<=toi+third
+            append!(t0,abs(t-toi))
+            append!(n0,n)            
+        elseif t>=toi && t<=toi+third
+            append!(t0,abs(t-toi))
+            append!(n0,n)
+        end
+    end
+    neuron0 =  Array{}([Float32[] for i in 1:maximum(nodes)+1])
+    for (neuron,t) in zip(n0,t0)
+        append!(neuron0[neuron],t)        
+    end
+    neuron0
+end
+=#
+#=
 function divide_epoch(nodes::SVector,times::SVector,sw::Real,toi::Real)
     t1=Vector{Float32}([])
     t0=Vector{Float32}([])
@@ -102,8 +151,7 @@ function divide_epoch(nodes::SVector,times::SVector,sw::Real,toi::Real)
     end
     neuron0
 end
-
-
+=#
 
 """
 Using the windowed spike trains for neuron0: a uniform surrogate spike train reference, versus neuron1: a real spike train in the  target window.
@@ -114,15 +162,21 @@ And in every window I get the population state vector by comparing current windo
 But it's also a good idea to use the networks most recently past windows as reference windows 
 
 """
-function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
+function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32};metric="kreuz")
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
         if length(n0_) != 0 && length(n1_) != 0
             pooledspikes = vcat(n0_,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
             t1_ = sort(unique(n0_))
             t0_ = sort(unique(n1_))
-            t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
-            self_distances[ind]=abs(sum(S))
+            if metric=="kreuz"
+                t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
+                self_distances[ind]=abs(sum(S))
+            elseif metric=="autocov"
+
+            elseif metric=="CV"
+
+            end
         else
             self_distances[ind]=0
         end
@@ -131,16 +185,25 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
 end
 #get_vector_coords_uniform!(::SVector{2, Float64}, ::Vector{SVector}, ::Vector{Float32})
 
-function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArray, self_distances::AbstractArray)
+function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArray, self_distances::AbstractArray;metric="kreuz")
 
     @inbounds for (ind,n1_) in enumerate(neuron1)
         if length(n1_) != 0
             pooledspikes = vcat(uniform,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
             t0_ = sort(unique(n1_))
-            t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+            if metric=="kreuz"
+                t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+                self_distances[ind]=abs(sum(S))
+            elseif metric=="autocov"
+                lags=5
+                autocov!(self_distances[ind], t0_, lags; demean=true)
 
-            self_distances[ind]=abs(sum(S))
+            elseif metric=="CV"
+                self_distances[ind]=std(t0_)/mean(t0_)
+                
+            end
+
         else
             self_distances[ind]=0
         end
@@ -193,14 +256,12 @@ function final_plots2(mat_of_distances)
     (angles1,distances1)
 end
 
-function divide_epoch(times::SVector,sw,toi)
+function divide_epoch(times::AbstractVector,start,stop)
     t0=Vector{Float32}([])
-    third = toi-sw
-    for (n,t) in zip(times)
-        if sw<=t && t<toi
-            append!(t0,t-sw)
-        elseif t>=toi && t<=toi+third
-            append!(t0,abs(t-toi))
+    window_size = stop-start
+    for t in times
+        if start<=t && t<=stop
+            append!(t0,t-start)
         end
     end
     t0
@@ -222,12 +283,17 @@ function spike_matrix_divided(nodes::Vector,times::Vector{Float32},spikes_raster
     end_windows = collect(step_size:step_size:step_size*division_size)
     number_of_time_windows = length(end_windows)
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
-    mat_of_spikes = [copy(Vector{Any}()) for i in 1:length(spikes_raster), j in 1:length(end_windows)]
+    mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
+    #mat_of_spikes = [copy([]) for i in 1:length(spikes_raster), j in 1:length(end_windows)]
     for neuron in 1:length(spikes_raster)
         for (windex,toi) in enumerate(end_windows)
             sw = start_windows[windex]
-
-            push!(mat_of_spikes[neuron,windex],divide_epoch(spikes_raster[neuron],sw,toi))
+            temp = divide_epoch(spikes_raster[neuron],sw,toi)
+            push!(mat_of_spikes[neuron,windex],temp.+sw)
+            #end
+                #else
+            #    push!(mat_of_spikes[neuron,windex],[0])
+            #end
         end
     end
     mat_of_spikes
@@ -285,6 +351,7 @@ function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,n
         Plots.heatmap(mat_of_distances)
         savefig("Normalised_heatmap$file_name.png")
     end
+
     (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size)
 end
 
@@ -295,7 +362,7 @@ function plot_umap_of_dist_vect(mat_of_distances; file_name::String="stateTransM
     savefig(file_name)
     Q_embedding
 end
-function label_online_distmat(mat_of_distances::AbstractMatrix;threshold::Real=5)
+function label_online_distmat!(mat_of_distances::AbstractMatrix;threshold::Real=5)
     distance_matrix = zeros(length(eachrow(mat_of_distances)),length(eachrow(mat_of_distances)))
     all_perm_pairs = []
     @inbounds @showprogress for (ind,row) in enumerate(eachrow(mat_of_distances))
@@ -313,11 +380,11 @@ function label_online_distmat(mat_of_distances::AbstractMatrix;threshold::Real=5
     distance_matrix
 end
 
-function cluster_distmat(mat_of_distances::AbstractMatrix)
+function cluster_distmat!(mat_of_distances::AbstractMatrix)#,mat_of_spikes::AbstractMatrix)
     R = affinityprop(mat_of_distances)
     sort_idx =  sortperm(assignments(R))
     assign = R.assignments
-    R,sort_idx,assign
+    R,sort_idx,assign#,mat_of_distances,mat_of_spikes
 end
 
 function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices;file_name::String="empty.png")
@@ -337,7 +404,7 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
                 #end
                 cnt+=1
 
-                Plots.vspan!(p,[minimum(Tx),maximum(Tx)], color=Int(repeated_windows[ind]),alpha=0.2)                   
+                #Plots.vspan!(p,[minimum(Tx),maximum(Tx)], color=Int(repeated_windows[ind]),alpha=0.2)                   
             end 
         end
 
@@ -346,7 +413,7 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
     #if file_name
     Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique", xlims=(0, xlimits))
 
-    p2 = Plots.scatter(times,nodes,legend = false, markersize = 0.7,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1, xlims=(0, xlimits))
+    p2 = Plots.scatter(times,nodes,legend = false, markersize = 0.8,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
     Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster", xlims=(0, xlimits))
     Plots.plot(p,p2, layout = (2, 1))            
     
@@ -354,7 +421,6 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
 
     #end
 end
-using GraphMakie, CairoMakie
 
 """
 https://juliadynamics.github.io/RecurrenceAnalysis.jl/stable/quantification/#RQA-Measures
@@ -373,15 +439,15 @@ https://juliadynamics.github.io/RecurrenceAnalysis.jl/stable/quantification/#RQA
 :RTE recurrence time entropy (see rt_entropy)
 :NMPRT: number of the most probable recurrence time (see nmprt)
 """
-function get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assign,nlist,tlist,start_windows,end_windows,nodes,times;file_name::String="empty.png",ε::Real=5)
+function get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assign,nlist,tlist,start_windows,end_windows,nodes,times,ε::Real=5)
     sss =  StateSpaceSet(hcat(mat_of_distances))
     R = RecurrenceMatrix(sss, ε; metric = Euclidean(), parallel=true)
     xs, ys = RecurrenceAnalysis.coordinates(R)# -> xs, ys
-    network = RecurrenceAnalysis.SimpleGraph(R)
-    graphplot(network)
-    savefig("sanity_check_markov.png")
+    #network = RecurrenceAnalysis.SimpleGraph(R)
+    #graphplot(network)
+    #savefig("sanity_check_markov.png")
     #p=Plots.scatter()
-    return rqa(R),xs, ys,sss
+    return rqa(R),xs, ys,sss,R
 end
 
 #@inbounds @showprogress for (ind,toi) in enumerate(end_windows)
@@ -409,7 +475,7 @@ savefig("identified_unique_pattern_via_recurrence$file_name.png")
          #
 
 
-function get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name::String="empty.png",threshold::Real=5)
+function get_division_scatter_identify(div_spike_mat,nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name::String="empty.png",threshold::Real=5)
     p=Plots.scatter()
     witnessed_unique=[]
     @inbounds @showprogress for (ind,toi) in enumerate(end_windows)
@@ -419,25 +485,92 @@ function get_division_scatter_identify(nlist,tlist,start_windows,end_windows,dis
         @inbounds for (ii,xx) in enumerate(distmat[ind,:])
             if abs(xx)<threshold
                 push!(witnessed_unique,assign[ii])
-                
+                #div_spike_mat[ind,ii]
                 Plots.scatter!(p,Tx,Nx, markercolor=Int(assign[ii]),legend = false, markersize = 0.70,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue)
-                if length(Tx)>1
-                    Plots.vspan!(p,[minimum(Tx),maximum(Tx)], color=Int(repeated_windows[ind]),alpha=0.2)                   
-                end 
+
+                #Plots.scatter!(p,div_spike_mat[ind,ii],[ii], markercolor=Int(assign[ii]),legend = false, markersize = 0.70,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue)
+                #if length(Tx)>1
+                #    Plots.vspan!(p,[minimum(Tx),maximum(Tx)], color=Int(repeated_windows[ind]),alpha=0.2)                   
+                #end 
             end
             
         end
     end
     nunique = length(unique(witnessed_unique))
     Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")
-    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.5,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,thickness_scaling = 1)
+    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.7,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue)
     Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")
 
     Plots.plot(p,p2, layout = (2, 1))
 
-    savefig("identified_unique_pattern$file_name.png")
+    savefig("identified_unique_pattern_normal$file_name.png")
 end
 
+function get_division_scatter_identify2(div_spike_mat,nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name::String="empty.png",threshold::Real=5)
+    p=Plots.scatter()
+    witnessed_unique=[]
+    @inbounds @showprogress for (ind,toi) in enumerate(end_windows)
+        sw = start_windows[ind]
+        Nx=nlist[ind]
+        Tx=tlist[ind]
+        @inbounds for (ii,xx) in enumerate(distmat[ind,:])
+            if abs(xx)<threshold
+                push!(witnessed_unique,assign[ii])
+                #div_spike_mat[ind,ii]
+                #Plots.scatter!(p,Tx,Nx, markercolor=Int(assign[ii]),legend = false, markersize = 0.70,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue)
+                #temp = sw.+div_spike_mat[x,y]
+                #@show(temp)
+                #if length(div_spike_mat[ind,ii])!=0
+                #if ind!=ii
+                temp = div_spike_mat[ii,ind][1] #.+sw
+                #temp = div_spike_mat[ind,ii][1] #.+sw
+
+
+                Plots.scatter!(p,temp,[ii], markercolor=Int(assign[ii]),legend = false, markersize = 0.70,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, fontcolor=:blue,ylim=(0,maximum(nodes)))
+            #end
+                    #if length(Tx)>1
+                #    Plots.vspan!(p,[minimum(Tx),maximum(Tx)], color=Int(repeated_windows[ind]),alpha=0.2)                   
+                #end 
+            end
+            
+        end
+    end
+    nunique = length(unique(witnessed_unique))
+    Plots.scatter!(p,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "N observed states $nunique")
+    p2 = Plots.scatter(times,nodes,legend = false, markersize =0.7,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue)
+    Plots.scatter!(p2,xlabel="time (ms)",ylabel="Neuron ID", yguidefontcolor=:black, xguidefontcolor=:black,title = "Un-labeled spike raster")
+
+    Plots.plot(p,p2, layout = (2, 1))
+
+    savefig("identified_unique_pattern2$file_name.png")
+end
+
+function get_division_via_recurrence(R,xs, ys,sss,div_spike_mat,start_windows;file_name="nothing.png")
+    p=Plots.scatter()
+    for (x,row) in enumerate(eachrow(R))
+        for (y,logic_val) in enumerate(row)
+            #@show(y)
+            #for (y,x) in zip(xs,ys)
+            sw = start_windows[x]
+            #@show(sw)
+            #@show(div_spike_mat[x,y])
+            #val_comp = R[x,y]
+            #if val_comp!=0.0
+                #if length(div_spike_mat[x,y])!=0
+            #temp = [i for i in 1:length(div_spike_mat[x,y])]
+            if logic_val
+
+                temp = div_spike_mat[x,y][1] #.+sw
+                #@show(temp)
+                Plots.scatter!(p,temp,[y],xlabel="time (ms)",ylabel="Neuron ID", markercolor=Int(x), markersize = 0.70,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2, yguidefontcolor=:black, xguidefontcolor=:black,title = "Recurrence-labeled spike raster",legend=false)
+                #last +=sw #maximum(div_spike_mat[ind,ii])
+
+                #end
+            end
+        end
+    end
+    savefig("recurrence_identified_unique_pattern$file_name.png")
+end
 
 
 function get_state_transitions(start_windows,end_windows,distmat,assign;threshold::Real=5)
@@ -511,12 +644,12 @@ function state_transition_trajectory(start_windows,end_windows,distmat,assign,as
         #Plots.plot!(p1,assing_progressions,assing_progressions_times,legend=false)
         #display(p1)
         savefig("state_transition_trajectory$file_name.png")
-        #g = SimpleWeightedDiGraph(stateTransMat)
+        g = SimpleWeightedDiGraph(stateTransMat)
 
-        #edge_label = Dict((i,j) => string(stateTransMat[i,j]) for i in 1:size(stateTransMat, 1), j in 1:size(stateTransMat, 2))
+        edge_label = Dict((i,j) => string(stateTransMat[i,j]) for i in 1:size(stateTransMat, 1), j in 1:size(stateTransMat, 2))
 
-        #graphplot(g; names = 1:length(stateTransMat), weights=stateTransMat)
-        #savefig("state_transition_matrix_graph$file_name.png")
+        graphplot(g; names = 1:length(stateTransMat), weights=stateTransMat)
+        savefig("state_transition_graph$file_name.png")
     end
  
     repeated_windows

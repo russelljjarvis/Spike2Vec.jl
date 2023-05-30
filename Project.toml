@@ -3,6 +3,7 @@ uuid = "9d8b7fda-1049-58bc-9481-071a9f369938"
 version = "0.1.1"
 
 [deps]
+SimpleWeightedDiGraph = "47aef6b3-ad0c-573a-a1e2-d07658019622"
 GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
