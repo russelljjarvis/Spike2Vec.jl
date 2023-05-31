@@ -59,8 +59,8 @@ Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST data
 
 #align(center + bottom)[
   #image("MicrosoftTeams-image1.png", width: 70%)
-  *In order to first if the spike2vec analysis code worked as expected, we downloaded a alcium imaging recording from Zebra finch (a song bird's) High Vocal Centre (brain region) source @mackevicius2019unsupervised. Although the actual data source was from 
-  https://github.com/lindermanlab/PPSeq.jl/blob/master/demo/data/songbird_spikes.txt
+  *In order to first if the spike2vec analysis code worked as expected, we downloaded a alcium imaging recording from Zebra finch (a song bird's) High Vocal Centre (brain region) source @mackevicius2019unsupervised. Although the actual data source was from (https://github.com/lindermanlab/PPSeq.jl/blob/master/demo/data/songbird_spikes.txt) The downloaded data set was then simply augmented, by duplicating the spike time raster plot in a manner that appended the full repeated recording to the end of the first recording, the process was iterated 3 times yielding a highly repititive data set $4$ times the length of the original. The intention of this exercise was simply to show that spike2vec could identify and label such obvious repeating patterns.
+  *
 ]
 
 
@@ -71,19 +71,22 @@ Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST data
   system.*
 ]
 
-#align(center + bottom)[
-  #image("both_labelled_mat_of_distances_pablo.png", width: 70%)
+//#align(center + bottom)[
+//  #image("both_labelled_mat_of_distances_pablo.png", width: 70%)
 
-  *Glaciers form an important
-  part of the earth's climate
-  system.*
-]
+ // *Glaciers form an important
+//  part of the earth's climate
+//  system.*
+//]
 #align(center + bottom)[
   #image("both_labelled_mat_of_distances_song_bird.png", width: 70%)
 
-  *Glaciers form an important
-  part of the earth's climate
-  system.*
+  *Figures from left top to bottom right:
+  A: Top left: 75 NMNIST channels were recorded and time binned in a manner which yielded 85 vectorized time bins. 
+  Bottom right: Once the vectorized time bins had been vectorized, a clustering algorithm was applied to the entire matrix of vector coordinates. 
+
+  Cluster centres could then be used as reference points, such that it was possible to compare all 
+  *
 ]
 
 #align(center + bottom)[
