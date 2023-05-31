@@ -7,12 +7,12 @@
 
   authors: (
     (name: "Dr Russell Jarvis", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
-    (name: "Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
-    (name: "Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Mr Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Mr Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
   ),
   // Insert your abstract after the colon, wrapped in brackets.
   // Example: `abstract: [This is my abstract...]`
- index-terms: ("A", "B", "C", "D"),
+ //index-terms: ("A", "B", "C", "D"),
   bibliography-file: "refs.bib",
 )
 
@@ -37,8 +37,45 @@ Two common models of cortical spiking networks are the, Potjan's and Diesmon mod
 
 The application of STDP learning within the fluctuation driven regime necessitates a simple method to optimise network parameters a way that maximises the networks capacity to encode and revisit attractor states. A spike2vec algorithm will enable researchers to investigate the state-fullness of spike trains, the corruption of information caused by STDP in the absence of sleep and resistance to the degradation of memories that may be concomitant with neuronal death and synaptic pruning, as many of these network level phenonemana can be re-construed as network parameters: for example neuronal death relates to synaptic count and neuron count.
 
+== Discussion
+
+Each conscious recall of a memory may involve the brain approximately repeating a pattern; ie recall may mean re-visiting a previous pattern of neuronal activity. Each recalled memory may retain significant traces of activity that is well correlated with the brain experience that caused the memory to be encoded. Such "replay" is has been observed in the hippocampus and prefrontal cortex in rats during sleep. 
+
+When replayed events are detected a sequential map of states can be derived from a spike train, and unrecognized state transitions and anomolies can also be sorted and labelled in discrete chunks.
+
+Under spike2vec framework, spike patterns which are approximately the same as patterns in previous windows are detected because, in the geometric coordinate representation of vectors, spike trains which are close together will have be seperated by a small Euclidean Distance in the vector space.
+
+The spike2vec frame work can be used to convert spike trains to markov transistion matrices, or simply state transition network maps. In such a state network, we can see that not all spike trains are equally stateful, some emperical recordings may have few replay events. When a spike recording is particularly stateful, there may be certain states which are only entered into given the appropriate sequence of prior states. 
+
+// each of the vector space are labelled as reoccuring.
 
 = Theoretical Framework
+
+=== Algorithm Details
+The spike2vec frame work exists at the meta level. It is a novel mashup of pre-existing algorithms, its steps are as follows:
+
+1. Spike trains are divided into N equally sized windows time windows.
+
+2. In each window spike times are converted by subtracting the window start time, such that spike time variability is now mapped onto the smaller scope of each window (ie the time each window occured is subtracted from each window, as window times obscure the analysis). Each of the converted time, time windows is stored in an array.
+
+3. The maximum firing rate of all the windows is found.
+
+4. A single surrogate spike window is constructed by taking the maxmimum firing rate from step 3. And constructing a spike train that has regular Inter Spike Intervals (ISIs) occuring at the maximum firing rate. We call this the reference window.
+
+5. For every N windows sampled in 1, the observed spike times is compared to the uniform reference window using the Thomas Kreuz spike Distance algorithm implemented in Julia by George Datseris. https://github.com/JuliaNeuroscience/SpikeSynchrony.jl/commits?author=Datseris
+
+
+6. The Kreuz spike distance is a way of measuring the cost of converting observed spike train A, to a different spike train B. By measuring the Kreuz spike distance between a variation free regular spiking window, and a window with observed spike time variability, we get a picture of each neurons current unique local variability at each window (note that the method for comparing reference to observed doesn't have to uniquely encode unique spike sequences, it just has to be unique enough). There is M number of neurons we can build a vector of coordinate of *M* dimensions, at each of N time windows. An M by *N* matrix consists of M neurons and N time windows.
+
+7. Since each column vector encodes a time window, we get the euclidian distance between each column vector and every other column vector, across the columns of the whole matrix. 
+
+8. We take these new distance values we fill a new matrix, between every window, and every other window at row and column location of the matrix. It's important to recognize that here we are not comparing spike distances between neurons (as has occured in established work, we are commparing spike train distance vectors within the same neurons along time). 
+
+9. We perform unsupervised clustering on this temporaly encoded dissimalirity matrix.
+
+10. We discard all cluster labels that correspond to just a single time window, and retain the set of cluster labels, that have at least one repeating label. We regard these duplicated cluster labels as repeated temporal spatial patterns. 
+
+//7. Unsupervised clustering is applied to the matrix across columns to find .
 
 
 = Methodological Framework
@@ -58,17 +95,21 @@ Some preliminary code that performs the Spike2Vec analysis is avaialble at the f
 Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST dataset, ie the heatmap above, comes from analysing spike train distance across the NMNIST data set numbers: 0-9 represented as spiking events. There are 300 total presentation number presentations. All nine numbers are incrementally cycled through. Number presentations within the one number are contiguous, (the data set isn't shuffled), and this contiguity is reflected in the heatmap too.
 
 #align(center + bottom)[
-  #image("MicrosoftTeams-image1.png", width: 70%)
-  *In order to first if the spike2vec analysis code worked as expected, we downloaded a alcium imaging recording from Zebra finch (a song bird's) High Vocal Centre (brain region) source @mackevicius2019unsupervised. Although the actual data source was from (https://github.com/lindermanlab/PPSeq.jl/blob/master/demo/data/songbird_spikes.txt) The downloaded data set was then simply augmented, by duplicating the spike time raster plot in a manner that appended the full repeated recording to the end of the first recording, the process was iterated 3 times yielding a highly repititive data set $4$ times the length of the original. The intention of this exercise was simply to show that spike2vec could identify and label such obvious repeating patterns.
+  #image("figures/MicrosoftTeams-image1.png", width: 70%)
+  *In order to test if the spike2vec framework worked as expected, we downloaded a alcium imaging recording from Zebra finch (a song bird's) High Vocal Centre (brain region) source @mackevicius2019unsupervised. Although the actual data source was from (https://github.com/lindermanlab/PPSeq.jl/blob/master/demo/data/songbird_spikes.txt) The downloaded data set was then simply augmented, by duplicating the spike time raster plot in a manner that appended the full repeated recording to the end of the first recording, the process was iterated 3 times yielding a highly repititive data set $4$ times the length of the original. The intention of this exercise was simply to show that spike2vec could identify and label such obvious repeating patterns.
   *
 ]
 
 
 #align(center + bottom)[
-  #image("MicrosoftTeams-image2.png", width: 70%)
-  *Glaciers form an important
-  part of the earth's climate
-  system.*
+  #image("figures/MicrosoftTeams-image2.png", width: 70%)
+  *We take the single un augmented Zebra finche data and label repeating patterns using the discussed frame work, since there are no obvious explicit repitions caused by duplicating spike patterns, the algorithm is forced to consider the similarity between more disparate population level patterns.*
+]
+
+
+#align(center + bottom)[
+  #image("figures/genuinely_repeated_patternpfcpfc.png.png", width: 70%)
+  *We took a data set from rat prefrontal cortex. The data set was captured, under experimental conditions explicitly designed to maximise the probability of recording replay ie dreaming and slow wave sleep.*
 ]
 
 //#align(center + bottom)[
@@ -79,40 +120,53 @@ Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST data
 //  system.*
 //]
 #align(center + bottom)[
-  #image("both_labelled_mat_of_distances_song_bird.png", width: 70%)
-
-  *Figures from left top to bottom right:
-  A: Top left: 75 NMNIST channels were recorded and time binned in a manner which yielded 85 vectorized time bins. 
-  Bottom right: Once the vectorized time bins had been vectorized, a clustering algorithm was applied to the entire matrix of vector coordinates. 
-
-  Cluster centres could then be used as reference points, such that it was possible to compare all 
-  *
+  #image("figures/both_labelled_mat_of_distances_song_bird.png", width: 70%) 
+  *Figures from left top to bottom right:A: Top left: 75 NMNIST channels were recorded and time binned in a manner which yielded 85 vectorized time bins. Bottom right: Once the vectorized time bins had been vectorized, a clustering algorithm was applied to the entire matrix of vector coordinates. Cluster centres could then be used as reference points, such that it was possible to compare all*
 ]
 
-#align(center + bottom)[
-  #image("cluster_centres_map.png", width: 70%)
-  *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
-]
+We used data augmentation to demonstrate that this labelling technique can trivially recognize patterns.
+
+//#align(center + bottom)[
+//  #image("figures/cluster_centres_map.png", width: 70%)
+//]
 
 #align(center + bottom)[
-  #image("clustered_big_model.png", width: 70%)
-  *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
+  #image("figures/clustered_big_model.png", width: 70%)
+  *Normalized PFC vectors for 1000 neurons over 10 channels*
 ]
 
 
 #align(center + bottom)[
-  #image("clustered_train_model.png", width: 70%)
-  *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
+  #image("figures/clustered_train_model.png", width: 70%)
+  *We sampled the NMNIST data set more broadly using $6,000$ samples to create vectors. The entire data set consists of $60,000$ samples. *
 ]
 
 
-#align(center + bottom)[
-  #image("clustering_NMNIST.png", width: 70%)
-  *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
+//#align(center + bottom)[
+//  #image("figures/clustering_NMNIST.png", width: 70%)
+//]/
+//align(center + bottom)[
+ // #image("figures/clustering_NMNIST.png", width: 70%)
+ //   *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
+//]
+
+align(center + bottom)[
+  #image("figures/vector_differences_another_NMNIST.png", width: 70%)
+  *Two spike time encoded numerals, where read in to Julia, then the spiking neuromorphic data were converted to vectors over $1200$ channels. Orange and Blue plots are vectors corresponding to two distinct NMNIST data labels. Rapid positive alternating deflections are visible in both vectors, because the NMNIST data is caused by pixel activations, when $2D$ pixel derived data sources are converted into a $1D$ vector, sparse clusters of activated pixels, have regular gaps between them.*
 ]
-clustering_NMNIST.png
+
+align(center + bottom)[
+  #image("figures/umap_of_NMNIST_Data.png", width: 70%)
+  *As a matter of routine UMAP dimensional embedding of spike distances was applied to all spike differences*
+]
+
+//align(center + bottom)[
+//  #image("figures/UMAP_song_bird.png", width: 70%)
+//  *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
+//]
+
+
 cluster_sort_MNMIST.png
-cluster_sort_pablo.png
 cluster_sort_song_birds.png
 didit_work_NM.png
 didit_work.png
@@ -155,7 +209,6 @@ UniformSpikes.png
 Unormalised_heatmap_pablo.png
 Unormalised_heatmap.png
 Unormalised_heatmap_song_bird.png
-vector_differences_another_NMNIST.png
 vector_differences_another.png
 
 
