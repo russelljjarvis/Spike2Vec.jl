@@ -59,18 +59,6 @@ interprebable network transition matrices.
 
 
 //=== Intended caption for spike2vec document.
-
-=== Intended Discusssion
-
-The attractor network view of the mammal cortex is consistant with phenomological observations about the mind, such that people commonly refer to "circular thinking", in obsessive compulsive disorder.
-Furthermore action and perception are theorized to occur in alternating cycles, during "action-perception" loops. 
-
-Neuronal synaptic weight changes, that happen as a result of STDP, simply bias the brain in a manner which will make salient brain states more likely to occur.
-
-It is possible that the windows which were disregarded because they didn't repeat, may well repeat given long enough neuronal recordings. This is an unavoidable problem, caused by fact that only a limited duration of recording data is: a. available and b, computationally tractable to analyse.
-
-In the absence of infinite recording data, we can draw no conclusions about wether one of observations would have re-occured given more time. Another caveat is that inside this frame work it is impossible to distinguish between brain states that are relevant to the organism, and state transitions, which may also look similar from trial to trial.
-
 //or finite observations are novel network states, or repeating states.
 
 //Whatever the case, state, or state transition, detecting periods of repeating patterns in a fast and scalable way, still bolsters the attractor network view of the brain.
@@ -94,19 +82,32 @@ caused by the network transitioning to familiar states,
 */
 
 
-== Discussion
 
-Each conscious recall of a memory may involve the brain approximately repeating a pattern; ie recall may mean re-visiting a previous pattern of neuronal activity. Each recalled memory may retain significant traces of activity that is well correlated with the brain experience that caused the memory to be encoded. Such "replay" is has been observed in the hippocampus and prefrontal cortex in rats during sleep. 
 
-When replayed events are detected a sequential map of states can be derived from a spike train, and unrecognized state transitions and anomolies can also be sorted and labelled in discrete chunks.
-
-Under spike2vec framework, spike patterns which are approximately the same as patterns in previous windows are detected because, in the geometric coordinate representation of vectors, spike trains which are close together will have be seperated by a small Euclidean Distance in the vector space.
-
-The spike2vec frame work can be used to convert spike trains to markov transistion matrices, or simply state transition network maps. In such a state network, we can see that not all spike trains are equally stateful, some emperical recordings may have few replay events. When a spike recording is particularly stateful, there may be certain states which are only entered into given the appropriate sequence of prior states. 
 
 // each of the vector space are labelled as reoccuring.
 
 = Theoretical Framework
+
+A problem with converting spike train raster plots to attractor trajectories, is the that the most established method  deriving attractor trajectories (and energy landscapes) requires the system under investigation to be encoded as a continuous differentiable function. A dominant approach which satisfys the continuous function requirement is to fit a differential equation that models a networks firing rate(s) in response to current injection the assumption underlying this approach, is that the rate coded information and network states are more important than or even exclude temporal codes.    
+
+Another approach to estimating attractor trajectories involves applying Delay Coordinate Embeddings framework. The advantage of this approach is that
+a model equation is not required, and a timeseries of system observations satisfies the algorithms requirements. Spikes time raster plots are sparsely encoded collections of events that are naturally encoded by ragged arrays, and delay coordinate embeddings requires a state space map. Vector matrices that are output from spike2vec are sufficient to satisfy Delay Coordinate Embeddings, however, the frame work is slow to evaluate, and the quality of the output of the algorithm dependent on many parameters (both in parameters of spike2vec and DCE).
+
+//julia recurrence analysis     N. Marwan et al., "Recurrence plots for the analysis of complex systems", Phys. Reports 438(5-6), 237-329 (2007).
+/*
+    N. Marwan & C.L. Webber, "Mathematical and computational foundations of recurrence quantifications", in: Webber, C.L. & N. Marwan (eds.), Recurrence Quantification Analysis. Theory and Best Practices, Sprin */
+
+Yet another approach is to use Recurrence Analysis. Recurrence Analysis is orders of magnitude faster than DCE, and the results of DCE
+usefully describe the network properties of state transition matrices. In order to find an optimal time window we could use consistently between data sets, we swept through a range of window lengths (ms), and found the window length which would maximise the correlation between peristimulus time histograms on exemplar spike raster patterns.
+
+In order to test that the "auto spike train distance", metric lead to more well defined network descriptors than other similar but more common metrics, We compared state vectors that were constructed by applying auto-covariance and local variation to the same spike windows, and we compared the spike2vec algorithms performance across all three metrics.  @illing2019biologically Julia simulation of learning. We simulated NMNIST learning. @kim2020dynamics Dynamics systems view of the brain.
+
+As an experiment we used a Julia package Emeddings.jl to convert spike train sequences to English words, by iterating over word embedding vectors in large word2vec models, and finding closely matching vectors, such that we could apply a statistical analysis of written english to spike train recordings.
+
+//7. Unsupervised clustering is applied to the matrix across columns to find .
+= Methodological Framework
+
 
 === Algorithm Details
 The spike2vec frame work exists at the meta level. It is a novel mashup of pre-existing algorithms, its steps are as follows:
@@ -132,24 +133,28 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 
 10. We discard all cluster labels that correspond to just a single time window, and retain the set of cluster labels, that have at least one repeating label. We regard these duplicated cluster labels as repeated temporal spatial patterns. 
 
-//7. Unsupervised clustering is applied to the matrix across columns to find .
-= Methodological Framework
+=== Discusssion
 
-A problem with converting spike train raster plots to attractor trajectories, is the that the most established method  deriving attractor trajectories (and energy landscapes) requires the system under investigation to be encoded as a continuous differentiable function. A dominant approach which satisfys the continuous function requirement is to fit a differential equation that models a networks firing rate(s) in response to current injection the assumption underlying this approach, is that the rate coded information and network states are more important than or even exclude temporal codes.    
+The attractor network view of the mammal cortex is consistant with phenomological observations about the mind, such that people commonly refer to "circular thinking", in obsessive compulsive disorder.
+Furthermore action and perception are theorized to occur in alternating cycles, during "action-perception" loops. 
 
-Another approach to estimating attractor trajectories involves applying Delay Coordinate Embeddings framework. The advantage of this approach is that
-a model equation is not required, and a timeseries of system observations satisfies the algorithms requirements. Spikes time raster plots are sparsely encoded collections of events that are naturally encoded by ragged arrays, and delay coordinate embeddings requires a state space map. Vector matrices that are output from spike2vec are sufficient to satisfy Delay Coordinate Embeddings, however, the frame work is slow to evaluate, and the quality of the output of the algorithm dependent on many parameters (both in parameters of spike2vec and DCE).
+Neuronal synaptic weight changes, that happen as a result of STDP, simply bias the brain in a manner which will make salient brain states more likely to occur.
 
-//julia recurrence analysis     N. Marwan et al., "Recurrence plots for the analysis of complex systems", Phys. Reports 438(5-6), 237-329 (2007).
-/*
-    N. Marwan & C.L. Webber, "Mathematical and computational foundations of recurrence quantifications", in: Webber, C.L. & N. Marwan (eds.), Recurrence Quantification Analysis. Theory and Best Practices, Sprin */
+It is possible that the windows which were disregarded because they didn't repeat, may well repeat given long enough neuronal recordings. This is an unavoidable problem, caused by fact that only a limited duration of recording data is: a. available and b, computationally tractable to analyse.
 
-Yet another approach is to use Recurrence Analysis. Recurrence Analysis is orders of magnitude faster than DCE, and the results of DCE
-usefully describe the network properties of state transition matrices. In order to find an optimal time window we could use consistently between data sets, we swept through a range of window lengths (ms), and found the window length which would maximise the correlation between peristimulus time histograms on exemplar spike raster patterns.
+In the absence of infinite recording data, we can draw no conclusions about wether one of observations would have re-occured given more time. Another caveat is that inside this frame work it is impossible to distinguish between brain states that are relevant to the organism, and state transitions, which may also look similar from trial to trial.
 
-In order to test that the "auto spike train distance", metric lead to more well defined network descriptors than other similar but more common metrics, We compared state vectors that were constructed by applying auto-covariance and local variation to the same spike windows, and we compared the spike2vec algorithms performance across all three metrics.  @illing2019biologically Julia simulation of learning. We simulated NMNIST learning. @kim2020dynamics Dynamics systems view of the brain.
+Each conscious recall of a memory may involve the brain approximately repeating a pattern; ie recall may mean re-visiting a previous pattern of neuronal activity. Each recalled memory may retain significant traces of activity that is well correlated with the brain experience that caused the memory to be encoded. Such "replay" is has been observed in the hippocampus and prefrontal cortex in rats during sleep. 
 
-Finally we used a Julia package Emeddings.jl to convert spike train sequences to English words, by iterating over word embedding vectors in large word2vec models, and finding closely matching vectors, we did this in order to make patterns in spike train vectors more intuitive and accessible, by giving repeated spike sequence elements familiar word labels. By converting spike trains to English word sequences we can compare the statistics of written language to spike train statistics. The word2vec approach was found to generalize to other realms such as product recommendations using meta data @vasile2016meta, and human EEG recordings.
+When replayed events are detected a sequential map of states can be derived from a spike train, and unrecognized state transitions and anomolies can also be sorted and labelled in discrete chunks.
+
+Under spike2vec framework, spike patterns which are approximately the same as patterns in previous windows are detected because, in the geometric coordinate representation of vectors, spike trains which are close together will have be seperated by a small Euclidean Distance in the vector space.
+
+The spike2vec frame work can be used to convert spike trains to markov transistion matrices, or simply state transition network maps. In such a state network, we can see that not all spike trains are equally stateful, some emperical recordings may have few replay events. When a spike recording is particularly stateful, there may be certain states which are only entered into given the appropriate sequence of prior states. 
+
+
+=== Other implications.  
+As described in the methods we used pre-trained word embedding models, and matched spike train vectors with closesly matching word vectors. We did this in order to make patterns in spike train vectors more intuitive and accessible, by giving repeated spike sequence elements familiar word labels. By converting spike trains to English word sequences we can compare the statistics of written language to spike train statistics. The word2vec approach was found to generalize to other realms such as product recommendations using meta data @vasile2016meta, and human EEG recordings.
 
 
 //https://github.com/JuliaText/Embeddings.jl
