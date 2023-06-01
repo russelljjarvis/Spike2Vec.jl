@@ -37,6 +37,67 @@ Two common models of cortical spiking networks are the, Potjan's and Diesmon mod
 
 The application of STDP learning within the fluctuation driven regime necessitates a simple method to optimise network parameters a way that maximises the networks capacity to encode and revisit attractor states. A spike2vec algorithm will enable researchers to investigate the state-fullness of spike trains, the corruption of information caused by STDP in the absence of sleep and resistance to the degradation of memories that may be concomitant with neuronal death and synaptic pruning, as many of these network level phenonemana can be re-construed as network parameters: for example neuronal death relates to synaptic count and neuron count.
 
+In order to garner evidence for the "replay as network attractor" theory of memory encoding and memory recall
+faster scalable methods are needed to transform spike raster plots into attractor trajectories and energy landscapes. 
+
+A problem with converting spike train raster plots to attractor trajectories, is the oldest and most established system for
+deriving attractor trajectories (and energy landscapes) needs to the system under investigation to be encoded as a continuous differentiable function.
+A dominant approach which satisfys the continuous function requirement is to fit a differential equation that models a networks firing rate(s) in response to current injection
+the assumption underlying this approach, is that the rate coded information and network states are more important than or even exclude temporal codes.    
+
+Another approach to estimating attractor trajectories involves applying Delay Coordinate Embeddings framework. The advantage of this approach is that
+a model equation is not required, and a timeseries of system observations satisfies the algorithms requirements.
+Spikes time raster plots are sparsely encoded collections of events that are naturally encoded by ragged arrays, and delay coordinate embeddings requires a state space map.
+Vector matrices that are output from spike2vec are sufficient to satisfy Delay Coordinate Embeddings, however, the frame work is slow to evaluate, and the quality of the output of the algorithm dependent on many parameters (both in parameters of spike2vec and DCE).
+
+Yet another approach is to use Recurrence Analysis. Recurrence Analysis is orders of magnitude faster than DCE, and the results of DCE
+usefully describe the network properties of state transition matrices. 
+
+It is the authors view, that the fast algorithm described above is functionally similar to the RecurrenceAnalysis approach, and that it leads to a faster and more 
+interprebable network transition matrices.
+
+
+=== Intended caption for spike2vec document.
+
+
+//patterns of activity. Projection neurons exhibit highly phasic stereotyped firing patterns. X-projecting (HVC((X))) neurons burst zero to four times per motif, whereas RA-projecting neurons burst extremely sparsely--at most once per motif. The bursts of HVC projection neurons are tightly locked to the song and typically have a jitter of <1 ms. Population activity of interneurons, but not projection neurons, was significantly correlated with syllable patterns. Consistent with the idea that HVC codes for the temporal order in the song rather than for sound, the vocal dynamics and neural dynamics in HVC occur on different and uncorrelated time scales. We test whether HVC((X)) neurons are auditory sensitive during singing. We recorded the activity of these neurons in juvenile birds during singing and found that firing patterns of these neurons are not altered by distorted auditory feedback, which is known to disrupt learning or to cause degradation of song already learned. https://pubmed.ncbi.nlm.nih.gov/17182906/
+
+=== Intended Discusssion
+
+The attractor network view of the mammal cortex is consistant with phenomological observations about the mind, such that people commonly refer to "circular thinking", in obsessive compulsive disorder.
+Furthermore action and perception are theorized to occur in alternating cycles, during "action-perception" loops. 
+
+Neuronal synaptic weight changes, that happen as a result of STDP, simply bias the brain in a manner which will make salient brain states more likely to occur.
+
+It is possible that the windows which were disregarded because they didn't repeat, may well repeat given long enough neuronal recordings. This is an unavoidable problem, caused by fact that of limited or finite observations are novel network states, or repeating states.
+It is also possible that detected reoccuring states, are really only reoccuring state transitions.
+From our perspective we are unable to distinguish between a state and a network state transition.
+
+Whatever the case, state, or state transition, detecting periods of repeating patterns in a fast and scalable way, still bolsters the attractor network view of the brain.
+The algorithm may also be helpful for feature reconstruction in Neuromorphic Data sets from event based cameras.
+
+Reoccurance analysis was used to characterize vector encoded spike train matrices for repeating patterns.
+Re-currence analysis was able to give us numbers quantify the degree of repitition of states, and the entropy of state transition matrices.
+
+Steps convert the spike encoded vector matrices to "state space sets" as defined in the Julia Package Dynamical Systems.jl
+
+
+Re-occurance analysis did 
+
+#TODO quantify the complexity of state transition matrices with the non reoccuring states included, as this may give us insight about, information in the brain at a different time scale.
+
+ state transition networks
+
+Delay Embeddings can 
+
+//dynamic systems view of the brain @scholarpedia attractor_network.
+
+ caused by the network transitioning to familiar states, 
+Of course given longer recordings.
+*
+
+
+
 == Discussion
 
 Each conscious recall of a memory may involve the brain approximately repeating a pattern; ie recall may mean re-visiting a previous pattern of neuronal activity. Each recalled memory may retain significant traces of activity that is well correlated with the brain experience that caused the memory to be encoded. Such "replay" is has been observed in the hippocampus and prefrontal cortex in rats during sleep. 
@@ -80,6 +141,16 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 
 = Methodological Framework
 
+To test the veracity of our new simulation frame work we applied NMNIST spiking data sets to a variant of the Potjan's and Diesmon model which had $10%$ STDP synapses.
+
+
+
+= Methodological Framework
+
+In order to find an optimal time window we could use consistently between data sets, we swept through a range of window lengths (ms), and found the window length which would maximise the correlation between peristimulus time histograms on exemplar spike raster patterns.
+
+
+
 = Result Analysis
 
 = Statement of Need
@@ -93,6 +164,68 @@ Scalable methods for representing the transient behavior of large populations of
 Some preliminary code that performs the Spike2Vec analysis is avaialble at the following link. the code is implemented in Julia, a modern language alternative to Python that makes large-scale model visualization and analysis more computationally tractable. A docker file is included. 
 
 Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST dataset, ie the heatmap above, comes from analysing spike train distance across the NMNIST data set numbers: 0-9 represented as spiking events. There are 300 total presentation number presentations. All nine numbers are incrementally cycled through. Number presentations within the one number are contiguous, (the data set isn't shuffled), and this contiguity is reflected in the heatmap too.
+
+
+@Eliasmith Dynamic systems view of the brain from scholar pedia.
+
+@illing2019biologically Julia simulation of learning. We simulated NMNIST learning.
+@kim2020dynamics Dynamics systems view of the brain.
+
+@mackevicius2019unsupervised Julia labelling horinzontal
+
+@stella20193d SPADE
+
+@quaglio2017detection SPADE
+ 
+@shinomoto2005measure SPADE
+
+//-rw-rw-r-- 1 rjjarvis rjjarvis   29195 May 12 11:44 umap_of_NMNIST_Data.png
+
+#align(center + bottom)[
+  #image("UniformSpikes.png.png", width: 70%)
+  *A plot of the regular periodic spike reference window. A unvarying uniform surrogate spike train is used as a comparison inorder to compute the transformation cost of transforming spike train uniform to spike train varying.*
+  
+  ]
+
+#align(center + bottom)[
+  #image("final_output_graphs_state_transition_matrix_graph.png", width: 70%)
+*The output of the framework is a sequential state transition network of the spike train. Spontaneous network activity which didn't get repeated was simply not included in the state transition diagram. Two state transition diagrams are output, one with non repeating states, and one with repeating states.**]
+
+#align(center + bottom)[
+  #image("final_output_graphs_state_transition_matrix_graph.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+
+#align(center + bottom)[
+  #image("state_transition_matrixPFC.png.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+#align(center + bottom)[
+  #image("state_transition_trajectoryPFC.png.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+#align(center + bottom)[
+  #image("sensitiv_to_parameters2_genuinely_repeated_patternPFC.png.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+#align(center + bottom)[
+  #image("most_convining_plot_genuinely_repeated_patternsongbird.png.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+#align(center + bottom)[
+  #image("convincing_UMAP.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+
+#align(center + bottom)[
+  #image("state_transition_trajectorypfcpfc.png.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+#align(center + bottom)[
+  #image("sensitivity_to_parameters.png", width: 70%)
+*cluster_horizontal_vectors_sort_song_birds.png*]
+
+
+
 
 #align(center + bottom)[
   #image("figures/MicrosoftTeams-image1.png", width: 70%)
