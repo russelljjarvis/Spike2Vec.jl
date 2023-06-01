@@ -7,19 +7,11 @@
 
   authors: (
     (name: "Dr Russell Jarvis", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
-    (name: "Mr Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
-    (name: "Mr Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
   ),
-  // Insert your abstract after the colon, wrapped in brackets.
-  // Example: `abstract: [This is my abstract...]`
- //index-terms: ("A", "B", "C", "D"),
   bibliography-file: "refs.bib",
 )
-
-
-// We generated the example code below so you can see how
-// your document will look. Go ahead and replace it with
-// your own content!
 
 
 
@@ -28,8 +20,8 @@
 
 = Introduction
 
-Both temporal and rate codes fail to fully explain how the cortical neurons of mammal brains are able to use synapses to learn about the world. The attractor network approach to understanding the brain is code agnostic. By using chaos attractor trajectories as an explanation the dynamic systems view of the brain can at least explain why some of the brains activity patterns are able to repeat, and why the not all brain activity is high entropy, asychronous irregular activity. The network attractor theory is compatible with recent spike train datasets that demonstrate "replay" in the hippocampus and prefrontal cortex of rats.
-
+Both temporal and rate codes fail to fully explain how the cortical neurons of mammal brains are able to use synapses to learn about the world. The attractor network approach to understanding the brain is code agnostic. By appealing to spike time chaos, spike time network attractors can explain why some of the brains activity patterns are able to repeat, and why the not all brain activity is high entropy, asychronous irregular activity. The network attractor theory is compatible with recent spike train datasets that demonstrate "replay" in the hippocampus and prefrontal cortex of rats. Replay refers to a phenomena were in two time points of a spike train, there is macroscale similarity between spike patterns, and each pattern is approximately the same and generally reconizable. 
+// trajectories as an explanation the dynamic systems view of the brai
 //"replay as network attractor" theory of memory encoding and memory recall.// explain how neural patterns 
 
 
@@ -37,7 +29,7 @@ There is demand for a scalable algorithm that can detect repeating temporal spat
 
 //In order to garner evidence for the "replay as network attractor" theory of memory encoding and memory recall faster scalable 
 
-There may be latent evidence for the Dynamic Sytems/Network Attractor theory of neuronal computation, and it is imperative to uncover any evidence for the attractor network theory in the vast amount of public spiking data on the internet. Methods are needed to transform spike raster plots into attractor trajectories directly into state transition networks, and it is unclear if the existing implementations of SPADE can achieve this in a performant and large scale manner. //and energy landscapes. 
+There may be latent evidence for the Network Attractor theory of neuronal learning in older spiking data sets, and it is imperative to uncover any evidence for the attractor network theory in the vast amount of public spiking data on the internet. Methods are needed to transform spike raster plots into attractor trajectories directly into state transition networks, and it is unclear if the existing implementations of SPADE can achieve this in a performant and large scale manner. //and energy landscapes. 
 
 Furthermore there is a desire to perform neuronal data analysis in a manner that lends itself to extensibility with Julia, a modern language with high performance features, when the Julia ecosystem has a new framework, the combinations of performance orientated tools becomes possible. 
 
@@ -89,6 +81,9 @@ caused by the network transitioning to familiar states,
 
 = Theoretical Framework
 
+
+Representational simalarity @grootswagers2019representational has been applied to decoding visual representations from ECG channels, by analysing the differences between channels, and how these differences evolve over time. Rather than applying representational similarity between pairs of neurons in the network, we instead compare spike train distance across one neurons evolving spiking behavior, by assessing how much the neuron changes its representation.
+
 A problem with converting spike train raster plots to attractor trajectories, is the that the most established method  deriving attractor trajectories (and energy landscapes) requires the system under investigation to be encoded as a continuous differentiable function. A dominant approach which satisfys the continuous function requirement is to fit a differential equation that models a networks firing rate(s) in response to current injection the assumption underlying this approach, is that the rate coded information and network states are more important than or even exclude temporal codes.    
 
 Another approach to estimating attractor trajectories involves applying Delay Coordinate Embeddings framework. The advantage of this approach is that
@@ -112,9 +107,9 @@ As an experiment we used a Julia package Emeddings.jl to convert spike train seq
 === Algorithm Details
 The spike2vec frame work exists at the meta level. It is a novel mashup of pre-existing algorithms, its steps are as follows:
 
-1. Spike trains are divided into N equally sized windows time windows.
+1. Spike trains are divided into N equally sized time windows.
 
-2. In each window spike times are converted by subtracting the window start time, such that spike time variability is now mapped onto the local time frame in the smaller scope of each window (ie the time each window occured is subtracted from each window, making any variation of spike times inside the window relevant to the windows scale). Each of the converted time, time windows is stored in an array.
+2. In each window spike times are converted by subtracting the window start time, such that spike time variability is now mapped onto the local time frame in the smaller scope of each window (ie the time each window occured is subtracted from each window, making any variation of spike times inside the window relevant to the windows scale). Each of these windows is then stored in an array.
 
 3. The maximum firing rate of all the windows is found.
 
@@ -123,9 +118,16 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 5. For every N windows sampled in 1, the observed spike times is compared to the uniform reference window using the Thomas Kreuz spike Distance algorithm implemented in Julia by George Datseris. https://github.com/JuliaNeuroscience/SpikeSynchrony.jl/commits?author=Datseris
 
 
-6. The Kreuz spike distance is a way of measuring the cost of converting observed spike train A, to a different spike train B. By measuring the Kreuz spike distance between a variation free regular spiking window, and a window with observed spike time variability, we get a picture of each neurons current unique local variability at each window (note that the method for comparing reference to observed doesn't have to uniquely encode unique spike sequences, it just has to be unique enough). There is M number of neurons we can build a vector of coordinate of *M* dimensions, at each of N time windows. An M by *N* matrix consists of M neurons and N time windows.
+6. The Kreuz spike distance is a way of measuring the cost of converting observed spike train * A * , to a different spike train * B *. By measuring the Kreuz spike distance between a variation free regular spiking window, and a window with observed spike time variability, we get a picture of each neurons current unique local variability at each window (note that the method for comparing reference to observed doesn't have to uniquely encode unique spike sequences, it just has to be sufficiently unique to make states appropatriately distinguishable but also recognizable across a population of multiple cells). As there are  * M * number of neurons we then build a vector of coordinate of * M * dimensions, at each of N time windows. *  Xm *, is an M by * N * tensor consists of M neurons and N time windows.
 
-7. Since each column vector encodes a time window, we get the euclidian distance between each column vector and every other column vector, across the columns of the whole matrix. 
+$ mat(
+  1, 2, ..., 10;
+  2, 2, ..., 10;
+  dots.v, dots.v, dots.down, dots.v;
+  10, 10, ..., 10;
+) $
+
+7. Since each column vector of * Xm * encodes a time window, we get the euclidian distance between each column vector and every other column vector, across the columns of the whole matrix. 
 
 8. We take these new distance values we fill a new matrix, between every window, and every other window at row and column location of the matrix. It's important to recognize that here we are not comparing spike distances between neurons (as has occured in established work, we are commparing spike train distance vectors within the same neurons along time). 
 
@@ -164,8 +166,8 @@ As described in the methods we used pre-trained word embedding models, and match
   columns: (auto, auto, auto),
   inset: 10pt,
   align: horizon,
-  [*Kreuz Distance from Uniform ISI*], [*Auto Covariance*], [*Local Variation*],
-    [Kreuz spike distance number $0$],
+  [*Kreuz Distance against uniform ISI reference*],[*Kreuz Distance against noise reference*],[*Auto Covariance*], [*Local Variation*],
+    [Kreuz spike distance uniform number $0$], [Kreuz spike distance versus noise number $0$],
   [
     Autocovariance number $1$
   ],
