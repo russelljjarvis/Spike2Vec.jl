@@ -37,9 +37,11 @@ There is demand for a scalable algorithm that can detect repeating temporal spat
 
 //In order to garner evidence for the "replay as network attractor" theory of memory encoding and memory recall faster scalable 
 
-There may be latent evidence for the Dynamic Sytems/Network Attractor theory of neuronal computation, and it is imperative to uncover any evidence for the attractor network theory in the vast amount of public spiking data on the internet. Basically methods are needed to transform spike raster plots into attractor trajectories directly into state transition networks, and it is unclear if SPADE can achieve this. //and energy landscapes. 
+There may be latent evidence for the Dynamic Sytems/Network Attractor theory of neuronal computation, and it is imperative to uncover any evidence for the attractor network theory in the vast amount of public spiking data on the internet. Methods are needed to transform spike raster plots into attractor trajectories directly into state transition networks, and it is unclear if the existing implementations of SPADE can achieve this in a performant and large scale manner. //and energy landscapes. 
 
-and to do so in a way that lends itself to extensibility with Julia, a modern language with high performance features.  furthermore there is also demand for neuronal analysis tools in the Julia ecosystem
+Furthermore there is a desire to perform neuronal data analysis in a manner that lends itself to extensibility with Julia, a modern language with high performance features, when the Julia ecosystem has a new framework, the combinations of performance orientated tools becomes possible. 
+
+/*and there is a general demand for neuronal analysis tools in the Julia ecosystem.*/
 //@stella20193d SPADE
 //@quaglio2017detection SPADE
 //@shinomoto2005measure SPADE
