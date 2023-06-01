@@ -84,6 +84,65 @@ function divide_epoch(nodes::AbstractVector,times::AbstractVector,sw::Real,toi::
     time_raster
 end
 =#
+
+"""
+https://github.com/NeuralEnsemble/elephant/blob/master/elephant/statistics.py
+Calculate the measure of revised local variation LvR for a sequence of time
+intervals between events :cite:`statistics-Shinomoto2009_e1000433`.
+
+Given a vector :math:`I` containing a sequence of intervals, the LvR is
+defined as:
+
+.. math::
+    LvR := \frac{3}{N-1} \sum_{i=1}^{N-1}
+                        \left(1-\frac{4 I_i I_{i+1}}
+                        {(I_i+I_{i+1})^2}\right)
+                        \left(1+\frac{4 R}{I_i+I_{i+1}}\right)
+
+The LvR is a revised version of the Lv, with enhanced invariance to firing
+rate fluctuations by introducing a refractoriness constant R. The LvR with
+`R=5ms` was shown to outperform other ISI variability measures in spike
+trains with firing rate fluctuations and sensory stimuli
+:cite:`statistics-Shinomoto2009_e1000433`.
+
+Parameters
+----------
+time_intervals : pq.Quantity or np.ndarray or list
+    Vector of consecutive time intervals. Must have time units, if not unit
+    is passed `ms` are assumed.
+R : pq.Quantity or int or float
+    Refractoriness constant (R >= 0). If no quantity is passed `ms` are
+    assumed.
+    Default: 5 ms
+with_nan : bool, optional
+    If True, LvR of a spike train with less than two spikes results in a
+    np.NaN value and a warning is raised.
+    If False, a `ValueError` exception is raised with a spike train with
+    less than two spikes.
+    Default: True
+
+Returns
+-------
+float
+    The LvR of the inter-spike interval of the input sequence.
+
+
+Examples
+--------
+>>> from elephant import statistics
+>>> statistics.lvr([0.3, 4.5, 6.7, 9.3], R=0.005)
+0.833907445980624
+"""
+
+function lvr(time_intervals, R=5*0.001)#*pq.ms, with_nan=False):
+    N = length(time_intervals)
+    t = time_intervals[1:N-1] + time_intervals[2,:]
+    frac1 = 4 * time_intervals[1:N-1] * time_intervals[2:] / t**2
+    frac2 = 4 * R / t
+    lvr = (3 / (N-1)) * np.sum((1-frac1) * (1+frac2))
+    lvr
+    end
+
 function divide_epoch(nodes::AbstractVector,times::AbstractVector,start::Real,stop::Real)
     n0=Vector{UInt32}([])
     t0=Vector{Float32}([])
