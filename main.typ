@@ -111,11 +111,11 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 
 1. Spike trains are divided into N equally sized windows time windows.
 
-2. In each window spike times are converted by subtracting the window start time, such that spike time variability is now mapped onto the smaller scope of each window (ie the time each window occured is subtracted from each window, as window times obscure the analysis). Each of the converted time, time windows is stored in an array.
+2. In each window spike times are converted by subtracting the window start time, such that spike time variability is now mapped onto the local time frame in the smaller scope of each window (ie the time each window occured is subtracted from each window, making any variation of spike times inside the window relevant to the windows scale). Each of the converted time, time windows is stored in an array.
 
 3. The maximum firing rate of all the windows is found.
 
-4. A single surrogate spike window is constructed by taking the maxmimum firing rate from step 3. And constructing a spike train that has regular Inter Spike Intervals (ISIs) occuring at the maximum firing rate. We call this the reference window.
+4. A single artificial spike train in a window is constructed by taking the maxmimum firing rate from step 3. And constructing a spike train that has regular Inter Spike Intervals (ISIs) occuring at the maximum firing rate. We call this the reference window, or surrogate.
 
 5. For every N windows sampled in 1, the observed spike times is compared to the uniform reference window using the Thomas Kreuz spike Distance algorithm implemented in Julia by George Datseris. https://github.com/JuliaNeuroscience/SpikeSynchrony.jl/commits?author=Datseris
 
@@ -131,7 +131,6 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 10. We discard all cluster labels that correspond to just a single time window, and retain the set of cluster labels, that have at least one repeating label. We regard these duplicated cluster labels as repeated temporal spatial patterns. 
 
 //7. Unsupervised clustering is applied to the matrix across columns to find .
-
 = Methodological Framework
 
 A problem with converting spike train raster plots to attractor trajectories, is the that the most established method  deriving attractor trajectories (and energy landscapes) requires the system under investigation to be encoded as a continuous differentiable function. A dominant approach which satisfys the continuous function requirement is to fit a differential equation that models a networks firing rate(s) in response to current injection the assumption underlying this approach, is that the rate coded information and network states are more important than or even exclude temporal codes.    
@@ -148,7 +147,8 @@ usefully describe the network properties of state transition matrices. In order 
 
 In order to test that the "auto spike train distance", metric lead to more well defined network descriptors than other similar but more common metrics, We compared state vectors that were constructed by applying auto-covariance and local variation to the same spike windows, and we compared the spike2vec algorithms performance across all three metrics.  @illing2019biologically Julia simulation of learning. We simulated NMNIST learning. @kim2020dynamics Dynamics systems view of the brain.
 
-Finally we used a Julia package Emeddings.jl to convert spike train sequences to English words, by iterating over word embedding vectors in large word2vec models, and finding closely matching vectors, we did this in order to make patterns in spike train vectors more intuitive and accessible, by giving repeated spike sequence elements familiar word labels. By converting spike trains to English word sequences we can compare the statistics of written language to spike train statistics.
+Finally we used a Julia package Emeddings.jl to convert spike train sequences to English words, by iterating over word embedding vectors in large word2vec models, and finding closely matching vectors, we did this in order to make patterns in spike train vectors more intuitive and accessible, by giving repeated spike sequence elements familiar word labels. By converting spike trains to English word sequences we can compare the statistics of written language to spike train statistics. The word2vec approach was found to generalize to other realms such as product recommendations using meta data @vasile2016meta, and human EEG recordings.
+
 
 //https://github.com/JuliaText/Embeddings.jl
 
