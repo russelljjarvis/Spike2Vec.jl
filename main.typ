@@ -40,7 +40,9 @@ Furthermore there is a desire to perform neuronal data analysis in a manner that
 
 Multivariate approaches to spike train network analysis often involve inferrring a causal network diagram from spiking acitivity. Where the idea is that the spiking activity contains many hidden network states, that emerge in large scale simulations, and that are not visible in the networks static connectome. The computation of some kind of statistic between each possible pair of neurons in the network. To analyse effective connectivity in in silico and in vitro networks, spike train recordings are divided into time windows, and analysis compares previous (lagged time), with current time. Exhaustive pairwise iteration of multivariate statistics is not computationally tractible at the scale of billions of neurons, and adding time lagged analysis of network cross-correlation, or transfer entropy makes the prospoect of scaled temporal analysis even worse. Auto-covariance acts on anolog signals (dense vectors), however autocovariance analysis of continuous membrane potentials would be another way to arrive at a network state description.
 
-Two common models of cortical spiking networks are the, Potjan's and Diesmon model and the Brunel model, both of these models are said exist within a fluctuation driven regime, when these are simulated, observed spike times are typically chaotic and random, but some fine grained recognizable repeating patterns also occur. Under the dynamic systems view of the brain neuronal memories are analogous to attractor basins [Hopfield,Lin, Hairong, et al] The authors consider replay as a mechanism that is related both memory encoding and memory recall. If the view of memories as basins is correct then it should be possible to demonstrate synaptic learning as the mechanism that encodes memories as basins. Network attractor basins may be derived from the interleaved application of Spike Timing Dependent Plasticity (STPD) and sleep when synapses are able to change in a way that strongly biases some future spiking activities towards repeating observed patterns.
+Two common models of cortical spiking networks are the, Potjan's and Diesmon model and the Brunel model, both of these models exist within a fluctuation driven regime. When each of these respective network models are simulated, observed spike times are typically chaotic and random. By design these models make it unlikely that fine grained recognizable repeating patterns also occur. The Potjan's model can be used to make data points seperable.
+
+Under the dynamic systems view of the brain neuronal memories are analogous to attractor basins [Hopfield,Lin, Hairong, et al] The authors consider replay as a mechanism that is related both memory encoding and memory recall. If the view of memories as basins is correct then it should be possible to demonstrate synaptic learning as the mechanism that encodes memories as basins. Network attractor basins may be derived from the interleaved application of Spike Timing Dependent Plasticity (STPD) and sleep when synapses are able to change in a way that strongly biases some future spiking activities towards repeating observed patterns.
 
 The application of STDP learning within the fluctuation driven regime necessitates a simple method to optimise network parameters a way that maximises the networks capacity to encode and revisit attractor states. Although spike trains are often analysed for information entropy at the spike to spike level. A spike2vec algorithm will enable researchers to investigate the spike trains states for redundancy at the sequential pattern level, in a Julia compliant way, and this will parallel efforts to develop Julia simulators.
 
@@ -119,13 +121,13 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 
 
 6. The Kreuz spike distance is a way of measuring the cost of converting observed spike train * A * , to a different spike train * B *. By measuring the Kreuz spike distance between a variation free regular spiking window, and a window with observed spike time variability, we get a picture of each neurons current unique local variability at each window (note that the method for comparing reference to observed doesn't have to uniquely encode unique spike sequences, it just has to be sufficiently unique to make states appropatriately distinguishable but also recognizable across a population of multiple cells). As there are  * M * number of neurons we then build a vector of coordinate of * M * dimensions, at each of N time windows. *  Xm *, is an M by * N * tensor consists of M neurons and N time windows.
-
+/*
 $ mat(
   1, 2, ..., 10;
   2, 2, ..., 10;
   dots.v, dots.v, dots.down, dots.v;
   10, 10, ..., 10;
-) $
+) $*/
 
 7. Since each column vector of * Xm * encodes a time window, we get the euclidian distance between each column vector and every other column vector, across the columns of the whole matrix. 
 
