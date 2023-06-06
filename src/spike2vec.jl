@@ -481,6 +481,36 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
     #end
 end
 
+function create_ISI_histogram(nodes,spikes)
+    spikes = []
+    numb_neurons=Int(maximum(nodes))+1
+    @inbounds for n in 1:numb_neurons
+        push!(spikes,[])
+    end
+    @inbounds @showprogress for (i, _) in enumerate(spikes)
+        for (n,t) in zip(nodes,times)
+            if i==n
+                push!(spikes[i],t)
+            end
+        end
+    end
+    global_isis = []
+    isi_s = []
+    @inbounds @showprogress for (i, times) in enumerate(spikes)
+        push!(isi_s,[])
+        for (ind,x) in enumerate(times)
+            if ind>1
+                isi_current = x-times[ind-1]
+                push!(isi_s[i],isi_current)
+
+            end
+        end
+        append!(global_isis,isi_s[i])
+    end
+    global_isis
+end
+
+
 """
 https://juliadynamics.github.io/RecurrenceAnalysis.jl/stable/quantification/#RQA-Measures
 :RR: recurrence rate (see recurrencerate)
