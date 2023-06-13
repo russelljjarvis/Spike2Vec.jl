@@ -12,7 +12,8 @@ using ProgressMeter
 using Setfield
 using DrWatson
 using StaticArrays
-
+using Colors
+using ComplexityMeasures
 using StatsPlots
 #using StatsBase
 #using Plots

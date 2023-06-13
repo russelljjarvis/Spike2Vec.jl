@@ -1,3 +1,6 @@
+#
+# Eventually this will need to move to source.
+# 
 using HDF5
 using Plots
 using OnlineStats
@@ -21,11 +24,12 @@ using LinearAlgebra
 using Clustering
 using ProgressMeter
 using LoopVectorization
-using RecurrenceAnalysis
+#using RecurrenceAnalysis
 using StatsBase
 using GraphMakie, CairoMakie
 using SimpleWeightedGraphs
 using ComplexityMeasures
+using Statistics
 
 """
 Augment by lengthening with duplication useful for sanity checking algorithm.
@@ -121,12 +125,12 @@ function CV(spikes_1d_vector::AbstractArray)
     isi_s = Float32[] # the total lumped population ISI distribution.        
     @inbounds for (ind,x) in enumerate(spikes_1d_vector)
         if ind>1
-            isi_current = x-times[ind-1]
+            isi_current = x-spikes_1d_vector[ind-1]
             push!(isi_s,isi_current)
         end
     end
-    result = std(isi_current)/mean(isi_current)
-    result
+    #result = 
+    std(isi_s)/mean(isi_s)
 end
 
 
@@ -234,6 +238,7 @@ And in every window I get the population state vector by comparing current windo
 But it's also a good idea to use the networks most recently past windows as reference windows 
 
 """
+#=
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32};metric="kreuz")
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
         if length(n0_) != 0 && length(n1_) != 0
@@ -247,6 +252,7 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
             elseif metric=="CV"
                 if length(t1_)>1
                     self_distances[ind] = CV(t1_)
+                    @show(self_distances[ind])
                 else
                     self_distances[ind]=0
                 end
@@ -269,7 +275,8 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
     self_distances
 end
 #get_vector_coords_uniform!(::SVector{2, Float64}, ::Vector{SVector}, ::Vector{Float32})
-
+=#
+#using StatsBase
 function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArray, self_distances::AbstractArray;metric="kreuz")
 
     @inbounds for (ind,n1_) in enumerate(neuron1)
@@ -280,6 +287,12 @@ function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArr
             if metric=="kreuz"
                 _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
                 self_distances[ind]=abs(sum(S))
+            elseif metric=="CV"
+                if length(t1_)>1
+                    self_distances[ind] = CV(t1_)
+                else
+                    self_distances[ind]=0
+                end                
             elseif metric=="autocov"
                 if length(t1_)>1
                     self_distances[ind] = autocov( t1_, [1],demean=true)[1]
@@ -419,7 +432,7 @@ function spike_matrix_divided_no_displacement(nodes::Vector,times::Vector{Float3
     end
     mat_of_spikes
 end
-
+using CovarianceEstimation
 function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,numb_neurons::Int,maxt::Real;plot=false,file_name::String="stateTransMat.png",metric="kreuz")
     step_size = maxt/division_size
     end_windows = collect(step_size:step_size:step_size*division_size)
@@ -458,17 +471,20 @@ function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,n
     end
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+    #complexity_ = sum(cov(mat_of_distances))
     if plot
         Plots.heatmap(mat_of_distances)
+        #complexity(c::ComplexityEstimator, x)
         savefig("Unormalised_heatmap_$metric.$file_name.png")
     end
     @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+    complexity_ = sum(cov(SimpleCovariance(corrected=true), mat_of_distances))
     if plot
         Plots.heatmap(mat_of_distances)
-        savefig("Normalised_heatmap_$metric.$file_name.png")
+        savefig("Normalised_heatmap_$metric.$complexity_.$file_name.png")
     end
 
     (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size)

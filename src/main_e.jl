@@ -115,6 +115,8 @@ end
 
 function sim!(p,dt,verbose=true;current_stim=0.0)
     for (ind,p) in enumerate(P.post_synaptic_targets)
+        p.u = current_stim[ind] 
+        #@show(p.u)
         p.fire = Vector{Bool}([false for i in 1:length(p.fire)])
         integrate_neuron!(p.N, p.v, dt, p.ge, p.gi, p.fire, p.u, p.tr)
         record!(p)
@@ -127,7 +129,7 @@ function sim!(p,dt,verbose=true;current_stim=0.0)
 end 
 function sim!(P, C;conn_map=nothing, dt = 1ms, duration = 10ms,current_stim=nothing)
     @showprogress for (ind,t) in enumerate(0ms:dt:(duration - dt))
-        sim!(P, C, Float32(dt),conn_map,current_stim=current_stim[ind])
+        sim!(P, C, Float32(dt),current_stim=current_stim[ind])
                 ##
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
