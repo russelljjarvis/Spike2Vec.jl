@@ -118,8 +118,8 @@ div_spike_mat_no_displacement=spike_matrix_divided_no_displacement(nodes,times,s
 
 #(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt,spikes)
 
-(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=true,metric="CV")
-(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false)
+(_,_,_,_,_,_) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=true,metric="CV")
+(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=true)
 
 
 #(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=true,metric="autocov")
