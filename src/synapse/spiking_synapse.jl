@@ -41,8 +41,8 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
         #new{typeof(w),typeof(colptr),typeof(fireJ)}(rowptr,colptr,I,J,index,w,fireI,fireJ,g,records)
     end
 
-
-    #=
+end
+#=  
     function SpikingSynapse(pre::SpikeTime.IFNF, post::SpikeTime.IFNF,sim_type::Array,rowptr, colptr, I, J, index, w,delays)
         #g = zeros(eltype=sim_type,pre.N)*sign.(minimum(w[:,1]))
         #g::typeof(sim_type) = (w[:]).*sign.(minimum(w[:,1]))   
@@ -107,10 +107,8 @@ mutable struct SpikingSynapse{T,S,Q} <: AbstractSpikingSynapse
 end
 
 
-"""
-Boost synaptic conductances according to weight values.
+#Boost synaptic conductances according to weight values.
 
-"""
 #forward!(::Vector{Int32}, ::Vector{Int32}, ::Vector{Float16}, ::Vector{Bool}, ::Vector{Bool}, ::Vector{Float16})
 
 function forward!(colptr::Vector{<:Real}, I, W, fireI::Vector{Bool},fireJ::Vector{Bool},g::Vector)
@@ -171,7 +169,6 @@ function syn_kernel!(colptr, fireJ,g,I,W)
 
     return nothing
 end
-#=
 function forward_all_kernel!(N, v, ge, gi, fire, u,dt,colptr, fireJ,g,I,W)
     index = threadIdx().x    # this example only requires linear indexing, so just use `x`
     stride = blockDim().x
