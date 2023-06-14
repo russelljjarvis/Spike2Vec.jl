@@ -88,12 +88,7 @@ save("SGtSNEpi_connection.png")
 #scene.center = false
 
 #save("potjans_static_wiring_network_embedding.png")
-#show_embedding( Y, L ; A = pot_conn)#, res = (5000, 5000) )
-
-#sc
-#@show(L)
-#dim = 2
-#Random.seed!(0);
+#show_embedding( Y, L ; A = - Deliver to person
 #Y0 = 0.01 * randn( size(pot_conn[1],1), dim);
 #pot_conn = abs.(pot_conn[1])
 
