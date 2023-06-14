@@ -1,3 +1,6 @@
+#
+# Eventually this will need to move to source.
+# 
 using HDF5
 using Plots
 using OnlineStats
@@ -21,10 +24,12 @@ using LinearAlgebra
 using Clustering
 using ProgressMeter
 using LoopVectorization
-using RecurrenceAnalysis
+#using RecurrenceAnalysis
 using StatsBase
 using GraphMakie, CairoMakie
 using SimpleWeightedGraphs
+using ComplexityMeasures
+using Statistics
 
 """
 Augment by lengthening with duplication useful for sanity checking algorithm.
@@ -84,6 +89,77 @@ function divide_epoch(nodes::AbstractVector,times::AbstractVector,sw::Real,toi::
     time_raster
 end
 =#
+function lvr(time_intervals, R=5*0.001)
+    # statistics-Shinomoto2009_e1000433
+    # https://github.com/NeuralEnsemble/elephant/blob/master/elephant/statistics.py
+
+    N = length(time_intervals)
+    t = time_intervals[1:N-1] .+ time_intervals[2,:]
+    frac1 = 4.0 * time_intervals[1:N-1].*time_intervals[2,:] ./ t.^2.0
+    frac2 = 4.0 * R ./ t
+    lvr = (3.0 / (N-1.0)) * sum((1.0.-frac1) .* (1.0.+frac2))
+    lvr
+end
+
+function bag_of_isis(nodes::Vector{UInt32},times::Vector{Float32})
+    spikes_ragged = []
+    numb_neurons=Int(maximum(nodes))+1 # Julia doesn't index at 0.
+    @inbounds for n in 1:numb_neurons
+        push!(spikes_ragged,[])
+    end
+    @inbounds for i in 1:numb_neurons
+        for (n,t) in zip(nodes,times)
+            if i==n
+                push!(spikes_ragged[i],t)
+            end
+        end
+    end
+    global_isis = bag_of_isis(spikes_ragged)
+    global_isis
+end
+
+"""
+On a RTSP packet, get a CV. 
+"""
+function CV(spikes_1d_vector::AbstractArray)
+    isi_s = Float32[] # the total lumped population ISI distribution.        
+    @inbounds for (ind,x) in enumerate(spikes_1d_vector)
+        if ind>1
+            isi_current = x-spikes_1d_vector[ind-1]
+            push!(isi_s,isi_current)
+        end
+    end
+    #result = 
+    std(isi_s)/mean(isi_s)
+end
+
+
+"""
+On a RTSP packet, get a bag of ISIs. So we can analyse the temporal structure of RTSPs regardless of spatial structure.
+"""
+function bag_of_isis(spikes_ragged::AbstractArray)
+    bag_of_isis = Float32[] # the total lumped population ISI distribution.
+    isi_s = []
+    #normalised_rt = Float32[]
+    @inbounds for (i, times) in enumerate(spikes_ragged)
+        push!(isi_s,[])
+        #push!(isi_s[i],[])
+    end
+    @inbounds for (i, times) in enumerate(spikes_ragged)
+        
+        for (ind,x) in enumerate(times)
+            if ind>1
+                isi_current = x-times[ind-1]
+                push!(isi_s[i],isi_current)
+            end
+        end
+        append!(bag_of_isis,isi_s[i])
+    end
+    bag_of_isis
+end
+
+
+
 function divide_epoch(nodes::AbstractVector,times::AbstractVector,start::Real,stop::Real)
     n0=Vector{UInt32}([])
     t0=Vector{Float32}([])
@@ -162,6 +238,7 @@ And in every window I get the population state vector by comparing current windo
 But it's also a good idea to use the networks most recently past windows as reference windows 
 
 """
+#=
 function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32};metric="kreuz")
     for (ind,(n0_,n1_)) in enumerate(zip(neuron0,neuron1))        
         if length(n0_) != 0 && length(n1_) != 0
@@ -172,10 +249,24 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
             if metric=="kreuz"
                 t, S = SPIKE_distance_profile(t0_,t1_;t0=0,tf = maxt)
                 self_distances[ind]=abs(sum(S))
-            elseif metric=="autocov"
-
             elseif metric=="CV"
+                if length(t1_)>1
+                    self_distances[ind] = CV(t1_)
+                    @show(self_distances[ind])
+                else
+                    self_distances[ind]=0
+                end
 
+
+            elseif metric=="autocov"
+                if length(t1_)>1
+                    self_distances[ind] = autocov( t1_, [1],demean=true)[1]
+                else
+                    self_distances[ind]=0
+                end
+
+            elseif metric=="LV"
+                self_distances[ind]=lvr(time_intervals, [1], 5*0.001)#std(t0_)/mean(t0_)
             end
         else
             self_distances[ind]=0
@@ -184,24 +275,40 @@ function get_vector_coords(neuron0::Vector{Vector{Float32}}, neuron1::Vector{Vec
     self_distances
 end
 #get_vector_coords_uniform!(::SVector{2, Float64}, ::Vector{SVector}, ::Vector{Float32})
-
+=#
+#using StatsBase
 function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArray, self_distances::AbstractArray;metric="kreuz")
 
     @inbounds for (ind,n1_) in enumerate(neuron1)
         if length(n1_) != 0
             pooledspikes = vcat(uniform,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
-            t0_ = sort(unique(n1_))
+            t1_ = sort(unique(n1_))
             if metric=="kreuz"
-                t, S = SPIKE_distance_profile(t0_,uniform;t0=0,tf = maxt)
+                _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
                 self_distances[ind]=abs(sum(S))
-            elseif metric=="autocov"
-                lags=5
-                autocov!(self_distances[ind], t0_, lags; demean=true)
-
             elseif metric=="CV"
-                self_distances[ind]=std(t0_)/mean(t0_)
-                
+                if length(t1_)>1
+                    self_distances[ind] = CV(t1_)
+                else
+                    self_distances[ind]=0
+                end                
+            elseif metric=="autocov"
+                if length(t1_)>1
+                    self_distances[ind] = autocov( t1_, [1],demean=true)[1]
+                    #StatisticalComplexity
+                else
+                    self_distances[ind]=0
+                end
+
+            elseif metric=="LV"
+                if length(t1_)>1
+
+                    self_distances[ind]=lvr(t1_,maximum(t1_))#std(t0_)/mean(t0_)
+                else
+                    self_distances[ind]=0
+                end
+                    
             end
 
         else
@@ -209,7 +316,7 @@ function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArr
         end
     end
 end
-
+#=
 function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{Vector{Float32}}, self_distances::Vector{Float32})
     @inbounds for (ind,n1_) in enumerate(neuron1)
         if length(n1_) != 0
@@ -238,6 +345,7 @@ function get_vector_coords_uniform!(uniform::Vector{Float32}, neuron1::Vector{An
         end
     end
 end
+=#
 """
 Just a helper method to get some locally stored spike data if it exists.
 """
@@ -249,13 +357,14 @@ function fromHDF5spikes()
     close(hf5)
     (times,nodes)
 end
+#=
 function final_plots2(mat_of_distances)
     angles0,distances0,angles1,distances1 = post_proc_viz(mat_of_distances)
     plot!(angles1,distances1,marker =:circle, arrow=(:closed, 3.0)) 
     savefig("statemvements_nmn.png")   
     (angles1,distances1)
 end
-
+=#
 function divide_epoch(times::AbstractVector,start,stop)
     t0=Vector{Float32}([])
     window_size = stop-start
@@ -266,6 +375,7 @@ function divide_epoch(times::AbstractVector,start,stop)
     end
     t0
 end
+
 function array_of_empty_vectors(T, dims...)
     array = Array{Vector{T}}(undef, dims...)
     for i in eachindex(array)
@@ -284,12 +394,14 @@ function spike_matrix_divided(nodes::Vector,times::Vector{Float32},spikes_raster
     number_of_time_windows = length(end_windows)
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
     mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
+    #@show(mat_of_spikes)
     #mat_of_spikes = [copy([]) for i in 1:length(spikes_raster), j in 1:length(end_windows)]
     for neuron in 1:length(spikes_raster)
         for (windex,toi) in enumerate(end_windows)
             sw = start_windows[windex]
             temp = divide_epoch(spikes_raster[neuron],sw,toi)
             push!(mat_of_spikes[neuron,windex],temp.+sw)
+            #@show(mat_of_spikes[neuron,windex])
             #end
                 #else
             #    push!(mat_of_spikes[neuron,windex],[0])
@@ -299,7 +411,29 @@ function spike_matrix_divided(nodes::Vector,times::Vector{Float32},spikes_raster
     mat_of_spikes
 end
 
-function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,numb_neurons::Int,maxt::Real;plot=false,file_name::String="stateTransMat.png")
+function spike_matrix_divided_no_displacement(nodes::Vector,times::Vector{Float32},spikes_raster,division_size::Int,numb_neurons::Int,maxt::Real)
+    step_size = maxt/division_size
+    end_windows = collect(step_size:step_size:step_size*division_size)
+    number_of_time_windows = length(end_windows)
+    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+    mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
+    #mat_of_spikes = [copy([]) for i in 1:length(spikes_raster), j in 1:length(end_windows)]
+    for neuron in 1:length(spikes_raster)
+        for (windex,toi) in enumerate(end_windows)
+            sw = start_windows[windex]
+            temp = divide_epoch(spikes_raster[neuron],sw,toi)
+            push!(mat_of_spikes[neuron,windex],temp)
+            #@show(mat_of_spikes[neuron,windex])
+            #end
+                #else
+            #    push!(mat_of_spikes[neuron,windex],[0])
+            #end
+        end
+    end
+    mat_of_spikes
+end
+using CovarianceEstimation
+function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,numb_neurons::Int,maxt::Real;plot=false,file_name::String="stateTransMat.png",metric="kreuz")
     step_size = maxt/division_size
     end_windows = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_windows)
@@ -318,7 +452,7 @@ function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,n
         observed_spikes = divide_epoch(nodes,times,sw,toi)    
         self_distances = Array{Float32}(zeros(numb_neurons))
 
-        get_vector_coords_uniform!(linear_uniform_spikes, observed_spikes, self_distances)
+        get_vector_coords_uniform!(linear_uniform_spikes, observed_spikes, self_distances;metric=metric)
         mat_of_distances[ind,:] = copy(self_distances)
         
         Nx=Vector{UInt32}([])
@@ -331,25 +465,26 @@ function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,n
                 end
             end
         end
-        #Nx = SVector{length(Nx)}(Nx)
-        #Tx = SVector{length(Tx)}(Tx)
 
         push!(nlist,Nx)
         push!(tlist,Tx)
     end
     cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+    #complexity_ = sum(cov(mat_of_distances))
     if plot
         Plots.heatmap(mat_of_distances)
-        savefig("Unormalised_heatmap$file_name.png")
+        #complexity(c::ComplexityEstimator, x)
+        savefig("Unormalised_heatmap_$metric.$file_name.png")
     end
     @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+    complexity_ = sum(cov(SimpleCovariance(corrected=true), mat_of_distances))
     if plot
         Plots.heatmap(mat_of_distances)
-        savefig("Normalised_heatmap$file_name.png")
+        savefig("Normalised_heatmap_$metric.$complexity_.$file_name.png")
     end
 
     (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size)
@@ -358,7 +493,7 @@ end
 
 function plot_umap_of_dist_vect(mat_of_distances; file_name::String="stateTransMat.png")
     Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=50)
-    Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.05)),legend=true))
+    Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision,", marker=(1, 1, :auto, stroke(0.05)),legend=true))
     savefig(file_name)
     Q_embedding
 end
@@ -399,7 +534,6 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
                 xlimits = maximum(Tx)
                 Nx = nlist[ind]
                 Plots.scatter!(p,Tx,Nx,legend = false, markercolor=Int(repeated_windows[ind]),markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
-                #@show(Tx)
                     #Plots.scatter!(p,Tx,Nx,legend = false, markercolor=Int(repeated_windows[ind]),markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
                 #end
                 cnt+=1
@@ -421,6 +555,36 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
 
     #end
 end
+#=
+function create_ISI_histogram(nodes,spikes)
+    spikes = []
+    numb_neurons=Int(maximum(nodes))+1
+    @inbounds for n in 1:numb_neurons
+        push!(spikes,[])
+    end
+    @inbounds @showprogress for (i, _) in enumerate(spikes)
+        for (n,t) in zip(nodes,times)
+            if i==n
+                push!(spikes[i],t)
+            end
+        end
+    end
+    global_isis = []
+    isi_s = []
+    @inbounds @showprogress for (i, times) in enumerate(spikes)
+        push!(isi_s,[])
+        for (ind,x) in enumerate(times)
+            if ind>1
+                isi_current = x-times[ind-1]
+                push!(isi_s[i],isi_current)
+
+            end
+        end
+        append!(global_isis,isi_s[i])
+    end
+    global_isis
+end
+=#
 
 """
 https://juliadynamics.github.io/RecurrenceAnalysis.jl/stable/quantification/#RQA-Measures
@@ -655,6 +819,36 @@ function state_transition_trajectory(start_windows,end_windows,distmat,assign,as
     repeated_windows
 end
 
+
+function simple_plot_umap(mat_of_distances; file_name::String="empty.png")
+    #model = UMAP_(mat_of_distances', 10)
+    #Q_embedding = transform(model, amatrix')
+    #cs1 = ColorScheme(distinguishable_colors(length(ll), transform=protanopic))
+
+    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=100)
+    display(Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision", marker=(1, 1, :auto, stroke(0.07)),legend=true)))
+    #Plots.plot(scatter!(p,model.knns)
+    savefig(file_name)
+    Q_embedding
+end
+
+function sort_by_row(distmat,nodes,times,resolution,numb_neurons,maxt,spikes)
+    horizontalR = kmeans(distmat,3)
+    horizontalR_sort_idx =  sortperm(assignments(horizontalR))
+    spikes = spikes[horizontalR_sort_idx]
+    nodes=Vector{UInt32}([])
+    times=Vector{Float32}([])
+
+    @inbounds @showprogress for (i, t) in enumerate(spikes)
+        @inbounds for tt in t
+            if length(t)!=0
+                push!(nodes,i)
+                push!(times,Float32(tt))
+            end
+        end
+    end
+    (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false,metric="kreuz")
+end
 
 #=
 function get_ts(nodes,times)

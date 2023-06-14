@@ -12,7 +12,8 @@ using ProgressMeter
 using Setfield
 using DrWatson
 using StaticArrays
-
+using Colors
+using ComplexityMeasures
 using StatsPlots
 #using StatsBase
 #using Plots
@@ -39,7 +40,7 @@ export label_online_distmat!
 export cluster_distmat
 export cluster_distmat!
 export get_division_via_recurrence
-
+export spike_matrix_divided_no_displacement
 export get_division_scatter_identify
 export get_division_scatter_identify2
 export get_state_transitions
@@ -51,6 +52,8 @@ export spike_matrix_divided
 #export final_plots
 export get_divisions
 export plot_umap_of_dist_vect
+export create_ISI_histogram
+export bag_of_isis
 include("util.jl")
 include("neuron/poisson.jl")
 
