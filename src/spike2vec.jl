@@ -26,10 +26,11 @@ using ProgressMeter
 using LoopVectorization
 #using RecurrenceAnalysis
 using StatsBase
-using GraphMakie, CairoMakie
-using SimpleWeightedGraphs
-using ComplexityMeasures
-using Statistics
+using CairoMakie
+#using SimpleWeightedGraphs
+#using ComplexityMeasures
+#using CovarianceEstimation
+
 
 """
 Augment by lengthening with duplication useful for sanity checking algorithm.
@@ -432,7 +433,6 @@ function spike_matrix_divided_no_displacement(nodes::Vector,times::Vector{Float3
     end
     mat_of_spikes
 end
-using CovarianceEstimation
 function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,numb_neurons::Int,maxt::Real;plot=false,file_name::String="stateTransMat.png",metric="kreuz")
     step_size = maxt/division_size
     end_windows = collect(step_size:step_size:step_size*division_size)

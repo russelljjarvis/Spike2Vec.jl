@@ -100,7 +100,7 @@ function forwards_euler_weights!(post_targets::Array{Array{UInt64}},W::Array{Arr
       
 end
 
-
+#=
 function sim!(P; C=[], dt)
     for p in P
         integrate!(p, p.param, Float32(dt))
@@ -111,25 +111,33 @@ function sim!(P; C=[], dt)
         record!(c)
     end
 end
+=#
 
+function sim!(pp,dt,verbose=true;current_stim=0.0)
+    for (pre_ind,weights_) in enumerate(pp.post_synaptic_weights)
+        for (post_ind,w) in enumerate(weights_)
+            println("think")
+        #    pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
+        end    
+        #integrate_neuron!(::Integer, ::Vector, ::Real, ::Vector, ::Vector, ::Vector{Bool}, ::Vector{<:Real}, ::Vector{<:Number})
+         #integrate_neuron!(::Int64, ::Vector{Any}, ::Float32, ::Vector{Any}, ::Vector{Any}, ::Vector{Bool}, ::Vector{Any}, ::Vector{Any})
 
-function sim!(p,dt,verbose=true;current_stim=0.0)
-    for (ind,p) in enumerate(P.post_synaptic_targets)
-        p.u = current_stim[ind] 
-        #@show(p.u)
-        p.fire = Vector{Bool}([false for i in 1:length(p.fire)])
-        integrate_neuron!(p.N, p.v, dt, p.ge, p.gi, p.fire, p.u, p.tr)
-        record!(p)
-        pre_synaptic_cell_fire_map = copy(p.fire)
-        g = zeros(sizeof(pre_fire_map))
-        forwards_euler_weights!(p,W,pre_synaptic_cell_fire_map,g)         
-        pre_synaptic_cell_fire_map = Vector{Bool}([false for i in 1:length(pre_fire_map)])
+        integrate_neuron!(pp.N, pp.v, dt, pp.ge, pp.gi, pp.fire, pp.u, pp.tr)
+        @show(pp.v)
+        record!(pp)
+        pre_synaptic_cell_fire_map = copy(pp.fire)
+        #g = zeros(sizeof(pre_synaptic_cell_fire_map))
+        forwards_euler_weights!(pre,W,pre_synaptic_cell_fire_map,g)         
+        #pre_synaptic_cell_fire_map = Vector{Bool}([false for i in 1:length(pre_fire_map)])
+        #end
         #record!()
     end
 end 
-function sim!(P, C;conn_map=nothing, dt = 1ms, duration = 10ms,current_stim=nothing)
+function sim!(P, dt = 1ms, duration = 10ms,current_stim=nothing)
+    #@show(P.post_synaptic_weights)
+
     @showprogress for (ind,t) in enumerate(0ms:dt:(duration - dt))
-        sim!(P, C, Float32(dt),current_stim=current_stim[ind])
+        sim!(P, Float32(dt))#,current_stim=current_stim[ind])
                 ##
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels

@@ -2,18 +2,60 @@
 using SGtSNEpi, Random
 using Revise
 using CairoMakie, Colors, LinearAlgebra
-#using GLMakie
+using GLMakie
 using Graphs
 
 import StatsBase.mean
 using Plots
 include("../src/models/genPotjansWiring.jl")
 
-scale = 0.05
+function grab_connectome(scale)
+   
 
-pot_conn = potjans_layer(scale)
-display(pot_conn)
-#@show(pot_conn)
+    pot_conn = potjans_layer(scale)
+    display(pot_conn)
+    Lx = Vector{Int64}(zeros(size(pot_conn[1,:])))
+    Lx = convert(Vector{Int64},Lx)
+    # The Graph Network analysis can't handle negative weight values so upset every weight to make weights net positive.
+    stored_min = abs(minimum(pot_conn))
+    for (ind,row) in enumerate(eachrow(pot_conn))
+        for (j,colind) in enumerate(row)
+            if pot_conn[ind,j] < 0.0
+                pot_conn[ind,j] = pot_conn[ind,j]+stored_min+1.0
+            end
+        end
+        @assert mean(pot_conn[ind,:]) >= 0.0
+    end
+    Plots.heatmap(pot_conn,xlabel="post synaptic",ylabel="pre synaptic")
+    savefig("connection_matrix.png")
+    dim = 2
+
+    Y0 = 0.1 * randn( size(pot_conn,1), dim);
+    cmap_out = distinguishable_colors(
+        length(Lx),
+        [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+
+    #display(SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.035,lwd_in=0.035,lwd_out=0.009,clr_out=cmap))
+    #fig = 
+    display(SGtSNEpi.show_embedding( Y0, Lx ,A=pot_conn;edge_alpha=0.05,lwd_in=0.05,lwd_out=0.013,clr_out=cmap_out))
+    #display(fig)
+    #savefig("SGtSNEpi_connection.png")#
+    save("SGtSNEpi_connection.png")
+    pot_conn
+end
+scale = 0.225
+pot_conn = grab_connectome(scale)
+#pot_conn[diagind(pot_conn)] .= 0.0
+#=
+G = DiGraph(pot_conn)
+results = label_propagation(G)#, maxiter=1000; rng=nothing, seed=nothing)
+@show(results)
+γ = 0.25
+result = Leiden.leiden(Symmetric(pot_conn), resolution = γ)
+@show(unique(result[2]))
+=#
+
+#=
 function scoped_fix(ccu,Lx,scale)
     v_old=1
     K = length(ccu)
@@ -30,44 +72,7 @@ function scoped_fix(ccu,Lx,scale)
         Lx[val] .= ind_ 
     end
 end
-
-Lx = Vector{Int64}(zeros(size(pot_conn[1,:])))
-
-
-Lx = convert(Vector{Int64},Lx)
-# The Graph Network analysis can't handle negative weight values so upset every weight to make weights net positive.
-stored_min = abs(minimum(pot_conn))
-for (ind,row) in enumerate(eachrow(pot_conn))
-    for (j,colind) in enumerate(row)
-        if pot_conn[ind,j] < 0.0
-            pot_conn[ind,j] = pot_conn[ind,j]+stored_min+1.0
-        end
-    end
-    #   image.png@show(pot_conn[ind,:])
-    @assert mean(pot_conn[ind,:]) >= 0.0
-end
-Plots.heatmap(pot_conn,xlabel="post synaptic",ylabel="pre synaptic")
-savefig("connection_matrix.png")
-#pot_conn[diagind(pot_conn)] .= 0.0
-#=
-G = DiGraph(pot_conn)
-results = label_propagation(G)#, maxiter=1000; rng=nothing, seed=nothing)
-@show(results)
-γ = 0.25
-result = Leiden.leiden(Symmetric(pot_conn), resolution = γ)
-@show(unique(result[2]))
 =#
-dim = 2
-
-Y0 = 0.1 * randn( size(pot_conn,1), dim);
-cmap_out = distinguishable_colors(
-    length(L),
-    [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
-
-#display(SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.035,lwd_in=0.035,lwd_out=0.009,clr_out=cmap))
-fig = SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.05,lwd_in=0.05,lwd_out=0.013,clr_out=cmap)
-savefig("SGtSNEpi_connection.png")#
-save("SGtSNEpi_connection.png")
 
 #Y = sgtsnepi(pot_conn; d=dim, Y0 = Y0, max_iter = 500);
 
