@@ -63,7 +63,12 @@ function create_ISI_histogram(nodes::Vector{UInt32},times::Vector{Float32})
     end
     (global_isis:: Vector{Float32},spikes_ragged::Vector{Any},numb_neurons)
 end
+using CSV
 
+
+using CSV, Tables
+
+using DelimitedFiles
 function load_datasets_calcium()
     """
     Of course the absolute paths below will need to be wrangled to match your directory tree.
@@ -96,6 +101,9 @@ function load_datasets_calcium()
     =#
 
     global_isis,spikes_ragged,numb_neurons = create_ISI_histogram(nodes,times)
+    @show(global_isis)
+    CSV.write("isis_jared.csv",  Tables.table(global_isis), writeheader=false)
+
     (nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons)
 end
 (nodes,times,whole_duration,global_isis,spikes,numb_neurons) = load_datasets_calcium()
