@@ -12,19 +12,25 @@ using ColorSchemes
 using Revise
 using StatsBase
 using ProgressMeter
+using LinearAlgebra
 using Makie
 using CairoMakie
 using Revise
 using UMAP
 using Distances
 using StaticArrays
+using ColorSchemes
+using LinearAlgebra
 using Clustering
-#using LoopVectorization
+using ProgressMeter
+using LoopVectorization
 #using RecurrenceAnalysis
-using GraphMakie, CairoMakie
-using SimpleWeightedGraphs
+using StatsBase
+using CairoMakie
+#using SimpleWeightedGraphs
 #using ComplexityMeasures
-#using Statistics
+#using CovarianceEstimation
+
 
 """
 Augment by lengthening with duplication useful for sanity checking algorithm.

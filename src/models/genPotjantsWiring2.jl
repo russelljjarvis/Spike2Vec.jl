@@ -9,10 +9,15 @@ electrical neural network dynamics.
 This code draws heavily on the PyNN OSB Potjans implementation code found here:
 https://github.com/OpenSourceBrain/PotjansDiesmann2014/blob/master/PyNN/network_params.py#L139-L146
 However the translation of this Python PyNN code into performant and scalable Julia was not trivial.
+
 Hard coded Potjans parameters follow.
 and then the function outputs adapted Potjans parameters.
+
+TODO for self, considering PR differencing my old branch with this one, as I may have neglected to carry over other constructive code changes.
+Old branch worth diffing.
+https://github.com/RJsWorkatWSU/SpikingNeuralNetworks.jl/tree/potjans_model
 """
-function potjans_params(ccu)
+function potjans_params(ccu, scale=1.0::Float64)
     # a cummulative cell count
     #cumulative = Dict{String, Vector{Int64}}()  
     layer_names = @SVector ["23E","23I","4E","4I","5E", "5I", "6E", "6I"] 
@@ -29,27 +34,40 @@ function potjans_params(ccu)
                                     0.0364   0.001  0.0034 0.0005 0.0277 0.008  0.0658 0.1443 ]
 
     # hard coded network wiring parameters are manipulated below:
+    v_old=1
+    #cum_array = Vector{Any}([])#Matrix{Any}(zeros((2,length(ccu))))
 
-    syn_pol = []
-    for (i,syn) in enumerate(layer_names)
-        if occursin("E",syn) 
-            push!(syn_pol,true)
+    K = length(ccu)
+    cum_array = Vector{Array{UInt32}}(undef,K)
+    for i in 1:K
+        cum_array[i] = Array{UInt32}([])
+    end
+    for (k,v) in pairs(ccu)
+        ## update the cummulative cell count
+        push!(cum_array,Vector{UInt32}(collect(v_old:v+v_old)[:]))
+        v_old=v+v_old
+    end    
+    @show(typeof(cum_array))
+    cum_array = SVector{16,Array{UInt32}}(cum_array)
+    syn_pol = Vector{UInt32}(zeros(length(ccu)))
+    for (i,(k,v)) in enumerate(pairs(ccu))
+        if occursin("E",k) 
+            syn_pol[i] = 1
         else
-            push!(syn_pol,false)
+            syn_pol[i] = 0
         end
     end
-    syn_pol = syn_pol # synaptic polarity vector.
-    return (conn_probs,syn_pol)
+    syn_pol = SVector{8,UInt32}(syn_pol)
+    return (cum_array,ccu,layer_names,conn_probs,syn_pol)
 end
 
 
 """
-Auxillary method, NB, this acts like the connectome constructor, so change function name to something more meaningful, like construct PotjanAndDiesmon
 A mechanism for scaling cell population sizes to suite hardware constraints.
 While Int64 might seem excessive when cell counts are between 1million to a billion Int64 is required.
 Only dealing with positive count entities so Usigned is fine.
 """
-function potjans_constructor(scale::Float64)
+function auxil_potjans_param(scale=1.0::Float32)
 	ccu = Dict{String, UInt32}("23E"=>20683,
 		    "4E"=>21915, 
 		    "5E"=>4850, 
@@ -58,38 +76,21 @@ function potjans_constructor(scale::Float64)
 		    "23I"=>5834,
 		    "5I"=>1065,
 		    "4I"=>5479)
-
 	ccu = Dict{String, UInt32}((k,ceil(Int64,v*scale)) for (k,v) in pairs(ccu))
-    v_old=1
-    K = length(keys(ccu))
-    cum_array = []# Vector{Array{UInt32}}(undef,K)
-    #for i in 1:K
-    #    cum_array[i] = Array{UInt32}([])
-    #end
-
-    for (k,v) in pairs(ccu)
-        ## update the cummulative cell count
-        push!(cum_array,v_old:v+v_old)
-        v_old=v+v_old
-
-    end    
-
-    cum_array = SVector{8,Array{UInt32}}(cum_array) # cumulative population counts array.
 	Ncells = UInt64(sum([i for i in values(ccu)])+1)
 	Ne = UInt64(sum([ccu["23E"],ccu["4E"],ccu["5E"],ccu["6E"]]))
     Ni = UInt64(Ncells - Ne)
-    (Ncells, Ne, Ni, ccu, cum_array)
+    Ncells, Ne, Ni, ccu
 end
 """
 The entry point to building the whole Potjans model in SNN.jl
 Also some of the current density parameters needed to adjust synaptic gain initial values.
 Some of the following calculations and parameters are borrowed from this repository:
 https://github.com/SpikingNetwork/TrainSpikingNet.jl/blob/master/src/param.jl
+
 """
-function potjans_layer(scale::Float64)
-    (Ncells, Ne, Ni, ccu, cum_array)= potjans_constructor(scale)    
-    (conn_probs,syn_pol) = potjans_params(ccu)    
- 
+function potjans_layer(scale)
+    Ncells,Ne,Ni, ccu = auxil_potjans_param(scale)    
     pree = 0.1
     K = round(Int, Ne*pree)
     sqrtK = sqrt(K)
@@ -102,88 +103,53 @@ function potjans_layer(scale::Float64)
     jie = -0.75ji 
     jii = -ji
     g_strengths = Vector{Float32}([jee,jie,jei,jii])
-    Lxx = spzeros(Float32, (Ncells, Ncells))
-    (jee,_,jei,_) = g_strengths 
-    # Relative inhibitory synaptic weight
-    wig = Float32(-20*4.5)
-    build_matrix_prot!(jee,jei,wig,Lxx,cum_array,conn_probs,syn_pol,g_strengths)
-
-    
+    genStaticWeights = (;Ncells,g_strengths,ccu,scale)
+    potjans_weights(genStaticWeights),Ne,Ni,ccu
 end
 export potjans_layer
-
-#"""
-#Build the matrix from the Potjans parameterpotjans_layers.
-#"""
-#function potjans_weights(args)
-    #Ncells, g_strengths, ccu, scale = args
-#   
-#end
-
-
 """
 This function contains synapse selection logic seperated from iteration logic for readability only.
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
 """
-#                      (jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
-        #build_matrix_prot!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
-function build_matrix_prot!(jee::Float32,jei::Float32,wig::Float32,Lxx::SparseMatrixCSC{Float32, Int64},cum_array::SVector{8, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, syn_pol, g_strengths::Vector{Float32})
+function build_matrix_prot!(wig::Float32,jee::Float32,jei::Float32,Lxx::SparseMatrixCSC{Float32, Int64},cumvalues::SVector{16, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, Ncells::UInt32, syn_pol::StaticArraysCore.SVector{8, UInt32},g_strengths::Vector{Float32})
     # excitatory weights.
-    @inbounds @showprogress for (i,v) in enumerate(cum_array)
-
-        @inbounds for (j,v1) in enumerate(cum_array)
-            prob = conn_probs[i,j]
-
+    @inbounds @showprogress for (i,v) in enumerate(cumvalues)
+        @inbounds for (j,v1) in enumerate(cumvalues)
             @inbounds for src in v
                 @inbounds for tgt in v1
-
                     if src!=tgt
+                        prob = conn_probs[i,j]
                         
                         if rand()<prob
-
                             syn1 = syn_pol[j]
                             syn0 = syn_pol[i]
                 
-                            if syn0==true
-
-                                if syn1==true
-                                    #Lxx[src,tgt] = jee
+                            if syn0==1
+                                if syn1==1 
                                     setindex!(Lxx,jee, src,tgt)
-                                else# meaning if the same as a logic: Inhibitory post synapse  is true                   
+                                elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
                                     setindex!(Lxx,jei, src,tgt)
-                                    #Lxx[src,tgt] = jei
-
                                 end
-                            else syn0==false     
-                                #Lxx[src,tgt] = jei
-                                #println("gets here a")
-                                #Lxx[src,tgt] = wig
-
-                                #if syn1 
-
-                                setindex!(Lxx,wig, src,tgt)
-                                #elseif syn1
-                                #    Lxx[src,tgt] = wig
-
-                                    #setindex!(Lxx,wig, src,tgt)
-                                #end
+                            elseif syn0==0         
+                                if syn1==1 
+                                    setindex!(Lxx,wig, src,tgt)
+                                elseif syn1==0
+                                    setindex!(Lxx,wig, src,tgt)
+                                end
                             end 
                         end
                     end
                 end
-            end
+            end            
         end
     end
-    #Lxx[diagind(Lxx)] .= 0.0
+    Lxx[diagind(Lxx)] .= 0.0
 
     ## Note to self function return annotations help.
     Lxx
 end
 
-
-#=
-This function is now depreciated, and it was only aspirational at best.
 function make_proj(xx,pop)
     rowptr, colptr, I, J, index, W = dsparse(xx)
     fireI, fireJ = pop.fire, pop.fire
@@ -192,8 +158,9 @@ function make_proj(xx,pop)
     syn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
     return syn
 end
-Similar to the methods above except that cells and synapses are instantiated in place to cut down on code.
-Note this method is also asperational and depriciated.
+"""
+Similar to the methods above except that cells and synapses are instantiated in place to cut down on code
+"""
 function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
     cntet=[]
     cntit=[]
@@ -211,20 +178,22 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::Sp
                         if rand()<prob
                             syn1 = syn_pol[j]
                             syn0 = syn_pol[i]
+
                             if syn0==1
-			        cnte+=1 
                                 if syn1==1
+                                    cnte+=1 
                                     push!(cntet,tgt)
                                     push!(weights,jee)
                                     setindex!(Lee,jee, src,tgt)
                                 elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
                                     push!(cntet,src)          
+                                    cnte+=1 
                                     setindex!(Lei,jei, src,tgt)
                                     push!(weights,jei)
                                 end
                             elseif syn0==0         
-			        cnti+=1 
-				if syn1==1 
+                                if syn1==1 
+                                    cnti+=1 
                                     push!(cntit,tgt)
                                     push!(weights,jie)
         
@@ -245,6 +214,7 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::Sp
         II_ = Lii+Lie
         cntepopsize=0
         cntipopsize=0
+
         for (ind,row) in enumerate(eachcol(EE_'))
             if sum(row[:])!=0
                 cntepopsize+=1
@@ -253,8 +223,10 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::Sp
         for row in enumerate(eachcol(II_'))
             if sum(row[:])!=0
                 cntipopsize+=1
+
             end            
         end
+
     end
     symtype = Vector{Float32}(zeros(cntepopsize))
     post_synaptic_targets = Array{Array{UInt64}}(undef,pop_size)
@@ -265,4 +237,20 @@ function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::Sp
     I_ = SNN.IFNF(cntipopsize,sim_type,post_synaptic_targets,weights)
     (E_,I_)
 end
-=#
+
+"""
+Build the matrix from the Potjans parameterpotjans_layers.
+"""
+function potjans_weights(args)
+    Ncells, g_strengths, ccu, scale = args
+    (cumvalues,_,_,conn_probs,syn_pol) = potjans_params(ccu,scale)    
+    Lxx = spzeros(Float32, (Ncells, Ncells))
+    (jee,_,jei,_) = g_strengths 
+    # Relative inhibitory synaptic weight
+    wig = Float32(-20*4.5)
+
+    return build_matrix_prot!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
+end
+
+
+

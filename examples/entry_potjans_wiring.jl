@@ -1,26 +1,61 @@
 
 using SGtSNEpi, Random
 using Revise
-#import SGtSNEpi.neighbor_recall
 using CairoMakie, Colors, LinearAlgebra
 using GLMakie
 using Graphs
-#import Graphs.label_propagation
-#using Leiden
+
 import StatsBase.mean
-
-GLMakie.activate!()
+using Plots
 include("../src/models/genPotjansWiring.jl")
-function protect_variable()
-    scale = 0.5
-    (pot_conn,x,y,ccu) = potjans_layer(scale)
-    @show(pot_conn)
-    Lx = Vector{Int64}(zeros(size(pot_conn)))
-    
-    return pot_conn,x,y,ccu,scale,Lx
-end
-pot_conn,x,y,ccu,scale,Lx = protect_variable()
 
+function grab_connectome(scale)
+   
+
+    pot_conn = potjans_layer(scale)
+    display(pot_conn)
+    Lx = Vector{Int64}(zeros(size(pot_conn[1,:])))
+    Lx = convert(Vector{Int64},Lx)
+    # The Graph Network analysis can't handle negative weight values so upset every weight to make weights net positive.
+    stored_min = abs(minimum(pot_conn))
+    for (ind,row) in enumerate(eachrow(pot_conn))
+        for (j,colind) in enumerate(row)
+            if pot_conn[ind,j] < 0.0
+                pot_conn[ind,j] = pot_conn[ind,j]+stored_min+1.0
+            end
+        end
+        @assert mean(pot_conn[ind,:]) >= 0.0
+    end
+    Plots.heatmap(pot_conn,xlabel="post synaptic",ylabel="pre synaptic")
+    savefig("connection_matrix.png")
+    dim = 2
+
+    Y0 = 0.1 * randn( size(pot_conn,1), dim);
+    cmap_out = distinguishable_colors(
+        length(Lx),
+        [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+
+    #display(SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.035,lwd_in=0.035,lwd_out=0.009,clr_out=cmap))
+    #fig = 
+    display(SGtSNEpi.show_embedding( Y0, Lx ,A=pot_conn;edge_alpha=0.05,lwd_in=0.05,lwd_out=0.013,clr_out=cmap_out))
+    #display(fig)
+    #savefig("SGtSNEpi_connection.png")#
+    save("SGtSNEpi_connection.png")
+    pot_conn
+end
+scale = 0.225
+pot_conn = grab_connectome(scale)
+#pot_conn[diagind(pot_conn)] .= 0.0
+#=
+G = DiGraph(pot_conn)
+results = label_propagation(G)#, maxiter=1000; rng=nothing, seed=nothing)
+@show(results)
+γ = 0.25
+result = Leiden.leiden(Symmetric(pot_conn), resolution = γ)
+@show(unique(result[2]))
+=#
+
+#=
 function scoped_fix(ccu,Lx,scale)
     v_old=1
     K = length(ccu)
@@ -37,41 +72,9 @@ function scoped_fix(ccu,Lx,scale)
         Lx[val] .= ind_ 
     end
 end
-scoped_fix(ccu,Lx,scale)
-Lx = convert(Vector{Int64},Lx)
-Lx = Lx[(Lx.!=0)]
-L = convert(Vector{Int64},Lx)
-
-dim = 2
-Random.seed!(0);
-stored_min = abs(minimum(pot_conn))
-for (ind,row) in enumerate(eachrow(pot_conn))
-    for (j,colind) in enumerate(row)
-        if pot_conn[ind,j] < 0.0
-            pot_conn[ind,j] = pot_conn[ind,j]+stored_min
-        end
-    end
-    #   image.png@show(pot_conn[ind,:])
-    @assert mean(pot_conn[ind,:]) >= 0.0
-end
-
-pot_conn[diagind(pot_conn)] .= 0.0
-#=
-G = DiGraph(pot_conn)
-results = label_propagation(G)#, maxiter=1000; rng=nothing, seed=nothing)
-@show(results)
-γ = 0.25
-result = Leiden.leiden(Symmetric(pot_conn), resolution = γ)
-@show(unique(result[2]))
 =#
-Y0 = 0.1 * randn( size(pot_conn,1), dim);
 
-
-cmap = distinguishable_colors(
-           maximum(L) - minimum(L) + 1,
-           [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
-
-Y = sgtsnepi(pot_conn; d=dim, Y0 = Y0, max_iter = 500);
+#Y = sgtsnepi(pot_conn; d=dim, Y0 = Y0, max_iter = 500);
 
 
 #- `lwd_in=0.5`: line width for internal edges
@@ -79,21 +82,18 @@ Y = sgtsnepi(pot_conn; d=dim, Y0 = Y0, max_iter = 500);
 #- `edge_alpha=0.2`: the alpha channel for the edges
 #- `clr_in=nothing`: set color for all intra-cluster edges (if nothing, color by `cmap`)
 #- `clr_out=colorant"#aabbbbbb"`: the color of inter-cluster edges
-show_embedding(Y, Lx ,clr_out=cmap,clr_out=cmap,edge_alpha=0.5)#; A = pot_conn, res = (5000, 5000) )
-A = pot_conn
-Y0 = 0.01 * randn( size(A,1), 3 );
-Y = sgtsnepi(A; d = 3, Y0 = Y0, max_iter = 500);
+#figure=Plots.plot()
+#display(SGtSNEpi.show_embedding( Y, Lx ,clr_out=cmap,clr_in=cmap,edge_alpha=0.5,lwd_in=0.5,lwd_out=0.3))#; A = pot_conn, res = (5000, 5000) )
+#savefig("Potjans_SG_EMB.png")
+#A = pot_conn
+#Y0 = 0.01 * randn( size(A,1), 3 );
+#Y = sgtsnepi(A; d = 3, Y0 = Y0, max_iter = 500);
 #neighbor_recall(pot_conn, Y)
-sc = scatter( Y[:,1], Y[:,2], Y[:,3], color = L, colormap = cmap, markersize = 5)
+#sc = scatter( Y[:,1], Y[:,2], Y[:,3], color = L, colormap = cmap, markersize = 5)
 #scene.center = false
 
 #save("potjans_static_wiring_network_embedding.png")
-#show_embedding( Y, L ; A = pot_conn)#, res = (5000, 5000) )
-
-#sc
-#@show(L)
-#dim = 2
-#Random.seed!(0);
+#show_embedding( Y, L ; A = - Deliver to person
 #Y0 = 0.01 * randn( size(pot_conn[1],1), dim);
 #pot_conn = abs.(pot_conn[1])
 

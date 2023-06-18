@@ -61,7 +61,7 @@ abstract type AbstractIFNF end
 A population of cells
 """
 
-mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Real}} <: AbstractIFNF
+mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:Vector{<:Any}} <: AbstractIFNF
     N::C
     v::L 
     ge::L
@@ -70,49 +70,57 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
     u::L
     tr::L
     records::Dict
-    post_synaptic_targets::Vector{Any} # SVector
+    #post_synaptic_targets::Array{Array{UInt64}} # SVector
+    post_synaptic_weights::M # SVector
 
-    function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
-        new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
+    function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
+        @show(typeof(ge))
+        new{typeof(N),typeof(fire),typeof(ge),typeof(post_synaptic_weights)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
 
     end
 
-    function IFNF(N,fire,u,sim_type::Array)
+    function IFNF(N,fire,u,sim_type::AbstractArray,post_synaptic_weights::Vector{Any})
         v = typeof(sim_type)(ones(N).-55.0) 
         g = typeof(sim_type)(zeros(N))
         ge = typeof(sim_type)(zeros(N))
         gi = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
         
-        post_synaptic_targets = Array{Array{UInt64}}(undef,N)
-        for i in 1:N
-            post_synaptic_targets[i] = Array{UInt64}([])
-        end
+        #post_synaptic_weights = Array{Array{Any}}(undef,N)
+        #for i in 1:N
+        #    post_synaptic_weights[i] = Array{Float32}([])
+        #end
         #post_synaptic_targets = SVector{N, Array{UInt32}}(post_synaptic_targets)
-        pre_synaptic_weights = Vector{Float32}(zeros(N))
+        #pre_synaptic_weights = Vector{Float32}(zeros(N))
        
         records::Dict = Dict()
-        IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
+        IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
     end 
-    function IFNF(N,fire,u,post_synaptic_targets::Vector{Any})
+    function IFNF(N::Int,fire,u,post_synaptic_weights::Vector{Any})
         v = typeof(u)(ones(N).-55.) 
         g = typeof(u)(zeros(N))
         ge = typeof(u)(zeros(N))
         gi = typeof(u)(zeros(N))       
         tr = zeros(typeof(N),N)
         records::Dict = Dict()
-        IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
+        IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
     end 
-    function IFNF(N,sim_type::CuArray,post_synaptic_targets::Vector{Any})
+    function IFNF(N::Int,sim_type::CuArray,post_synaptic_weights::Vector{Any})
         fire::CuArray{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
-        IFNF(N,fire,u,post_synaptic_targets)
+        IFNF(N,fire,u,post_synaptic_weights)
     end 
  
-    function IFNF(N,sim_type::Array,post_synaptic_targets::Vector{Any})
+    function IFNF(N::Int,sim_type::Array,post_synaptic_weights::Vector{Any})
         fire::Array{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
-        IFNF(N,fire,u,post_synaptic_targets)
+        @show(typeof(u))
+        @show(typeof(post_synaptic_weights))
+
+
+        @show(typeof(fire))
+
+        IFNF(N,fire,u,post_synaptic_weights)
     end 
 
 

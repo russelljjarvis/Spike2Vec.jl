@@ -1,3 +1,5 @@
+
+#__precompile__(false) 
 module SpikeTime
 
 #export ST
@@ -12,11 +14,11 @@ using ProgressMeter
 using Setfield
 using DrWatson
 using StaticArrays
-using Colors
-using ComplexityMeasures
+#using Colors
 using StatsPlots
 #using StatsBase
 #using Plots
+#using Statistics
 
 #using StaticArrays
 #include("genPotjans.jl")
@@ -59,6 +61,7 @@ include("neuron/poisson.jl")
 
 include("synapse/spiking_synapse.jl")
 include("main_e.jl")
+export sim!
 
 #include("main_experiment2.jl")
 include("neuron/rate.jl")

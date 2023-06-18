@@ -1,12 +1,11 @@
 
 using SpikeTime
-SpikeTime.@load_units
+#SpikeTime.@load_units
 using SparseArrays
 #import LinearAlgebra.normalize!
 using OnlineStats
 using Plots
 using UnicodePlots
-using SparseArrays
 Ne = 800;      
 Ni = 200
 total_cnt = Ne+Ni
@@ -53,9 +52,12 @@ for (x,row) in enumerate(eachrow(final_connectome))
         end 
     end
 end
-
 sim_type = Vector{Float32}([])
-pop = IFNF(total_cnt,sim_type,ragged_array_targets)
+
+pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
+#@show(pop.post_synaptic_weights)
+sim!(pop, 1, 100,nothing)
+#function sim!(P, dt = 1ms, duration = 10ms,current_stim=nothing)
 
 #@time SpikeTime.sim!(P, C; duration = 0.25second)
 
