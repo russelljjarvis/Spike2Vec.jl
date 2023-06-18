@@ -70,7 +70,7 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
     u::L
     tr::L
     records::Dict
-    post_synaptic_targets::Array{Array{UInt64}} # SVector
+    post_synaptic_targets::Vector{Any} # SVector
 
     function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
         new{typeof(N),typeof(fire),typeof(ge)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
@@ -94,7 +94,7 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
     end 
-    function IFNF(N,fire,u,post_synaptic_targets::Vector{Array{UInt64}})
+    function IFNF(N,fire,u,post_synaptic_targets::Vector{Any})
         v = typeof(u)(ones(N).-55.) 
         g = typeof(u)(zeros(N))
         ge = typeof(u)(zeros(N))
@@ -103,13 +103,13 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:AbstractVecOrMat{<:Re
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_targets)
     end 
-    function IFNF(N,sim_type::CuArray,post_synaptic_targets)
+    function IFNF(N,sim_type::CuArray,post_synaptic_targets::Vector{Any})
         fire::CuArray{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
         IFNF(N,fire,u,post_synaptic_targets)
     end 
  
-    function IFNF(N,sim_type::Array,post_synaptic_targets)
+    function IFNF(N,sim_type::Array,post_synaptic_targets::Vector{Any})
         fire::Array{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
         IFNF(N,fire,u,post_synaptic_targets)
