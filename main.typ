@@ -6,9 +6,10 @@
   ] ,
 
   authors: (
-    (name: "Russell Jarvis", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Russell Jarvis", affiliation: "Postdoctoral Research International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
     (name: "Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
     (name: "Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Alexandre Marcireau", affiliation: "Postdoctoral Research Fellow International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University")
   ),
   bibliography-file: "refs.bib",
 )
@@ -70,7 +71,7 @@ Furthermore there is a desire to perform neuronal data analysis in a manner that
 //"generating a highly combinatorial space of sequence activations.""
 
 
-An pre-exisiting theory @eliasmith, the attractor network theory of the mammal cortical dynamics is consistant with phenomological observations about the mind, such that people commonly refer to "circular thinking", in obsessive compulsive disorder. Furthermore action and perception are theorized to occur in alternating cycles, during "action-perception" loops.  Neuronal synaptic weight changes, that happen as a result of STDP, simply bias the brain in a manner which will make salient brain states more likely to occur.
+An pre-exisiting theory @Eliasmith_2007, the attractor network theory of the mammal cortical dynamics is consistant with phenomological observations about the mind, such that people commonly refer to "circular thinking", in obsessive compulsive disorder. Furthermore action and perception are theorized to occur in alternating cycles, during "action-perception" loops.  Neuronal synaptic weight changes, that happen as a result of STDP, simply bias the brain in a manner which will make salient brain states more likely to occur.
 
 Both temporal and rate codes fail to fully explain how the cortical neurons of mammal brains are able to use synapses to learn about the world. The attractor network approach to understanding the brain is code agnostic. Deterministic chaotic principles are used to explain spike time irregularity. Spike time network attractors can explain why some of the brains activity patterns are able to repeat, and why the not all cortical activity is highly Asychronous Irregular Activity (AI). The network attractor theory is compatible with recent spike train datasets that demonstrate "replay" in the hippocampus and prefrontal cortex of rats. Replay refers to a phenomena were in two time points of a spike train, there is macroscale similarity between spike patterns, and each pattern is  generally reconizable, and regarded as approximately the same by human observers. 
 // trajectories as an explanation the dynamic systems view of the brai
