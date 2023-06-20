@@ -1,12 +1,12 @@
 #import "template.typ": *
 #show: ieee.with(
-  title: "Spike2Vec: Converting Spike Trains to Vectors to Analyse Network States and State Transitions: ",
+  title: "Spike2Vec: Converting Spike Trains to Vectors to Analyse Network States and State Transitions",
   abstract:[
    #include "Abstract.typ"
   ] ,
 
   authors: (
-    (name: "Dr Russell Jarvis", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
+    (name: "Russell Jarvis", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
     (name: "Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
     (name: "Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
   ),
@@ -44,16 +44,20 @@ abstract
 = Introduction (Level 1 heading)
 */
 
-When it comes to electrical neuronal recordings of the mammal cortex, there is a risk of underestimating the frequency of neuronal replay events and overestimating the frequency of unrepeating chaotic events. Repeating Temporal Spatial Patterns (RTSPs) aka sequences, and motifs are rarely observed in important electrical neuronal cortical recordings of sensory neurons @billeh2020systematic, and older recordings of neocortex in rodents and primates. If the prevalence of repitition and replay was thoroughly characterized, cortical models could then appropriately increase the amount of structured coherent repeating patterns they generate and decrease the amount of Poisson process random noise activity represented in simulation outputs. 
+The most basic aspect of approach of the spike2vec framework is very old, under the established and conventional technique a population of spike trains is converted to a series of spike firing rate encoded vectors. This idea has been around since the late 80s @georgopoulos1988primate. However this work departs from the conventional approach as we decided to construct vectors from the neurons instantaneous pattern of spiking variability in contrast to instananeuous firing rate, somewhat analogously to sampling each neurons local variation as it evolves through time. When the neurons instantanous spike time variability is measured it is entered into a population vector. As network behavior evolves through time, we are able to re-examine collections of these vectors to find approximately repeating temporal spatial patterns. When we have located a repeating temporal spatial patterns we are then able to consider each RTSP as a bag of Inter Spike Intervals, where the spatial structure of spike sources is discarded, and RTSPs overall distributions of RTSPs are analysed between different individuals of the same species to find out if there is universal temporal profiles of rodent RTSPs, in approach somewhat inspired by the work @perez2021parallel
+
+When it comes to electrical neuronal recordings of the mammal cortex, there is a risk of underestimating the frequency of neuronal replay events and overestimating the frequency of unrepeating random looking events. Repeating Temporal Spatial Patterns (RTSPs) aka sequences, and motifs are rarely observed in important electrical neuronal cortical recordings of sensory neurons @billeh2020systematic, and older recordings of neocortex in rodents and primates. If the prevalence of repitition and replay was thoroughly characterized, cortical models could then appropriately increase the amount of structured coherent repeating patterns they generate and decrease the amount of Poisson process random noise activity represented in simulation outputs. 
 
 The reasons why there is a risk that RTSP is going unrecognized will be discussed below, as most of these risks are avoidable. The first reason is that many electrical neuronal data recordings are only 3 seconds or less. Three seconds is a tiny window of opportunity, and it is not a reasonable duration for spike patterns to be repeated in a recording.
 
-There is a caveat that 3 seconds might be plenty of time to see a repeat of the experimental paradigm is construed to elicit replay such as in @peyrache2009replay. If replay corresponds to memory recall, as some authors have suggested, it seems reasonable that RTSPs might take days to years to reoccur.
 /*; and yet most of the neuronal recordings the authors have dealt with are 3 seconds in duration.*/
 
 Reason two: Data analysis which was applied to the data, didn't necessitate replay detection, as the replay wasn't relevant to the analysis framework; also, if no significant pattern is perceptible to humans, the lack of curiosity seems justified.
 
 Reason three, the final reason: Replay detection might fail because a dedicated detector fails to detect the RTSP. Some types of temporal and spatial patterns can defeat replay detectors . Also, some neuronal recordings may be so big that they render applications with results inaccessible because replay detection could not happen in a human-relevant time scale.
+
+
+There is a caveat that 3 seconds might be plenty of time to see a repeat of the experimental paradigm is construed to elicit replay such as in @peyrache2009replay. If replay corresponds to memory recall, as some authors have suggested, it seems reasonable that RTSPs might take days to years to reoccur.
 
 
 //In order to garner evidence for the "replay as network attractor" theory of memory encoding and memory recall faster scalable 
@@ -75,7 +79,7 @@ Both temporal and rate codes fail to fully explain how the cortical neurons of m
 
 There is demand for a scalable algorithm that can detect repeating temporal spatial features in biological and synthetic data sets of cortical neuronal networks. An existing tool Spike Pattern Detection and Evaluation (SPADE) #cite("stella20193d", "quaglio2017detection", "shinomoto2005measure"), can detect repeating spatial temporal sequences, however it is only available in the Python language. Application of SPADE so far does not fully reconcile the attractor network theory of neuronal learning with spike train analysis. Reconciling the attractor network theory with in-silico and in-vivo spike trains is a prominant feature of this work.
 
-An un-answered question is their commanality in the size and shape of RPS between similar but different mammal brains. When electrodes are inserted into different brains, the spatial location of recording electrodes, never reaches the same target twice. Variability in the structure of brains is a rule, and when comparing two neurons that occupy roughly the same position, but in different individual brains.  It is rarely justified to consider the identity of cortical neurons would not be considered to be the same entity. Nontheless it remaians viable and desirable to transform vectors derived from spike trains into a common set of coordinates, by finding the exact sequence of vector axis that maximises overlap between repeated patterns. Analogous to word2vec word embedding models that were famously used in recommendation systems. RTSPs can be compared against spike2vec embedding models, however, before this could happen, spike2vec vectors would need to be transformed to a common coordinate system, where spike train vectors from different individuals would be reconcilable with each other. The word2vec approach was found to generalize to other realms such as product recommendations using meta data @vasile2016meta, and human EEG recordings. In this work we show the beggining contributions of compiled Vectorized library of neuronal spike train recordings, that contains recordings from different individuals and also individuals belonging to different mammal species.By compiling a Vectorized library of neuronal spike train recordings, we will be able to transform vectors by swapping axis order of the constituent vectors to find the vector axis order that maximises overlap between replayed events from different organisms.  
+An un-answered question is their commanality in the size and shape of RPS between similar but different mammal brains. When electrodes are inserted into different brains, the spatial location of recording electrodes, never reaches the same target twice. Variability in the structure of brains is a rule, and when comparing two neurons that occupy roughly the same position, but in different individual brains.  It is rarely justified to consider the identity of cortical neurons would not be considered to be the same entity. Nontheless it remaians viable and desirable to transform vectors derived from spike trains into a common set of coordinates, by finding the exact sequence of vector axis that maximises overlap between repeated patterns. Analogous to word2vec word embedding models that were famously used in recommendation systems. RTSPs can be compared against spike2vec embedding models, however, before this could happen, spike2vec vectors would need to be transformed to a common coordinate system, where spike train vectors from different individuals would be reconcilable with each other. The word2vec approach was found to generalize to other realms such as product recommendations using meta data @vasile2016meta, and human EEG recordings. In this work we show the beggining contributions of compiled Vectorized library of neuronal spike train recordings, that contains recordings from different individuals and also individuals belonging to different mammal species. By compiling a Vectorized library of neuronal spike train recordings, we will be able to transform vectors by swapping axis order of the constituent vectors to find the vector axis order that maximises overlap between replayed events from different organisms.  
 
 
 //A scalable algorithm that can detect fine-grained repetitions quickly across large spiking datasets is desirable, as such a framework would provide a means to test for the tendency of neuronal activity to revisit states. 
@@ -91,13 +95,29 @@ Quickly identifying repeated states in large-scale neuronal data and simulation 
 /*Direct quote: "Neuronal ensembles, coactive groups of neurons found in spontaneous and evoked cortical activity, are causally related to memories and perception, but it is still unknown how stable or flexible they are over time. We used two-photon multiplane calcium imaging to track over weeks the activity of the same pyramidal neurons in layer 2/3 of the visual cortex from awake mice and recorded their spontaneous and visually evoked responses. Less than half of the neurons were commonly active across any two imaging sessions. These "common neurons" formed stable ensembles lasting weeks, but some ensembles were also transient and appeared only in one single session. Stable ensembles preserved ~68 % of their neurons up to 46 days, our longest imaged period, and these "core" cells had stronger functional connectivity. Our results demonstrate that neuronal ensembles can last for weeks and could, in principle, serve as a substrate for long-lasting representation of perceptual states or memories.*/
 
 
+/*Direct quote: 
+
+Trajectories.
+When simulated with two different initial conditions, 
+the synaptic drive to neurons deviated strongly from each other (Figure 4a),
+and the spiking activity of single neurons was uncorrelated across trials and 
+the trial-averaged spiking rate had little temporal structure (Figure 4b). 
+The network activity was also sensitive to small perturbation;
+the microstate of two identically prepared networks diverged rapidly if one spike was deleted from one of the networks (Figure 4c). 
+It has been previously questioned as to whether the chaotic nature of an excitatory-inhibitory 
+network could be utilized to perform reliable computations (London et al., 2010; Monteforte and Wolf, 2012).
+
+ is updated, the network states evolve freely with no constraints and can thus diverge from the desired trajectory. This allows the network to visit different network states in the neighborhood of the target trajectories during training, and the trained network becomes resistant to relatively small perturbations from the target trajectories. Third, the synaptic update rule is designed to reduce the error between the target and the ongoing network activity each time W
+ is updated. Thus, the sequential nature of the training procedure automatically induces stable dynamics by contracting trajectories toward the target throughout the entire path. In sum, robustness to initial conditions and network states around the target trajectories, together with the contractive property of the learning scheme, allow the trained network to generate the target dynamics in a stable manner.*/ 
+
+
 After surveying the literature, we found evidence of two-three major replay detection algorithms, SPADE is written in Python, and FAST, which is advertised as "a spike sorting algorithm" is written in MATLAB @dhawale2017automated.  We also found neuronal spike train recordings which are either long term, or bordering on chronic @perez2021long, @riquelme2023single
 
 /*and there is a general demand for neuronal analysis tools in the Julia ecosystem.*/
 Multivariate approaches to spike train network analysis often involve inferrring a causal network diagram from spiking acitivity. Where the idea is that the spiking activity contains many hidden network states that emerge in large scale simulations, and that are not visible in the networks static connectome. To analyse effective connectivity in in silico and in vitro networks, spike train recordings are divided into time windows, and analysis compares previous (lagged time), with current time. Exhaustive pairwise iteration of pair-wise and or multivariate statistics is not computationally tractible at the scale of billions of neurons, and adding time lagged analysis of network cross-correlation, or transfer entropy makes the prospoect of scaled temporal analysis even worse. /* Auto-covariance acts on anolog signals (dense vectors), however autocovariance analysis of continuous membrane potentials would be another way to arrive at a network state description. The computation of a bivariate statistic between each possible pair of neurons in the network. */
 
 
-Under the dynamic systems view of the brain neuronal memories are analogous to attractor basins @lin2023review. Consider replay as a mechanism that is related both memory encoding and memory recall. If the view of memories as basins is correct then it should be possible to demonstrate synaptic learning as the mechanism that encodes memories as basins. Network attractor basins may be derived from the interleaved application of Spike Timing Dependent Plasticity (STPD) and sleep when synapses are able to change in a way that strongly biases some future spiking activities towards repeating observed patterns.
+Under the dynamic systems view of the brain neuronal memories are analogous to attractor basins @lin2023review, @Eliasmith_2007. Consider replay as a mechanism that is related both memory encoding and memory recall. If the view of memories as basins is correct then it should be possible to demonstrate synaptic learning as the mechanism that encodes memories as basins. Network attractor basins may be derived from the interleaved application of Spike Timing Dependent Plasticity (STPD) and sleep when synapses are able to change in a way that strongly biases some future spiking activities towards repeating observed patterns.
 
 Application of STDP learning within to cortical models of Leaky Integrate and Fire (LIF) neurons a simple method to optimise network parameters a way that maximises the networks capacity to encode and revisit attractor states. Although spike trains are often analysed for information entropy at the spike to spike level. A spike2vec algorithm will enable researchers to investigate the spike trains states for redundancy at the sequential pattern level, in a Julia compliant way, and this will parallel efforts to develop Julia cortical simulators which intend to model prefrontal cortex in a data driven way.
 
@@ -107,6 +127,8 @@ Application of STDP learning within to cortical models of Leaky Integrate and Fi
 
 
 Representational simalarity @grootswagers2019representational has been applied to decoding visual representations from ECG channels, by analysing the differences between channels, and how these differences evolve over time. Rather than applying representational similarity between pairs of neurons in the network, we instead compare spike train distance across one neurons evolving spiking behavior, by assessing how much the neuron changes its representation.
+
+To compute vectors from spike trains we apply representational disimilarity between different windows of the neurons history, ie we evaluate spike train distance across one neurons evolving spiking behavior, by progressively evaluating how much the neuron  deviates from uniform spiking in incremental windows.
 
 A problem with converting spike train raster plots to attractor trajectories, is the that the most established method  deriving attractor trajectories (and energy landscapes) requires the system under investigation to be encoded as a continuous differentiable function. A dominant approach which satisfys the continuous function requirement is to fit a differential equation that models a networks firing rate(s) in response to current injection the assumption underlying this approach, is that the rate coded information and network states are more important than or even exclude temporal codes.    
 
@@ -165,11 +187,11 @@ caused by the network transitioning to familiar states,
 Data sources analysed.
 
 #table(
-  columns: (auto, auto, auto),
+  columns: (auto, auto, auto,auto),
   inset: 10pt,
   align: horizon,
-  [*Zebra Finch, song bird*],[*chronic multiday recording*],[*NMNIST*], [*Prefrontal Cortex Replay*,"SPADE Tutorial"],
-    [@perez2021long], [@peyrache2009replay],[ @mackevicius2019unsupervised],
+  [*Zebra Finch, song bird*],[*chronic multiday recording*],[*NMNIST*], [*Prefrontal Cortex Replay*],
+    [ @mackevicius2019unsupervised],[@perez2021long],[@cohen2016skimming], [@peyrache2009replay],
 )
 
 /*
@@ -190,16 +212,20 @@ spatio-temporal patterns (STPs).
 Spike Train state descriptors tried:
 
 #table(
-  columns: (auto, auto, auto),
+  columns: (auto, auto),
   inset: 10pt,
   align: horizon,
-  [*Kreuz Distance against uniform ISI reference*],[*Kreuz Distance against noise reference*],[*Auto Covariance*], [*Local Variation*],
-    [Kreuz spike distance uniform number $0$], [Kreuz spike distance versus noise number $0$],
+  [*Kreuz Distance against uniform ISI reference*],[*Kreuz Distance against noise reference*],[*Coefficient of Variation*], [*Local Variation*],
+    [Kreuz spike distance on observed spike window versus uniform ISI reference $0$], [Kreuz spike distance versus noise $0$],
   [
-    Autocovariance number $1$
+    Local Variation $1$
   ],
-  [local variation number $0$],
+  [Coefficient of Variation $0$]
 )
+
+In order to verify that the our particular application of the Kreuz spike distance metric lead to the most unique network state descriptions, we also constructed population vectors by applying other measurements of spike train variability.
+
+
 
 
 === Spike2Vec Algorithm Details
@@ -227,6 +253,13 @@ The spike2vec frame work exists at the meta level. It is a novel mashup of pre-e
 
 10. We discard all cluster labels that correspond to just a single time window, and retain the set of cluster labels, that have at least one repeating label. We regard these duplicated cluster labels as repeated temporal spatial patterns. 
 
+In the figure below we show the a reference window of uniform spikes described above.
+
+#align(center + bottom)[
+  #image("figures/UniformSpikes.png", width: 70%)
+  *A plot of the regular periodic spike reference window. A unvarying uniform surrogate spike train is used as a comparison inorder to compute the transformation cost of transforming spike train uniform to spike train varying.*]
+
+
 === Common Coordinates of Spike2Vec Algorithm Details
 
 The output of Spike2vec, is a reduced set of vectors. Only replayed events are encoded as vectors, and everything else that can be regarded as a non repeating or a state transition is disregarded.
@@ -237,6 +270,11 @@ The output of Spike2vec, is a reduced set of vectors. Only replayed events are e
 
 3. At each step find the a reorganization of the sequence of vector axis, which maximises the commanility between each pair.
 
+/*
+=== Reoccurance Analysis
+
+Reoccurance analysis was used to characterize vector encoded spike train matrices for repeating patterns. Re-currence analysis was able to give us numbers quantify the degree of repitition of states, and the entropy of state transition matrices. Steps convert the spike encoded vector matrices to "state space sets" as defined in the Julia Package Dynamical Systems.jl
+*/
 
 === Discusssion
 
@@ -259,7 +297,8 @@ The spike2vec frame work can be used to convert spike trains to markov transisti
 
 
 
-//@Eliasmith Dynamic systems view of the brain from scholar pedia @mackevicius2019unsupervised Julia labelling horinzontal
+
+//Dynamic systems view of the brain from scholar pedia @mackevicius2019unsupervised Julia labelling horinzontal
 
 
 
@@ -278,11 +317,6 @@ Some preliminary code that performs the Spike2Vec analysis is avaialble at the f
 
 == Evidence for Network Attractor Theory
 
-Reoccurance analysis was used to characterize vector encoded spike train matrices for repeating patterns. Re-currence analysis was able to give us numbers quantify the degree of repitition of states, and the entropy of state transition matrices. Steps convert the spike encoded vector matrices to "state space sets" as defined in the Julia Package Dynamical Systems.jl
-
-#align(center + bottom)[
-  #image("figures/UniformSpikes.png", width: 70%)
-  *A plot of the regular periodic spike reference window. A unvarying uniform surrogate spike train is used as a comparison inorder to compute the transformation cost of transforming spike train uniform to spike train varying.*]
 
 #align(center + bottom)[
   #image("figures/final_output_graphs_state_transition_matrix_graph.png", width: 70%)
@@ -394,64 +428,3 @@ align(center + bottom)[
   #image("figures/vector_differences_another_NMNIST.png", width: 70%)
   *Two spike time encoded numerals, where read in to Julia, then the spiking neuromorphic data were converted to vectors over $1200$ channels. Orange and Blue plots are vectors corresponding to two distinct NMNIST data labels. Rapid positive alternating deflections are visible in both vectors, because the NMNIST data is caused by pixel activations, when $2D$ pixel derived data sources are converted into a $1D$ vector, sparse clusters of activated pixels, have regular gaps between them. Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST dataset, ie the heatmap above, comes from analysing spike train distance across the NMNIST data set numbers: 0-9 represented as spiking events. There are 300 total presentation number presentations. All nine numbers are incrementally cycled through. Number presentations within the one number are contiguous, (the data set isn't shuffled), and this contiguity is reflected in the heatmap too.*
 ]
-
-//align(center + bottom)[
-//  #image("figures/UMAP_song_bird.png", width: 70%)
-//  *Unormalize NMNINST vectors for 1000 neurons over 10 channels*
-//]
-
-
-/*cluster_sort_MNMIST.png
-cluster_sort_song_birds.png
-didit_work_NM.png
-didit_work.png
-everything_includinding_repeated_pattern_pablo.png
-everythin_includinding_repeated_pattern_pablo.png
-heatmap_after.png
-heatmap_before.png
-heatmap.png
-just_two_pablo_raw_vectors.png
-just_two_song_bird_raw_vectors.png
-labelled_mat_of_distancesNMINST.png
-labelled_mat_of_distancesNMINST_test_train.png
-labelled_mat_of_distances_pablo.png
-labelled_mat_of_distances.png
-LabelledSpikes18.png
-LabelledSpikesPartition18.png
-Levine13-CD4.png
-Normalised_heatmap_pablo.png
-Normalised_heatmap_song_bird.png
-normal.png
-not_cluster_sort_MNMIST.png
-pablo_umap.png
-reference_labelled_mat_of_distances_pablo.png
-relative_to_uniform_referenceNMMIST.png
-repeated_pattern_pablo.png
-repeated_pattern.png
-repeated_pattern_song_bird.png
-scatternmnist_angles.png
-scatternmnist_distances.png
-scatternmnist.png
-slice_one_window.png
-slice_three_window.png
-slice_two_window.png
-sorted_train_map.png
-test_map.png
-train_map.png
-umap_of_NMNIST_Data.png
-UMAP_song_bird.png
-UniformSpikes.png
-Unormalised_heatmap_pablo.png
-Unormalised_heatmap.png
-Unormalised_heatmap_song_bird.png
-vector_differences_another.png
-*/
-
-
-== References
-
-//#bibliography("refs.bib")
-
-//https://elifesciences.org/articles/38471
-
-//Test reference @illing2019biologically
