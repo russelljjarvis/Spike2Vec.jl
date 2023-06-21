@@ -9,7 +9,7 @@
     (name: "Russell Jarvis", affiliation: "Postdoctoral Research International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
     (name: "Pablo de Abreu Urbizagastegui", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
     (name: "Yeshwanth Bethi", affiliation: "International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
-    (name: "Alexandre Marcireau", affiliation: "Postdoctoral Research Fellow International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University")
+    (name: "Alexandre Marcireau", affiliation: "Postdoctoral Research Fellow International Centre for Neuromorphic Systems, MARCS Institute, Western Sydney University"),
   ),
   bibliography-file: "refs.bib",
 )
@@ -255,7 +255,7 @@ In the figure below we show the a reference window of uniform spikes described a
   *A plot of the regular periodic spike reference window. A unvarying uniform surrogate spike train is used as a comparison inorder to compute the transformation cost of transforming spike train uniform to spike train varying.*]
 
 
-=== Common Coordinates of Spike2Vec Algorithm Details
+==== Common Coordinates of Spike2Vec Algorithm Details
 
 The output of Spike2vec, is a reduced set of vectors. Only replayed events are encoded as vectors, and everything else that can be regarded as a non repeating or a state transition is disregarded.
 
@@ -271,7 +271,9 @@ The output of Spike2vec, is a reduced set of vectors. Only replayed events are e
 Reoccurance analysis was used to characterize vector encoded spike train matrices for repeating patterns. Re-currence analysis was able to give us numbers quantify the degree of repitition of states, and the entropy of state transition matrices. Steps convert the spike encoded vector matrices to "state space sets" as defined in the Julia Package Dynamical Systems.jl
 */
 
-=== Discusssion
+
+= DISCUSSION
+
 
 When it comes to electrical neuronal recordings of the mammal cortex, there is a risk of underestimating the frequency of neuronal replay events and overestimating the frequency of unrepeating random looking events. Repeating Temporal Spatial Patterns (RTSPs) aka sequences, and motifs are rarely observed in important electrical neuronal cortical recordings of sensory neurons @billeh2020systematic, and older recordings of neocortex in rodents and primates. If the prevalence of repitition and replay was thoroughly characterized, cortical models could then appropriately increase the amount of structured coherent repeating patterns they generate and decrease the amount of Poisson process random noise activity represented in simulation outputs. 
 
@@ -316,9 +318,9 @@ Scalable methods for representing the transient behavior of large populations of
 
 Some preliminary code that performs the Spike2Vec analysis is avaialble at the following link. the code is implemented in Julia, a modern language alternative to Python that makes large-scale model visualization and analysis more computationally tractable. A docker file is included. 
 */
-= Result Analysis
+=== Result Analysis
 
-== Evidence for Network Attractor Theory
+==== Evidence for Network Attractor Theory
 
 
 #align(center + bottom)[
