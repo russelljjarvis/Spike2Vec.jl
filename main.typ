@@ -49,7 +49,7 @@ The most basic aspect of approach of the spike2vec framework is very old, under 
 
 When it comes to electrical neuronal recordings of the mammal cortex, there is a risk of underestimating the frequency of neuronal replay events and overestimating the frequency of unrepeating random looking events. Repeating Temporal Spatial Patterns (RTSPs) aka sequences, and motifs are rarely observed in important electrical neuronal cortical recordings of sensory neurons @billeh2020systematic, and older recordings of neocortex in rodents and primates. If the prevalence of repitition and replay was thoroughly characterized, cortical models could then appropriately increase the amount of structured coherent repeating patterns they generate and decrease the amount of Poisson process random noise activity represented in simulation outputs. 
 
-The reasons why there is a risk that RTSP is going unrecognized will be discussed below, as most of these risks are avoidable. The first reason is that many electrical neuronal data recordings are only 3 seconds or less. Three seconds is a tiny window of opportunity, and it is not a reasonable duration for spike patterns to be repeated in a recording.
+The reasons why there is a risk that RTSP is going unrecognized in classic neuronal recordings of spike trains will be discussed below, as most of these risks are avoidable. The first reason is that many electrical neuronal data recordings are only 3 seconds or less. Three seconds is a tiny window of opportunity, and it is not a reasonable duration for spike patterns to be repeated in a recording.
 
 /*; and yet most of the neuronal recordings the authors have dealt with are 3 seconds in duration.*/
 
@@ -211,20 +211,28 @@ spatio-temporal patterns (STPs).
 )
 */
 Spike Train state descriptors tried:
-
+/*
+metric = "CV"
+complexity_ = 271.10365577203237
+metric = "autocov"
+complexity_ = 263.8397370724894
+metric = "LV"
+complexity_ = 459.6779683462953
+metric = "kreuz"
+complexity_ = 385.0864565742967
+*/
 #table(
-  columns: (auto, auto),
+  columns: (auto, auto, auto,auto),
   inset: 10pt,
   align: horizon,
-  [*Kreuz Distance against uniform ISI reference*],[*Kreuz Distance against noise reference*],[*Coefficient of Variation*], [*Local Variation*],
-    [Kreuz spike distance on observed spike window versus uniform ISI reference $0$], [Kreuz spike distance versus noise $0$],
-  [
-    Local Variation $1$
-  ],
-  [Coefficient of Variation $0$]
+  [*Kreuz Distance against uniform ISI reference*],[*Autocovariance*],[*Coefficient of Variation*], [*Local Variation*],
+    [$385.1$], 
+    [$263.8$],
+    [$271.1$],
+    [$459.7$]
 )
 
-In order to verify that the our particular application of the Kreuz spike distance metric lead to the most unique network state descriptions, we also constructed population vectors by applying other measurements of spike train variability.
+In order to verify that the our particular application of the Kreuz spike distance metric lead to the most unique network state descriptions, we also constructed population vectors by applying other measurements of spike train variability. Matrices were populated by time varying vectors derived by applying the above metrics to some of the data sources. Complexity of applied spike2vec matrices, was computed by first applying columnwise normalization to the matrices, and then summing the total covariance contribution to get a scalar metric representing the complexity of the heatmap surface. Although the Local Variation metric had the highest metric for the sum of covariances, the LV matrix generally lacked repeating temporal structure, so it was not useful.
 
 
 
@@ -427,5 +435,5 @@ align(center + bottom)[
 
 align(center + bottom)[
   #image("figures/vector_differences_another_NMNIST.png", width: 70%)
-  *Two spike time encoded numerals, where read in to Julia, then the spiking neuromorphic data were converted to vectors over $1200$ channels. Orange and Blue plots are vectors corresponding to two distinct NMNIST data labels. Rapid positive alternating deflections are visible in both vectors, because the NMNIST data is caused by pixel activations, when $2D$ pixel derived data sources are converted into a $1D$ vector, sparse clusters of activated pixels, have regular gaps between them. Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST dataset, ie the heatmap above, comes from analysing spike train distance across the NMNIST data set numbers: 0-9 represented as spiking events. There are 300 total presentation number presentations. All nine numbers are incrementally cycled through. Number presentations within the one number are contiguous, (the data set isn't shuffled), and this contiguity is reflected in the heatmap too.*
+  *Two spike time encoded numerals, were read in to the Julia-lang namespace, then the spiking neuromorphic data were converted to vectors over $1200$ channels. Orange and Blue plots are vectors corresponding to two distinct NMNIST data labels. Rapid positive alternating deflections are visible in both vectors, because the NMNIST data is caused by pixel activations, when $2D$ pixel derived data sources are converted into a $1D$ vector, sparse clusters of activated pixels, have regular gaps between them. Herein lies a heatmap of dis-simarity matrices constructed using the NMNIST dataset, ie the heatmap above, comes from analysing spike train distance across the NMNIST data set numbers: 0-9 represented as spiking events. There are 300 total presentation number presentations. All nine numbers are incrementally cycled through. Number presentations within the one number are contiguous, (the dataset is not shuffled), and this contiguity is reflected in the heatmap too.*
 ]
