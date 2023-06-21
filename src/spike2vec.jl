@@ -296,7 +296,12 @@ function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArr
                 end                
             elseif metric=="autocov"
                 if length(t1_)>1
-                    self_distances[ind] = autocov( t1_, [1],demean=true)[1]
+                    self_distances[ind] = autocov( t1_, [length(t1_)-1],demean=true)[1]
+                #elseif length(t1_)>1 & length(t1_)<2
+                #    self_distances[ind] = autocov( t1_, [1],demean=true)[1]
+                #elseif length(t1_)>1 & length(t1_)<2
+                #    self_distances[ind] = autocov( t1_, [1],demean=true)[1]
+    
                     #StatisticalComplexity
                 else
                     self_distances[ind]=0
@@ -478,11 +483,13 @@ function get_divisions(nodes::Vector,times::Vector{Float32},division_size::Int,n
         #complexity(c::ComplexityEstimator, x)
         savefig("Unormalised_heatmap_$metric.$file_name.png")
     end
-    @inbounds @showprogress for (ind,col) in enumerate(eachcol(mat_of_distances))
+    @inbounds for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     complexity_ = sum(cov(SimpleCovariance(corrected=true), mat_of_distances))
+    @show(metric)
+    @show(complexity_)
     if plot
         Plots.heatmap(mat_of_distances)
         savefig("Normalised_heatmap_$metric.$complexity_.$file_name.png")
@@ -809,12 +816,14 @@ function state_transition_trajectory(start_windows,end_windows,distmat,assign,as
         #Plots.plot!(p1,assing_progressions,assing_progressions_times,legend=false)
         #display(p1)
         savefig("state_transition_trajectory$file_name.png")
-        g = SimpleWeightedDiGraph(stateTransMat)
+        if false
+            g = SimpleWeightedDiGraph(stateTransMat)
 
-        edge_label = Dict((i,j) => string(stateTransMat[i,j]) for i in 1:size(stateTransMat, 1), j in 1:size(stateTransMat, 2))
+            edge_label = Dict((i,j) => string(stateTransMat[i,j]) for i in 1:size(stateTransMat, 1), j in 1:size(stateTransMat, 2))
 
-        graphplot(g; names = 1:length(stateTransMat), weights=stateTransMat)
-        savefig("state_transition_graph$file_name.png")
+            graphplot(g; names = 1:length(stateTransMat), weights=stateTransMat)
+            savefig("state_transition_graph$file_name.png")
+        end
     end
  
     repeated_windows

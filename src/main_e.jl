@@ -4,13 +4,61 @@ using StatsBase
 using ProgressMeter
 
 function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
-    @set  container.fireJ = new_values
+    @set container.fireJ = new_values
 end
 
 function set_syn_values!(container::SpikingSynapse, new_values::Array{Bool})
-    @set  container.fireJ = new_values
+    @set container.fireJ = new_values
 end
+
+function expected_spike_format(empty_spike_cont,nodes1,times1,maxt)
+    nodes1 = [i+1 for i in nodes1]
+
+    @inbounds for i in collect(1:1220)
+        @inbounds for (neuron, t) in zip(nodes1,times1)
+            if i == neuron
+                push!(empty_spike_cont[Int32(i)],Float32(t)+Float32(maxt))
+            end            
+        end
+    end
+    empty_spike_cont,minimum(empty_spike_cont),maximum(empty_spike_cont)
+end
+
+function NMNIST_pre_process_spike_data(temp_container_store)
+    spike_packet_lists = Vector{Any}([])
+    labelsl = Vector{Any}([])
+    packet_window_boundaries = Vector{Any}([])
+    maxt = 0
+    empty_spike_cont =  []
+    @inbounds for i in collect(1:1220)
+        push!(empty_spike_cont,[])
+    end
+    cnt = 0
+
+
+    @inbounds @showprogress for (ind,s) in enumerate(temp_container_store)
+        (times,labels,nodes) = (s[1],s[2],s[3]) 
+        maxt = maximum(times)
+        if length(times) != 0
+            if cnt<25
+
+                empty_spike_cont,min_,maxt = expected_spike_format(empty_spike_cont,nodes,times,maxt)
+                maxt += maxt
+
+                push!(labelsl,labels)
+                push!(packet_window_boundaries,(min_,maxt))
+                cnt+=1
+            end
+            #push!(spike_packet_lists,spike_packet_labeled)
+
+        end
+    end
+    return empty_spike_cont,labelsl,packet_window_boundaries
+end
+
+
 #=
+
 
 
 #function sim!(P, C;conn_map=nothing, dt = 0.1ms, duration = 10ms,current_stim=nothing)
@@ -107,7 +155,7 @@ end
 function forwards_euler_weights!(post_targets,post_target_weights, fireJ::Vector{Bool},g::Vector)    
     @inline for (ind,cell) in enumerate(post_target_weights)
         if fireJ[ind]
-            for s in cell
+            @inline for s in cell
                 if W[s]>0
                     post_targets.ge[ind] = W[s] 
                 else
@@ -116,9 +164,7 @@ function forwards_euler_weights!(post_targets,post_target_weights, fireJ::Vector
             end 
         end
     end
-end
 
-    #=
     replace!(post_targets.gi, Inf=>0.0)
     replace!(post_targets.gi, NaN=>0.0)   
     replace!(post_targets.gi,-Inf16=>0.0)
@@ -127,7 +173,7 @@ end
     replace!(post_targets.ge, NaN=>0.0)   
     replace!(post_targets.ge,-Inf16=>0.0)
     replace!(post_targets.ge, NaN32=>0.0) 
-    =#
+end
 
 #=
 function sim!(P; C=[], dt)
@@ -152,21 +198,67 @@ function sim!(pp,dt)
     forwards_euler_weights!(pp,W,pre_synaptic_cell_fire_map,g)         
 end 
 
+function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
+    W = pp.post_synaptic_weights
+    #@show(external_layer_indexs)
+    pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
+    #@show(spike_stim_slice)
+    if length(spike_stim_slice)!=0
+        pp.fire[external_layer_indexs][spike_stim_slice] .= true
+    end
+    integrate_neuron!(pp.N, pp.v, dt, pp.ge, pp.gi, pp.fire, pp.u, pp.tr)
+    record!(pp)
+    #pre_synaptic_cell_fire_map = copy(pp.fire)
+    g = zeros(size(pp.fire))
+    forwards_euler_weights!(pp,W,copy(pp.fire),g)         
+end 
+
 #ERROR: LoadError: MethodError: no method matching 
 #sim!(::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Any}}; dt::Float64, duration::Int64)
 
 function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
-    #@show(collect(0:dt:duration))
-
-    for (ind,t) in enumerate(collect(0:dt:duration))
+    @inline  for _ in 0:dt:duration
         sim!(P, Float32(dt))
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
     end
-
-
 end
 
+
+function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms,spike_stim,external_layer_indexs)#;current_stim=nothing)
+    prevt=0.0
+    for t in 0:dt:duration
+        spike_stim_slice = divide_epoch(spike_stim,prevt,t)
+        sim!(P, Float32(dt),spike_stim_slice,external_layer_indexs)
+
+        prevt=t
+        # TODO Throttle maximum firing rate
+        # at physiologically plausible levels
+    end
+end
+
+
+function divide_epoch(vector_times::AbstractVector,start::Real,stop::Real)
+    n0=Vector{UInt32}([])
+    #t0=Vector{Float32}([])
+    #@#show(start,stop)
+    #window_size = stop-start
+    @inbounds for (n,tvec) in enumerate(vector_times)
+        for t in tvec
+            if start<=t && t<=stop
+                #append!(t0,t-start)
+                append!(n0,n)
+            end
+        end
+    end
+    #@show(t0)
+    #time_raster =  Array{}([Float32[] for i in 1:length(vector_times)+1])
+    #for (neuron,t) in zip(n0,t0)
+    #    append!(time_raster[neuron],t)        
+    #end
+    #@show(time_raster)
+    n0
+end
 
 
 function train!(P, C, dt, t = 0)

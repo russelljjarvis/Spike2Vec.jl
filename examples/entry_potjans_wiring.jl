@@ -4,47 +4,163 @@ using Revise
 using CairoMakie, Colors, LinearAlgebra
 using GLMakie
 using Graphs
+using SpikeTime
 
 import StatsBase.mean
 using Plots
 include("../src/models/genPotjansWiring.jl")
-
+using JLD2
 function grab_connectome(scale)
    
 
     pot_conn = potjans_layer(scale)
-    display(pot_conn)
-    Lx = Vector{Int64}(zeros(size(pot_conn[1,:])))
-    Lx = convert(Vector{Int64},Lx)
-    # The Graph Network analysis can't handle negative weight values so upset every weight to make weights net positive.
-    stored_min = abs(minimum(pot_conn))
-    for (ind,row) in enumerate(eachrow(pot_conn))
-        for (j,colind) in enumerate(row)
-            if pot_conn[ind,j] < 0.0
-                pot_conn[ind,j] = pot_conn[ind,j]+stored_min+1.0
-            end
-        end
-        @assert mean(pot_conn[ind,:]) >= 0.0
-    end
+
     Plots.heatmap(pot_conn,xlabel="post synaptic",ylabel="pre synaptic")
-    savefig("connection_matrix.png")
-    dim = 2
+    savefig("Potjans_connectome_no_input_layer.png")
 
-    Y0 = 0.1 * randn( size(pot_conn,1), dim);
-    cmap_out = distinguishable_colors(
-        length(Lx),
-        [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+    if false
+        # display(pot_conn)
+        Lx = Vector{Int64}(zeros(size(pot_conn[1,:])))
+        Lx = convert(Vector{Int64},Lx)
+        # The Graph Network analysis can't handle negative weight values so upset every weight to make weights net positive.
+        stored_min = abs(minimum(pot_conn))
+        for (ind,row) in enumerate(eachrow(pot_conn))
+            for (j,colind) in enumerate(row)
+                if pot_conn[ind,j] < 0.0
+                    pot_conn[ind,j] = pot_conn[ind,j]+stored_min+1.0
+                end
+            end
+            @assert mean(pot_conn[ind,:]) >= 0.0
+        end
+        savefig("connection_matrix.png")
+        dim = 2
 
-    #display(SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.035,lwd_in=0.035,lwd_out=0.009,clr_out=cmap))
-    #fig = 
-    display(SGtSNEpi.show_embedding( Y0, Lx ,A=pot_conn;edge_alpha=0.05,lwd_in=0.05,lwd_out=0.013,clr_out=cmap_out))
-    #display(fig)
-    #savefig("SGtSNEpi_connection.png")#
-    save("SGtSNEpi_connection.png")
+        Y0 = 0.1 * randn( size(pot_conn,1), dim);
+        cmap_out = distinguishable_colors(
+            length(Lx),
+            [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
+
+        #display(SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.035,lwd_in=0.035,lwd_out=0.009,clr_out=cmap))
+        #fig = 
+        display(SGtSNEpi.show_embedding( Y0, Lx ,A=pot_conn;edge_alpha=0.05,lwd_in=0.05,lwd_out=0.013,clr_out=cmap_out))
+        #display(fig)
+        #savefig("SGtSNEpi_connection.png")#
+        save("SGtSNEpi_connection.png")
+    end
     pot_conn
 end
-scale = 0.225
-pot_conn = grab_connectome(scale)
+
+
+if isfile("potjans_wiring.jld")
+    #
+    # TODO delete following  two lines, just grabbing a plot!
+    #scale = 0.07225
+    #pot_conn = grab_connectome(scale)
+
+    @load "potjans_wiring.jld" pot_conn ragged_array_weights
+
+else
+    scale = 0.07225
+    pot_conn = grab_connectome(scale)
+    ragged_array_weights = []
+    for (x,row) in enumerate(eachrow(pot_conn))
+        push!(ragged_array_weights,[])
+    end
+    for (x,row) in enumerate(eachrow(pot_conn))
+        for (y,i) in enumerate(row)
+            if i!=0
+                push!(ragged_array_weights[x],i)
+            end 
+        end
+    end
+    @save "potjans_wiring.jld" pot_conn ragged_array_weights
+
+
+end
+
+
+
+
+
+function dont(pop)
+
+    sim_type = Vector{Float32}([])
+    total_cnt = length(ragged_array_weights)
+    pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
+    current_stim=10.0125
+
+    pop.u = Vector{Float32}([current_stim for i in 1:length(pop.fire)])
+    SpikeTime.monitor([pop], [:fire])
+    @time sim!(pop; dt=0.1, duration=1000.0)
+    @time (Tx,Nx) = SpikeTime.get_trains([pop])
+    xlimits = maximum(Tx)
+
+    @time display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0.0, xlimits)))
+end
+if !isfile("NMNIST_spike_packet_conc_v.jld")
+
+    @load "../data2/all_mnmist_complete.jld" storage
+
+    empty_spike_cont, labelsl, packet_window_boundaries= NMNIST_pre_process_spike_data(storage)
+    @save "NMNIST_spike_packet_conc_v.jld"  empty_spike_cont labelsl packet_window_boundaries
+#@show(empty_spike_cont)
+else
+    @load "NMNIST_spike_packet_conc_v.jld"  empty_spike_cont labelsl packet_window_boundaries
+end
+#@show(packet_window_boundaries[1])
+#@show(packet_window_boundaries[2])
+#@show(last(packet_window_boundaries))
+
+if !isfile("final_topology.jld")
+
+    Nextra = 1220     
+    total_cnt_prev = length(ragged_array_weights)
+    total_cnt_final = total_cnt_prev + Nextra
+    final_connectome = spzeros(total_cnt_final,total_cnt_final)
+    p = 1.0
+    σ = 0.2
+    wexternal_stim = ones(total_cnt_prev,Nextra)
+    final_connectome[1:total_cnt_prev,total_cnt_prev+1:total_cnt_final] = wexternal_stim
+    Plots.heatmap(final_connectome,xlabel="post synaptic",ylabel="pre synaptic")
+    savefig("Potjans_connectome_input_layer.png")
+
+    ragged_array_weights = []
+    for (x,row) in enumerate(eachrow(final_connectome))
+        push!(ragged_array_weights,[])
+    end
+    for (x,row) in enumerate(eachrow(final_connectome))
+        for (y,i) in enumerate(row)
+            if i!=0
+                push!(ragged_array_weights[x],i)
+            end 
+        end
+    end
+    total_cnt = length(ragged_array_weights)
+
+    @save "final_topology.jld" ragged_array_weights total_cnt
+
+else
+    @load "final_topology.jld" ragged_array_weights total_cnt
+end 
+
+sim_type = Vector{Float32}([])
+pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
+#current_stim=10.0125
+
+#pop.u = Vector{Float32}([current_stim for i in 1:length(pop.fire)])
+SpikeTime.monitor([pop], [:fire])
+external_layer_indexs=total_cnt_prev+1:total_cnt_final
+
+duration = maximum(empty_spike_cont)+maximum(empty_spike_cont)/4.0
+sim!(pop; dt=0.1, duration=duration,spike_stim=empty_spike_cont,external_layer_indexs=external_layer_indexs)
+@time (Tx,Nx) = SpikeTime.get_trains([pop])
+xlimits = maximum(Tx)
+
+@time display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0.0, xlimits)))
+
+#1:1220
+#@load "../data2/all_mnmist_complete.jld" storage
+
 #pot_conn[diagind(pot_conn)] .= 0.0
 #=
 G = DiGraph(pot_conn)

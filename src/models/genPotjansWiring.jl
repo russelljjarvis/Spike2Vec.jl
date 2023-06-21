@@ -30,7 +30,7 @@ function potjans_params(ccu)
 
     # hard coded network wiring parameters are manipulated below:
 
-    syn_pol = []
+    syn_pol = Vector{Bool}([])
     for (i,syn) in enumerate(layer_names)
         if occursin("E",syn) 
             push!(syn_pol,true)
@@ -38,7 +38,7 @@ function potjans_params(ccu)
             push!(syn_pol,false)
         end
     end
-    syn_pol = syn_pol # synaptic polarity vector.
+    #syn_pol = syn_pol # synaptic polarity vector.
     return (conn_probs,syn_pol)
 end
 
@@ -101,14 +101,23 @@ function potjans_layer(scale::Float64)
     jei = je 
     jie = -0.75ji 
     jii = -ji
-    g_strengths = Vector{Float32}([jee,jie,jei,jii])
+    #g_strengths = Vector{Float32}([jee,jie,jei,jii])
     Lxx = spzeros(Float32, (Ncells, Ncells))
-    (jee,_,jei,_) = g_strengths 
+    #(jee,_,jei,_) = g_strengths 
     # Relative inhibitory synaptic weight
-    wig = Float32(-20*4.5)
-    build_matrix_prot!(jee,jei,wig,Lxx,cum_array,conn_probs,syn_pol,g_strengths)
+    #wig = Float32(-4.5)
+    #jee::Float32,jei::Float32,wie::Float32,wii
+    #ERROR: LoadError: MethodError: no method matching build_matrix_prot!(::Float64, ::Float64, ::Float64, ::Float64, ::SparseMatrixCSC{Float32, Int64}, ::SVector{8, Array{UInt32}}, ::SMatrix{8, 8, Float64, 64}, ::Vector{Bool})
 
+   # Closest candidates are:
+    #  build_matrix_prot!(::Float32, ::Float32, ::Float32, ::Float32, ::SparseMatrixCSC{Float32, Int64}, ::SVector{8, Array{UInt32}}, ::SMatrix{8, 8, Float64, 64}, ::Any)
+     #  @ Main ~/git/SpikeThroughput.jl/src/models/genPotjansWiring.jl:132
     
+    #S#tacktrace:
+    
+    build_matrix_prot!(jee,jei,jie,jii,Lxx,cum_array,conn_probs,syn_pol)#,g_strengths)
+    Lxx
+
 end
 export potjans_layer
 
@@ -128,7 +137,7 @@ Ideally iteration could flatten to support the readability of subsequent code.
 """
 #                      (jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
         #build_matrix_prot!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
-function build_matrix_prot!(jee::Float32,jei::Float32,wig::Float32,Lxx::SparseMatrixCSC{Float32, Int64},cum_array::SVector{8, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, syn_pol, g_strengths::Vector{Float32})
+function build_matrix_prot!(jee::Real,jei::Real,jie::Real,jii::Real,Lxx::SparseMatrixCSC{Float32, Int64},cum_array::SVector{8, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, syn_pol::Vector{Bool})#, g_strengths::Vector{Float32})
     # excitatory weights.
     @inbounds @showprogress for (i,v) in enumerate(cum_array)
 
@@ -161,8 +170,12 @@ function build_matrix_prot!(jee::Float32,jei::Float32,wig::Float32,Lxx::SparseMa
                                 #Lxx[src,tgt] = wig
 
                                 #if syn1 
+                                if syn1==true
 
-                                setindex!(Lxx,wig, src,tgt)
+                                    setindex!(Lxx,jie, src,tgt)
+                                else
+                                    setindex!(Lxx,jii, src,tgt)
+                                end
                                 #elseif syn1
                                 #    Lxx[src,tgt] = wig
 
