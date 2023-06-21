@@ -74,7 +74,6 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:V
     post_synaptic_weights::M # SVector
 
     function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
-        @show(typeof(ge))
         new{typeof(N),typeof(fire),typeof(ge),typeof(post_synaptic_weights)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
 
     end
@@ -114,11 +113,6 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:V
     function IFNF(N::Int,sim_type::Array,post_synaptic_weights::Vector{Any})
         fire::Array{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
-        @show(typeof(u))
-        @show(typeof(post_synaptic_weights))
-
-
-        @show(typeof(fire))
 
         IFNF(N,fire,u,post_synaptic_weights)
     end 

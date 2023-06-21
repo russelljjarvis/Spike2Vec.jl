@@ -77,14 +77,18 @@ end
 # impinge a current proportional to weight on post synaptic cell
 # membrane.
 """
-function forwards_euler_weights!(post_targets::Array{Array{UInt64}},W::Array{Array{Float64}}, fireJ::Vector{Bool},g::Vector)    
-    @inline for (ind,cell) in enumerate(post_targets)
+
+#forwards_euler_weights!(post_targets::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Any}}, W::Vector{Any}, fireJ::Vector{Bool}, g::Vector{Float64})
+
+function forwards_euler_weights!(post_targets::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Any}},W::Vector{Any}, fireJ::Vector{Bool},g::Vector{Float64})    
+    @inline for (ind,cell) in enumerate(W)
         if fireJ[ind]
-            for s in cell
-                if W[s]>0
-                    post_targets.ge[ind] = W[s] 
+            for (s,w) in enumerate(cell)
+                if w>0
+                    post_targets.ge[ind] = w 
                 else
-                    post_targets.gi[ind] = W[s]
+                    post_targets.gi[ind] = w
+
                 end
             end 
         end
@@ -100,6 +104,31 @@ function forwards_euler_weights!(post_targets::Array{Array{UInt64}},W::Array{Arr
       
 end
 
+function forwards_euler_weights!(post_targets,post_target_weights, fireJ::Vector{Bool},g::Vector)    
+    @inline for (ind,cell) in enumerate(post_target_weights)
+        if fireJ[ind]
+            for s in cell
+                if W[s]>0
+                    post_targets.ge[ind] = W[s] 
+                else
+                    post_targets.gi[ind] = W[s]
+                end
+            end 
+        end
+    end
+end
+
+    #=
+    replace!(post_targets.gi, Inf=>0.0)
+    replace!(post_targets.gi, NaN=>0.0)   
+    replace!(post_targets.gi,-Inf16=>0.0)
+    replace!(post_targets.gi, NaN32=>0.0) 
+    replace!(post_targets.ge, Inf=>0.0)
+    replace!(post_targets.ge, NaN=>0.0)   
+    replace!(post_targets.ge,-Inf16=>0.0)
+    replace!(post_targets.ge, NaN32=>0.0) 
+    =#
+
 #=
 function sim!(P; C=[], dt)
     for p in P
@@ -113,35 +142,29 @@ function sim!(P; C=[], dt)
 end
 =#
 
-function sim!(pp,dt,verbose=true;current_stim=0.0)
-    for (pre_ind,weights_) in enumerate(pp.post_synaptic_weights)
-        for (post_ind,w) in enumerate(weights_)
-            println("think")
-        #    pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
-        end    
-        #integrate_neuron!(::Integer, ::Vector, ::Real, ::Vector, ::Vector, ::Vector{Bool}, ::Vector{<:Real}, ::Vector{<:Number})
-         #integrate_neuron!(::Int64, ::Vector{Any}, ::Float32, ::Vector{Any}, ::Vector{Any}, ::Vector{Bool}, ::Vector{Any}, ::Vector{Any})
-
-        integrate_neuron!(pp.N, pp.v, dt, pp.ge, pp.gi, pp.fire, pp.u, pp.tr)
-        @show(pp.v)
-        record!(pp)
-        pre_synaptic_cell_fire_map = copy(pp.fire)
-        #g = zeros(sizeof(pre_synaptic_cell_fire_map))
-        forwards_euler_weights!(pre,W,pre_synaptic_cell_fire_map,g)         
-        #pre_synaptic_cell_fire_map = Vector{Bool}([false for i in 1:length(pre_fire_map)])
-        #end
-        #record!()
-    end
+function sim!(pp,dt)
+    W = pp.post_synaptic_weights
+    pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
+    integrate_neuron!(pp.N, pp.v, dt, pp.ge, pp.gi, pp.fire, pp.u, pp.tr)
+    record!(pp)
+    pre_synaptic_cell_fire_map = copy(pp.fire)
+    g = zeros(size(pp.fire))
+    forwards_euler_weights!(pp,W,pre_synaptic_cell_fire_map,g)         
 end 
-function sim!(P, dt = 1ms, duration = 10ms,current_stim=nothing)
-    #@show(P.post_synaptic_weights)
 
-    @showprogress for (ind,t) in enumerate(0ms:dt:(duration - dt))
-        sim!(P, Float32(dt))#,current_stim=current_stim[ind])
-                ##
+#ERROR: LoadError: MethodError: no method matching 
+#sim!(::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Any}}; dt::Float64, duration::Int64)
+
+function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
+    #@show(collect(0:dt:duration))
+
+    for (ind,t) in enumerate(collect(0:dt:duration))
+        sim!(P, Float32(dt))
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
     end
+
+
 end
 
 
