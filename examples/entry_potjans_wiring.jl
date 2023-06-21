@@ -51,17 +51,18 @@ function grab_connectome(scale)
 end
 
 
-if isfile("potjans_wiring.jld")
+#if isfile("potjans_wiring.jld")
     #
     # TODO delete following  two lines, just grabbing a plot!
     #scale = 0.07225
     #pot_conn = grab_connectome(scale)
 
-    @load "potjans_wiring.jld" pot_conn ragged_array_weights
+ #   @load "potjans_wiring.jld" pot_conn ragged_array_weights
 
-else
+#else
     scale = 0.07225
     pot_conn = grab_connectome(scale)
+    pot_conn *.100
     ragged_array_weights = []
     for (x,row) in enumerate(eachrow(pot_conn))
         push!(ragged_array_weights,[])
@@ -76,7 +77,7 @@ else
     @save "potjans_wiring.jld" pot_conn ragged_array_weights
 
 
-end
+#end
 
 
 
@@ -111,24 +112,22 @@ end
 #@show(packet_window_boundaries[2])
 #@show(last(packet_window_boundaries))
 
-if !isfile("final_topology.jld")
+#if !isfile("final_topology.jld")
 
     Nextra = 1220     
     total_cnt_prev = length(ragged_array_weights)
     total_cnt_final = total_cnt_prev + Nextra
     final_connectome = spzeros(total_cnt_final,total_cnt_final)
-    p = 1.0
-    σ = 0.2
     wexternal_stim = ones(total_cnt_prev,Nextra)
     final_connectome[1:total_cnt_prev,total_cnt_prev+1:total_cnt_final] = wexternal_stim
     Plots.heatmap(final_connectome,xlabel="post synaptic",ylabel="pre synaptic")
     savefig("Potjans_connectome_input_layer.png")
 
     ragged_array_weights = []
-    for (x,row) in enumerate(eachrow(final_connectome))
+    @inbounds for (x,row) in enumerate(eachrow(final_connectome))
         push!(ragged_array_weights,[])
     end
-    for (x,row) in enumerate(eachrow(final_connectome))
+    @inbounds for (x,row) in enumerate(eachrow(final_connectome))
         for (y,i) in enumerate(row)
             if i!=0
                 push!(ragged_array_weights[x],i)
@@ -136,12 +135,17 @@ if !isfile("final_topology.jld")
         end
     end
     total_cnt = length(ragged_array_weights)
+    external_layer_indexs=total_cnt_prev+1:total_cnt_final
 
-    @save "final_topology.jld" ragged_array_weights total_cnt
+    duration = maximum(last(packet_window_boundaries)[2])
+    duration += duration/4.0
+    onset = minimum(first(packet_window_boundaries)[1])
 
-else
-    @load "final_topology.jld" ragged_array_weights total_cnt
-end 
+ #   @save "final_topology.jld" ragged_array_weights total_cnt external_layer_indexs duration
+
+#else
+#    @load "final_topology.jld" ragged_array_weights total_cnt external_layer_indexs duration
+#end 
 
 sim_type = Vector{Float32}([])
 pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
@@ -149,10 +153,13 @@ pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
 
 #pop.u = Vector{Float32}([current_stim for i in 1:length(pop.fire)])
 SpikeTime.monitor([pop], [:fire])
-external_layer_indexs=total_cnt_prev+1:total_cnt_final
+@show(duration)
 
-duration = maximum(empty_spike_cont)+maximum(empty_spike_cont)/4.0
-sim!(pop; dt=0.1, duration=duration,spike_stim=empty_spike_cont,external_layer_indexs=external_layer_indexs)
+onset = 300#packet_window_boundaries[1][2][1]
+duration = 380
+@show(onset)
+#+maximum(empty_spike_cont)/4.0
+sim!(pop; dt=0.1, duration=duration,spike_stim=empty_spike_cont,external_layer_indexs=external_layer_indexs,onset=onset)
 @time (Tx,Nx) = SpikeTime.get_trains([pop])
 xlimits = maximum(Tx)
 

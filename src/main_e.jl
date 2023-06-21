@@ -107,6 +107,7 @@ function integrate_neuron!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,f
         if tr[i] == 0
             if v[i] >  Vt
                 fire[i] = v[i] >  Vt
+                println("fire cell: ",i)
                 tr[i] = Int(round(tref*dt))  # set refractory time
         
             end
@@ -200,15 +201,15 @@ end
 
 function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
     W = pp.post_synaptic_weights
-    #@show(external_layer_indexs)
     pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
-    #@show(spike_stim_slice)
     if length(spike_stim_slice)!=0
-        pp.fire[external_layer_indexs][spike_stim_slice] .= true
+        @inline for ind in external_layer_indexs[spike_stim_slice]
+            pp.fire[ind] = true
+        end
     end
+
     integrate_neuron!(pp.N, pp.v, dt, pp.ge, pp.gi, pp.fire, pp.u, pp.tr)
     record!(pp)
-    #pre_synaptic_cell_fire_map = copy(pp.fire)
     g = zeros(size(pp.fire))
     forwards_euler_weights!(pp,W,copy(pp.fire),g)         
 end 
@@ -218,19 +219,23 @@ end
 
 function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
     @inline  for _ in 0:dt:duration
-        sim!(P, Float32(dt))
+        sim!(P, dt)
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
     end
 end
 
 
-function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms,spike_stim,external_layer_indexs)#;current_stim=nothing)
+function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms,spike_stim,external_layer_indexs,onset)#;current_stim=nothing)
     prevt=0.0
-    for t in 0:dt:duration
-        spike_stim_slice = divide_epoch(spike_stim,prevt,t)
-        sim!(P, Float32(dt),spike_stim_slice,external_layer_indexs)
-
+    @showprogress for t in 0:dt:duration
+        if t>=onset
+            spike_stim_slice = divide_epoch(spike_stim,prevt,t)
+        
+            sim!(P, dt,spike_stim_slice,external_layer_indexs)
+        else
+            sim!(P, dt)
+        end
         prevt=t
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
@@ -239,25 +244,21 @@ end
 
 
 function divide_epoch(vector_times::AbstractVector,start::Real,stop::Real)
-    n0=Vector{UInt32}([])
-    #t0=Vector{Float32}([])
-    #@#show(start,stop)
-    #window_size = stop-start
+    spike_cell_id=Vector{UInt32}([])
+    #@show(vector_times)
     @inbounds for (n,tvec) in enumerate(vector_times)
         for t in tvec
+            
             if start<=t && t<=stop
-                #append!(t0,t-start)
-                append!(n0,n)
+                #@show(start,t,stop)
+                #@show(start<=t && t<=stop)
+                #print("hit??",n)
+                push!(spike_cell_id,n)
             end
         end
     end
-    #@show(t0)
-    #time_raster =  Array{}([Float32[] for i in 1:length(vector_times)+1])
-    #for (neuron,t) in zip(n0,t0)
-    #    append!(time_raster[neuron],t)        
-    #end
-    #@show(time_raster)
-    n0
+    #@show(spike_cell_id)
+    spike_cell_id
 end
 
 
