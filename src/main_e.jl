@@ -107,19 +107,18 @@ function integrate_neuron!(N::Integer,v::Vector,dt::Real,ge::Vector,gi::Vector,f
         if tr[i] == 0
             if v[i] >  Vt
                 fire[i] = v[i] >  Vt
-                println("fire cell: ",i)
                 tr[i] = Int(round(tref*dt))  # set refractory time
         
             end
         end
     
     end
-    replace!(v, Inf=>(Vr+Vt)/2.0)
-    replace!(v, NaN=>(Vr+Vt)/2.0)   
-    replace!(v,-Inf16=>(Vr+Vt)/2.0)
-    replace!(v,-Inf32=>(Vr+Vt)/2.0)
-    replace!(v, NaN32=>(Vr+Vt)/2.0)   
-    replace!(v, NaN16=>(Vr+Vt)/2.0)       
+    #replace!(v, Inf=>(Vr+Vt)/2.0)
+    #replace!(v, NaN=>(Vr+Vt)/2.0)   
+    #replace!(v,-Inf16=>(Vr+Vt)/2.0)
+    #replace!(v,-Inf32=>(Vr+Vt)/2.0)
+    #replace!(v, NaN32=>(Vr+Vt)/2.0)   
+    #replace!(v, NaN16=>(Vr+Vt)/2.0)       
 end
 
 """
@@ -196,7 +195,8 @@ function sim!(pp,dt)
     record!(pp)
     pre_synaptic_cell_fire_map = copy(pp.fire)
     g = zeros(size(pp.fire))
-    forwards_euler_weights!(pp,W,pre_synaptic_cell_fire_map,g)         
+    forwards_euler_weights!(pp,W,pre_synaptic_cell_fire_map,g) 
+    #@show(g)        
 end 
 
 function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
@@ -204,14 +204,18 @@ function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
     pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
     if length(spike_stim_slice)!=0
         @inline for ind in external_layer_indexs[spike_stim_slice]
-            pp.fire[ind] = true
+            pp.ge[ind] = 10.0125
         end
     end
-
+    #println("gets here?")
     integrate_neuron!(pp.N, pp.v, dt, pp.ge, pp.gi, pp.fire, pp.u, pp.tr)
     record!(pp)
     g = zeros(size(pp.fire))
-    forwards_euler_weights!(pp,W,copy(pp.fire),g)         
+    forwards_euler_weights!(pp,W,copy(pp.fire),g)      
+    #@show(pp.v)   
+    #@show(pp.ge)   
+    #@show(pp.gi)   
+
 end 
 
 #ERROR: LoadError: MethodError: no method matching 
@@ -228,8 +232,11 @@ end
 
 function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms,spike_stim,external_layer_indexs,onset)#;current_stim=nothing)
     prevt=0.0
-    @showprogress for t in 0:dt:duration
-        if t>=onset
+   @showprogress for t in 0:dt:duration
+       #@show(t,onset)
+       if t>=onset
+            #println("gets here?")
+
             spike_stim_slice = divide_epoch(spike_stim,prevt,t)
         
             sim!(P, dt,spike_stim_slice,external_layer_indexs)
