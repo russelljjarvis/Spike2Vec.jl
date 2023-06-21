@@ -6,8 +6,8 @@ using SparseArrays
 using OnlineStats
 using Plots
 using UnicodePlots
-Ne = 800;      
-Ni = 200
+Ne = 800     
+Ni = 800
 total_cnt = Ne+Ni
 final_connectome = spzeros(total_cnt,total_cnt)
 p = 0.25
@@ -16,18 +16,13 @@ wee = σ * sprand(Ne, Ne, p)
 final_connectome[1:Ne,1:Ne] = wee
 wei = σ * sprand(Ne, Ni, p) 
 final_connectome[Ni+1:total_cnt,1:Ni] = wei
-
-
-
 σ = -0.2
-
 wii = σ * sprand(Ni, Ni, p) 
 final_connectome[1:Ni,1:Ni] = wii
-
 wie = σ * sprand(Ni, Ne, p) 
 final_connectome[1:Ni,Ni+1:total_cnt] = wie
 
-
+#=
 ragged_array_targets = []
 for (x,row) in enumerate(eachrow(final_connectome))
     push!(ragged_array_targets,[])
@@ -36,11 +31,10 @@ for (x,row) in enumerate(eachrow(final_connectome))
     for (y,i) in enumerate(row)
         if i!=0
             push!(ragged_array_targets[x],y)
-            #@show(x,i)   
         end 
     end
 end
-
+=#
 ragged_array_weights = []
 for (x,row) in enumerate(eachrow(final_connectome))
     push!(ragged_array_weights,[])
@@ -55,14 +49,27 @@ end
 sim_type = Vector{Float32}([])
 
 pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
-#@show(pop.post_synaptic_weights)
-sim!(pop, 1, 100,nothing)
+current_stim=10.0125
+
+pop.u = Vector{Float32}([current_stim for i in 1:length(pop.fire)])
+SpikeTime.monitor([pop], [:fire])
+
+sim!(pop; dt=0.1, duration=1000.0)
+(Tx,Nx) = SpikeTime.get_trains([pop])
+xlimits = maximum(Tx)
+
+display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0.0, xlimits)))
+
+#display(Plots.scatter(times,nodes))
+
+#@show(times)
+#@show(nodes)
 #function sim!(P, dt = 1ms, duration = 10ms,current_stim=nothing)
 
 #@time SpikeTime.sim!(P, C; duration = 0.25second)
 
 # Now Construct a population.
-
+#=
 function makeNetGetTimes()
     #scale = 1.0/500.0
     #@time (_,Lee,Lie,Lei,Lii),Ne,Ni = SNN.potjans_layer(scale)
@@ -103,5 +110,5 @@ function makeNetGetTimes()
 
     return (P,C,times,nodes)
 end
-
-(P,C,times,nodes) = makeNetGetTimes()
+=#
+#(P,C,times,nodes) = makeNetGetTimes()
