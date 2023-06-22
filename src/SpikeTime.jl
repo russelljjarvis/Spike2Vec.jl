@@ -63,6 +63,7 @@ include("synapse/spiking_synapse.jl")
 include("main_e.jl")
 export NMNIST_pre_process_spike_data
 export sim!
+export restructure_stim
 
 #include("main_experiment2.jl")
 include("neuron/rate.jl")
