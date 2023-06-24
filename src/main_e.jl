@@ -129,67 +129,104 @@ end
 #forwards_euler_weights!(post_targets::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Any}}, W::Vector{Any}, fireJ::Vector{Bool}, g::Vector{Float64})
 
 function forwards_euler_weights!(post_targets::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}},W::Vector{Vector{Any}})    
-    @inline for (ind,cell) in enumerate(W)
-        if post_targets.fire[ind]
-            @inline for (s,w) in enumerate(cell)
+    @inline for (ind,cell_post_row) in enumerate(W)
+        if post_targets.fire[ind] || post_targets.fire_cnt[ind]>0
+            post_targets.fire_cnt[ind]+=1
+            if post_targets.fire_cnt[ind]==rand(1:6) || post_targets.fire_cnt[ind]>=6
+                post_targets.fire_cnt[ind]=0
+                @inline for (s,w) in enumerate(cell_post_row)
 
-                if w>0
+                    if w>0
 
-                    post_targets.ge[s] = w*12.5
-                else
-                    post_targets.gi[s] = w*12.5 
-                end
-            end 
+                        post_targets.ge[s] = w#*2.55
+                    else
+                        post_targets.gi[s] = w#*8.5 
+                    end
+                end 
+            end
         end
     end
-    replace!(post_targets.gi, Inf=>0.0)
-    replace!(post_targets.gi, NaN=>0.0)   
-    replace!(post_targets.gi,-Inf16=>0.0)
-    replace!(post_targets.gi, NaN32=>0.0) 
-    replace!(post_targets.ge, Inf=>0.0)
-    replace!(post_targets.ge, NaN=>0.0)   
-    replace!(post_targets.ge,-Inf16=>0.0)
-    replace!(post_targets.ge, NaN32=>0.0) 
+
+    #replace!(post_targets.gi, Inf=>0.0)
+    #replace!(post_targets.gi, NaN=>0.0)   
+    #replace!(post_targets.gi,-Inf16=>0.0)
+    #replace!(post_targets.gi, NaN32=>0.0) 
+    #replace!(post_targets.ge, Inf=>0.0)
+    #replace!(post_targets.ge, NaN=>0.0)   
+    #replace!(post_targets.ge,-Inf16=>0.0)
+    #replace!(post_targets.ge, NaN32=>0.0) 
       
 end
 
 
-function forwards_euler_weightsSDTP!(pop::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}},W::Vector{Vector{Any}}, t::Float32))    
+struct stim_container{P,R}
+    times_versus_neuron_activations::P # row pointer of sparse W
+    indexs_of_times::R      # postsynaptic index of W
+    function stim_container(times_versus_neuron_activations,indexs_of_times)
+        new{typeof(times_versus_neuron_activations),typeof(indexs_of_times)}(times_versus_neuron_activations,indexs_of_times)
+    end
+end
+
+
+struct PlasticSpikingSynapse{T<:AbstractArray{Float32},S<:AbstractArray{Int32},Q<:AbstractArray{Bool}}
+    tpre::T # = zero(W) # presynaptic spiking time
+    tpost::T # = zero(W) # postsynaptic spiking time
+    Apre::T# = zero(W) # presynaptic trace
+    Apost::T# = zero(W) # postsynaptic trace
+    g::T # postsynaptic conductance
+    records::Dict # = Dict()
+
+    function PlasticSpikingSynapse(pop::SpikeTime.IFNF)
+        tpre::VFT = zero(W) # presynaptic spiking time
+        tpost::VFT = zero(W) # postsynaptic spiking time
+        Apre::VFT = zero(W) # presynaptic trace
+        Apost::VFT = zero(W) # postsynaptic trace
+        records::Dict  = Dict()
+        #if sim_type == "CUDA"
+        #    g = CuArray{Float32}(CUDA.ones(pop.N)*sign.(minimum(w[:,1])))    
+        #    new{CuArray{Float32},CuArray{Int32},CuArray{Bool}}(tpre,tpost,Apre,Apost,g,records)
+        #elseif sim_type == "CPU"
+            #g = Vector{Float32}(ones(pop.N))*sign.(minimum(w[:,1]))
+        new{Vector{Float32},Vector{Float32},Vector{Float32},Dict}(tpre,tpost,Apre,Apost,g,records)
+        
+    end
+
+end
+
+
+function forwards_euler_weightsSDTP!(pop::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}},W::Vector{Vector{Any}}, t::Float32)
     τpre = 20ms
     τpost  = 20ms
     Wmax  = 0.01
     ΔApre  = 0.01 * Wmax
     ΔApost  = -ΔApre * τpre / τpost * 1.05
-    @inline for (ind,cell) in enumerate(W)
-        if pop.fire[ind]
-            @inline for (post_syn,w) in enumerate(cell)
-
-                Apre[s] *= exp32(- (t - tpre[post_syn]) / τpre)
-                Apost[s] *= exp32(- (t - tpost[post_syn]) / τpost)
-                Apre[s] += ΔApre
-                tpre[s] = t
-                W[ind,post_syn] = clamp(W[ind,post_syn] + Apost[post_syn], 0f0, Wmax)
+    @inline for (pre_syn,_) in enumerate(W)
+        if pop.fire[pre_syn]
+            @inline for (post_syn,_) in enumerate(cell)
+                Apre[post_syn] *= exp32(- (t - tpre[post_syn]) / τpre)
+                Apost[post_syn] *= exp32(- (t - tpost[post_syn]) / τpost)
+                Apre[post_syn] += ΔApre
+                tpre[post_syn] = t
+                W[pre_syn,post_syn] = clamp(W[pre_syn,post_syn] + Apost[post_syn], 0f0, Wmax)
             end
         end
     end
-    WX = sparse(length(W),)
-    @inline for (ind,cell) in enumerate(W)
-        if pop.fire[ind]
-            @inline for (post_syn,w) in enumerate(cell)
-
-            #for st in rowptr[i]:(rowptr[i+1] - 1)
-            s = index[st]
-            Apre[pre_syn] *= exp32(- (t - tpre[pre_syn]) / τpre)
-            Apost[pre_syn] *= exp32(- (t - tpost[pre_syn]) / τpost)
-            Apost[pre_syn] += ΔApost
-            tpost[pre_syn] = t
-            W[pre_syn,ind] = clamp(W[pre_syn,ind] + Apost[pre_syn], 0f0, Wmax)
+    @inline for (pre_syn,_) in enumerate(W)
+        @inline for (post_syn,_) in enumerate(cell)
+            if pop.fire[post_syn]
+                Apre[pre_syn] *= exp32(- (t - tpre[pre_syn]) / τpre)
+                Apost[pre_syn] *= exp32(- (t - tpost[pre_syn]) / τpost)
+                Apost[pre_syn] += ΔApost
+                tpost[pre_syn] = t
+                W[pre_syn,post_syn] = clamp(W[pre_syn,post_syn] + Apost[pre_syn], 0f0, Wmax)
+            end
         end
     end
       
 end
 
-function sim!(pp,dt)
+function simx!(pp,dt)
+
     W = pp.post_synaptic_weights
     pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
     integrate_neuron!(pp.N, dt ,pp)
@@ -202,7 +239,7 @@ function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
     pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
     if length(spike_stim_slice)!=0
         @inline for ind in external_layer_indexs[spike_stim_slice]
-            pp.ge[ind] = 50.9125
+            pp.ge[ind] = 9.9125
         end
     end
     integrate_neuron!(pp.N, dt ,pp)
@@ -211,7 +248,17 @@ function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
 end 
 
 
+function simx!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}}; dt::Float64, duration::Float64)
+
+    @inline  for _ in 0:dt:duration
+        simx!(P, dt)
+        # TODO Throttle maximum firing rate
+        # at physiologically plausible levels
+    end
+end
+
 function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
+
     @inline  for _ in 0:dt:duration
         sim!(P, dt)
         # TODO Throttle maximum firing rate
@@ -220,7 +267,45 @@ function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, dur
 end
 
 
-function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms,spike_stim,external_layer_indexs,onset)#;current_stim=nothing)
+function simPotjans!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}},cell_index_to_layer,spike_stim,external_layer_indexs,onset; dt, duration)#;current_stim=nothing)
+    cnt = 1
+    cnt_stim = 1
+    stim_length=length(spike_stim.times_versus_neuron_activations)
+    important_length=length(spike_stim.indexs_of_times)
+ 
+    bg_layer_specific = [1600, 1500 ,2100, 1900, 2000, 1900, 2900, 2100]
+    bg_layer_independent = [2000, 1850 ,2000, 1850, 2000, 1850, 2000, 1850]
+    for (ind,val) in enumerate(cell_index_to_layer)
+        if sum(sum(P.post_synaptic_weights[ind,:]))>0.0
+
+            P.u[ind] =0.3512*(85^-1)* bg_layer_specific[val]
+            P.u[ind] = P.u[ind]+0.3512*(85^-2)* bg_layer_independent[val]
+        else
+            P.u[ind] =0.3512*(85^-1)* bg_layer_specific[val]#*10.0
+            P.u[ind] = P.u[ind]+0.3512*(95^-2)* bg_layer_independent[val]#*10.0
+
+        end
+    end   
+    @showprogress for t in 0:dt:duration
+        if t>=onset && cnt<important_length-1    
+            
+            if spike_stim.indexs_of_times[cnt] 
+                spike_stim_slice = spike_stim.times_versus_neuron_activations[cnt_stim]
+                cnt_stim+=1                        
+                sim!(P, dt,spike_stim_slice,external_layer_indexs)
+            else
+                sim!(P, dt)
+            end
+        
+        else
+            sim!(P, dt)
+        end
+        cnt+=1
+    end 
+end 
+
+
+function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}};spike_stim,external_layer_indexs,onset,dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
    cnt = 1
    cnt_stim = 1
    stim_length=length(spike_stim.times_versus_neuron_activations)

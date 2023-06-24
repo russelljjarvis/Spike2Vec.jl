@@ -28,6 +28,17 @@ function potjans_params(ccu)
                                     0.0156   0.0066 0.0211 0.0166 0.0572 0.0197 0.0396 0.2252
                                     0.0364   0.001  0.0034 0.0005 0.0277 0.008  0.0658 0.1443 ]
 
+
+    # https://github.com/shimoura/ReScience-submission/blob/ShimouraR-KamijiNL-PenaRFO-CordeiroVL-CeballosCC-RomaroC-RoqueAC-2017/code/netParams.py
+    #= conn_probs = @SMatrix [0.101  0.169 0.044, 0.082, 0.032, 0.,     0.008, 0.     0.    
+                                    0.135  0.137 0.032, 0.052, 0.075, 0.,     0.004 0.     0.    
+                                    0.008  0.006 0.050, 0.135, 0.007, 0.0003, 0.045 0.     0.0983
+                                    0.069  0.003 0.079, 0.160, 0.003, 0.,     0.106 0.     0.0619
+                                    0.100  0.062 0.051, 0.006, 0.083, 0.373,  0.020 0.     0.    
+                                    0.055  0.027 0.026, 0.002, 0.060, 0.316,  0.009 0.     0.    
+                                    0.016  0.007 0.021, 0.017, 0.057, 0.020,  0.040 0.225  0.0512
+                                    0.036  0.001 0.003, 0.001, 0.028, 0.008,  0.066 0.144  0.0196 ]
+    =#
     # hard coded network wiring parameters are manipulated below:
 
     syn_pol = Vector{Bool}([])
@@ -63,9 +74,6 @@ function potjans_constructor(scale::Float64)
     v_old=1
     K = length(keys(ccu))
     cum_array = []# Vector{Array{UInt32}}(undef,K)
-    #for i in 1:K
-    #    cum_array[i] = Array{UInt32}([])
-    #end
 
     for (k,v) in pairs(ccu)
         ## update the cummulative cell count
@@ -96,27 +104,18 @@ function potjans_layer(scale::Float64)
     g = 1.0
     tau_meme = 10   # (ms)
     je = 2.0 / sqrtK * tau_meme * g
-    ji = 2.0 / sqrtK * tau_meme * g 
+    ji = je#2.0 / sqrtK * tau_meme * g 
     jee = 0.15je 
     jei = je 
     jie = -0.75ji 
     jii = -ji
     #g_strengths = Vector{Float32}([jee,jie,jei,jii])
     Lxx = spzeros(Float32, (Ncells, Ncells))
-    #(jee,_,jei,_) = g_strengths 
-    # Relative inhibitory synaptic weight
-    #wig = Float32(-4.5)
-    #jee::Float32,jei::Float32,wie::Float32,wii
-    #ERROR: LoadError: MethodError: no method matching build_matrix_prot!(::Float64, ::Float64, ::Float64, ::Float64, ::SparseMatrixCSC{Float32, Int64}, ::SVector{8, Array{UInt32}}, ::SMatrix{8, 8, Float64, 64}, ::Vector{Bool})
 
-   # Closest candidates are:
-    #  build_matrix_prot!(::Float32, ::Float32, ::Float32, ::Float32, ::SparseMatrixCSC{Float32, Int64}, ::SVector{8, Array{UInt32}}, ::SMatrix{8, 8, Float64, 64}, ::Any)
-     #  @ Main ~/git/SpikeThroughput.jl/src/models/genPotjansWiring.jl:132
-    
-    #S#tacktrace:
-    
-    build_matrix_prot!(jee,jei,jie,jii,Lxx,cum_array,conn_probs,syn_pol)#,g_strengths)
-    Lxx
+
+    cell_index_to_layer::Vector{UInt64} = zeros(Ncells)
+    build_matrix_prot!(cell_index_to_layer,jee,jei,jie,jii,Lxx,cum_array,conn_probs,syn_pol)#,g_strengths)
+    Lxx,cell_index_to_layer
 
 end
 export potjans_layer
@@ -137,14 +136,16 @@ Ideally iteration could flatten to support the readability of subsequent code.
 """
 #                      (jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
         #build_matrix_prot!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
-function build_matrix_prot!(jee::Real,jei::Real,jie::Real,jii::Real,Lxx::SparseMatrixCSC{Float32, Int64},cum_array::SVector{8, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, syn_pol::Vector{Bool})#, g_strengths::Vector{Float32})
+function build_matrix_prot!(cell_index_to_layer,jee::Real,jei::Real,jie::Real,jii::Real,Lxx::SparseMatrixCSC{Float32, Int64},cum_array::SVector{8, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, syn_pol::Vector{Bool})#, g_strengths::Vector{Float32})
     # excitatory weights.
+
     @inbounds @showprogress for (i,v) in enumerate(cum_array)
 
         @inbounds for (j,v1) in enumerate(cum_array)
             prob = conn_probs[i,j]
 
             @inbounds for src in v
+                cell_index_to_layer[src] = i
                 @inbounds for tgt in v1
 
                     if src!=tgt
@@ -157,30 +158,19 @@ function build_matrix_prot!(jee::Real,jei::Real,jie::Real,jii::Real,Lxx::SparseM
                             if syn0==true
 
                                 if syn1==true
-                                    #Lxx[src,tgt] = jee
+                                    
                                     setindex!(Lxx,jee, src,tgt)
                                 else# meaning if the same as a logic: Inhibitory post synapse  is true                   
                                     setindex!(Lxx,jei, src,tgt)
-                                    #Lxx[src,tgt] = jei
 
                                 end
                             else syn0==false     
-                                #Lxx[src,tgt] = jei
-                                #println("gets here a")
-                                #Lxx[src,tgt] = wig
-
-                                #if syn1 
                                 if syn1==true
 
                                     setindex!(Lxx,jie, src,tgt)
                                 else
                                     setindex!(Lxx,jii, src,tgt)
                                 end
-                                #elseif syn1
-                                #    Lxx[src,tgt] = wig
-
-                                    #setindex!(Lxx,wig, src,tgt)
-                                #end
                             end 
                         end
                     end
@@ -188,10 +178,8 @@ function build_matrix_prot!(jee::Real,jei::Real,jie::Real,jii::Real,Lxx::SparseM
             end
         end
     end
-    #Lxx[diagind(Lxx)] .= 0.0
 
     ## Note to self function return annotations help.
-    Lxx
 end
 
 

@@ -57,11 +57,13 @@ end
 
 
 abstract type AbstractIFNF end
+    #::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}}
+
 """
 A population of cells
 """
 
-mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:Vector{<:Any}} <: AbstractIFNF
+mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:AbstractArray{<:Any}} <: AbstractIFNF
     N::C
     v::L 
     ge::L
@@ -70,32 +72,27 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:V
     u::L
     tr::L
     records::Dict
+    fire_cnt::L
     #post_synaptic_targets::Array{Array{UInt64}} # SVector
     post_synaptic_weights::M # SVector
 
     function IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
-        new{typeof(N),typeof(fire),typeof(ge),typeof(post_synaptic_weights)}(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
+        fire_cnt::Vector{Number} = zeros(N)
+        new{typeof(N),typeof(fire),typeof(ge),typeof(post_synaptic_weights)}(N,v,ge,gi,fire,u,tr,records,fire_cnt,post_synaptic_weights)
 
     end
 
-    function IFNF(N,fire,u,sim_type::AbstractArray,post_synaptic_weights::Vector{Any})
+    function IFNF(N,fire,u,sim_type::AbstractArray,post_synaptic_weights::Vector{Vector{Any}})
         v = typeof(sim_type)(ones(N).-55.0) 
         g = typeof(sim_type)(zeros(N))
         ge = typeof(sim_type)(zeros(N))
         gi = typeof(sim_type)(zeros(N))       
         tr = zeros(typeof(N),N)
-        
-        #post_synaptic_weights = Array{Array{Any}}(undef,N)
-        #for i in 1:N
-        #    post_synaptic_weights[i] = Array{Float32}([])
-        #end
-        #post_synaptic_targets = SVector{N, Array{UInt32}}(post_synaptic_targets)
-        #pre_synaptic_weights = Vector{Float32}(zeros(N))
-       
+               
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
     end 
-    function IFNF(N::Int,fire,u,post_synaptic_weights::Vector{Any})
+    function IFNF(N::Int,fire,u,post_synaptic_weights::Vector{Vector{Any}})
         v = typeof(u)(ones(N).-55.) 
         g = typeof(u)(zeros(N))
         ge = typeof(u)(zeros(N))
@@ -104,13 +101,13 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:V
         records::Dict = Dict()
         IFNF(N,v,ge,gi,fire,u,tr,records,post_synaptic_weights)
     end 
-    function IFNF(N::Int,sim_type::CuArray,post_synaptic_weights::Vector{Any})
+    function IFNF(N::Int,sim_type::CuArray,post_synaptic_weights::Vector{Vector{Any}})
         fire::CuArray{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
         IFNF(N,fire,u,post_synaptic_weights)
     end 
  
-    function IFNF(N::Int,sim_type::Array,post_synaptic_weights::Vector{Any})
+    function IFNF(N::Int,sim_type::Array,post_synaptic_weights::Vector{Vector{Any}})
         fire::Array{Bool} = zeros(Bool,N)
         u = typeof(sim_type)(zeros(N))
 
@@ -119,11 +116,15 @@ mutable struct IFNF{C<:Integer,Q<:AbstractArray{<:Bool},L<:Vector{<:Number},M<:V
 
 
 
-end    
+#end    
+end
+
 """
     [Uniform parameter: Integrate-And-Fire Neuron](https://neuronaldynamics.epfl.ch/online/Ch1.S3.html)
 """
 IFNF
+
+#AbstractIFNF = IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}}
 
 function integrate!(p::IFNF, dt::Float32)
     @unpack N, v, ge, gi, fire, u, tr = p
