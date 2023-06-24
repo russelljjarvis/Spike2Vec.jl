@@ -163,8 +163,6 @@ function build_matrix_prot!(cell_index_to_layer,jee::Real,jei::Real,jie::Real,ji
             end
         end
     end
-
-    ## Note to self function return annotations help.
 end
 
 
