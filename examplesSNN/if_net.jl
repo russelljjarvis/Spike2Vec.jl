@@ -5,23 +5,35 @@ using SparseArrays
 #import LinearAlgebra.normalize!
 using OnlineStats
 using Plots
-using UnicodePlots
-Ne = 800     
-Ni = 800
+#using UnicodePlots
+Ne = 1800     
+Ni = 1800
 total_cnt = Ne+Ni
 final_connectome = spzeros(total_cnt,total_cnt)
-p = 0.25
-σ = 0.2
+σ = 0.21
+p = 0.55
 wee = σ * sprand(Ne, Ne, p) 
 final_connectome[1:Ne,1:Ne] = wee
-wei = σ * sprand(Ne, Ni, p) 
-final_connectome[Ni+1:total_cnt,1:Ni] = wei
-σ = -0.2
-wii = σ * sprand(Ni, Ni, p) 
-final_connectome[1:Ni,1:Ni] = wii
-wie = σ * sprand(Ni, Ne, p) 
-final_connectome[1:Ni,Ni+1:total_cnt] = wie
+σ = 0.15
+p = 0.85
 
+wei = σ * sprand(Ne, Ni, p) 
+final_connectome[1:Ni,Ni+1:total_cnt] = wei
+
+σ = -0.25
+p = 0.75
+wii = σ * sprand(Ni, Ni, p) 
+final_connectome[Ni:total_cnt-1,Ni:total_cnt-1] = wei
+
+σ = -0.05
+p = 0.125
+wie = σ * sprand(Ni, Ne, p) 
+final_connectome[Ni+1:total_cnt,1:Ni] = wii
+# = wie
+
+
+Plots.heatmap(final_connectome)
+savefig("balanced_if_net_structure.png")
 #=
 ragged_array_targets = []
 for (x,row) in enumerate(eachrow(final_connectome))
@@ -41,24 +53,29 @@ for (x,row) in enumerate(eachrow(final_connectome))
 end
 for (x,row) in enumerate(eachrow(final_connectome))
     for (y,i) in enumerate(row)
-        if i!=0
-            push!(ragged_array_weights[x],i)
-        end 
+        push!(ragged_array_weights[x],i)
     end
 end
+ragged_array_weights = [ i for i in ragged_array_weights ]
+total_cnt = length(ragged_array_weights)
 sim_type = Vector{Float32}([])
 
 pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
-current_stim=10.0125
+#current_stim=9.79#125
 
-pop.u = Vector{Float32}([current_stim for i in 1:length(pop.fire)])
+pop.u = Vector{Float32}([rand(4.1:11.92222) for i in 1:Int(round(length(pop.fire)))])
+@show(pop.u)
 SpikeTime.monitor([pop], [:fire])
+#dt::Real = 1ms, duration::Real = 10ms
+#sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
 
-sim!(pop; dt=0.1, duration=1000.0)
+simx!(pop; dt=0.1, duration=6000.0)
 (Tx,Nx) = SpikeTime.get_trains([pop])
 xlimits = maximum(Tx)
-
-display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0.0, xlimits)))
+#p= Plots.scatter(,legend = false,markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:black,xlabel="Time (ms)",ylabel="Neuron Index")
+display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.35,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:black,xlabel="Time (ms)",ylabel="Neuron Index"))
+savefig("balanced_random_spikes.png")
+#display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0.0, xlimits)))
 
 #display(Plots.scatter(times,nodes))
 

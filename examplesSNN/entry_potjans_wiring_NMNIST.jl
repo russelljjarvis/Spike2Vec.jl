@@ -13,7 +13,7 @@ using JLD2
 function grab_connectome(scale)
    
 
-    pot_conn = potjans_layer(scale)
+    pot_conn,cell_index_to_layer = potjans_layer(scale)
 
     Plots.heatmap(pot_conn,xlabel="post synaptic",ylabel="pre synaptic")
     savefig("Potjans_connectome_no_input_layer.png")
@@ -40,14 +40,10 @@ function grab_connectome(scale)
             length(Lx),
             [RGB(1,1,1), RGB(0,0,0)], dropseed=true)
 
-        #display(SGtSNEpi.show_embedding( Y, Lx ,A=pot_conn;edge_alpha=0.035,lwd_in=0.035,lwd_out=0.009,clr_out=cmap))
-        #fig = 
         display(SGtSNEpi.show_embedding( Y0, Lx ,A=pot_conn;edge_alpha=0.05,lwd_in=0.05,lwd_out=0.013,clr_out=cmap_out))
-        #display(fig)
-        #savefig("SGtSNEpi_connection.png")#
         save("SGtSNEpi_connection.png")
     end
-    pot_conn
+    pot_conn,cell_index_to_layer
 end
 
 
@@ -57,12 +53,12 @@ if isfile("potjans_wiring.jld")
     #scale = 0.07225
     #pot_conn = grab_connectome(scale)
 
-    @load "potjans_wiring.jld" pot_conn ragged_array_weights
+    @load "potjans_wiring.jld" pot_conn ragged_array_weights cell_index_to_layer
 
 else
-    scale = 0.07225
-    pot_conn = grab_connectome(scale)
-    pot_conn *.100
+    scale = 0.05225
+    pot_conn,cell_index_to_layer = grab_connectome(scale)
+    #pot_conn *.100
     ragged_array_weights = []
     for (x,row) in enumerate(eachrow(pot_conn))
         push!(ragged_array_weights,[])
@@ -74,7 +70,7 @@ else
             end 
         end
     end
-    @save "potjans_wiring.jld" pot_conn ragged_array_weights
+    @save "potjans_wiring.jld" pot_conn ragged_array_weights cell_index_to_layer
 
 
 end
@@ -98,18 +94,20 @@ function dont(pop)
 
     @time display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0.0, xlimits)))
 end
-if !isfile("NMNIST_spike_packet_conc_v.jld")
+
+
+#if !isfile("NMNIST_spike_packet_conc_v.jld")
 
     @load "../data2/all_mnmist_complete.jld" storage
-    empty_spike_cont, labelsl, packet_window_boundaries = NMNIST_pre_process_spike_data(temp_container_store;duration=25)
+    empty_spike_cont, labelsl, packet_window_boundaries = NMNIST_pre_process_spike_data(storage;duration=125)
     #empty_spike_cont, labelsl, packet_window_boundaries= NMNIST_pre_process_spike_data(storage)
     @save "NMNIST_spike_packet_conc_v.jld"  empty_spike_cont labelsl packet_window_boundaries
-else
-    @load "NMNIST_spike_packet_conc_v.jld"  empty_spike_cont labelsl packet_window_boundaries
-end
+#else
+#    @load "NMNIST_spike_packet_conc_v.jld"  empty_spike_cont labelsl packet_window_boundaries
+#end
 
-if !isfile("final_topology.jld")
-    
+#if !isfile("final_topology.jld")
+    #=
     Nextra = 1220     
     total_cnt_prev = length(ragged_array_weights)
     total_cnt_final = total_cnt_prev + Nextra
@@ -117,9 +115,10 @@ if !isfile("final_topology.jld")
     wexternal_stim = ones(total_cnt_prev,Nextra)
     final_connectome[1:total_cnt_prev,1:total_cnt_prev] = pot_conn#.*100.0
     final_connectome[1:total_cnt_prev,total_cnt_prev+1:total_cnt_final] = wexternal_stim
+    =#
     #Plots.heatmap(final_connectome,xlabel="post synaptic",ylabel="pre synaptic")
     #savefig("Potjans_connectome_input_layer.png")
-
+    #=
     ragged_array_weights = []
     @inbounds for (x,row) in enumerate(eachrow(final_connectome))
         push!(ragged_array_weights,[])
@@ -138,12 +137,14 @@ if !isfile("final_topology.jld")
 
     duration = maximum(last(packet_window_boundaries)[2])
     duration += duration/4.0
+    =#
+    #@save "final_topology.jld" ragged_array_weights total_cnt external_layer_indexs 
 
-    @save "final_topology.jld" ragged_array_weights total_cnt external_layer_indexs 
-
-else
-    @load "final_topology.jld" ragged_array_weights total_cnt external_layer_indexs 
-end 
+#else
+#    @load "final_topology.jld" ragged_array_weights total_cnt external_layer_indexs 
+#end 
+ragged_array_weights = [ i for i in ragged_array_weights if length(i)!=0]
+total_cnt = length(ragged_array_weights)
 
 sim_type = Vector{Float32}([])
 pop = SpikeTime.IFNF(total_cnt,sim_type,ragged_array_weights)
@@ -164,13 +165,17 @@ println("----")
 println("loaded stim")
 println("starting sim")
 println("----")
-external_layer_indexs=1:1220
+external_layer_indexs=1:1220#length(ragged_array_weights)
 
-sim!(pop; dt=0.1, duration=duration+9000.0,spike_stim=scont,external_layer_indexs=external_layer_indexs,onset=onset)
+#sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}},cell_index_to_layer,spike_stim,external_layer_indexs,onset, dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
+
+sim!(pop,cell_index_to_layer,scont,external_layer_indexs, onset,0.1, duration+9000.0 )
+#sim_potjans!(pp,dt,spike_stim_slice,external_layer_indexs,cell_index_to_layer)
 (Tx,Nx) = SpikeTime.get_trains([pop])
 xlimits_max = maximum(Tx)
 xlimits_min = minimum(Tx)
-display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.09,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:black,xlabel="Time (ms)",ylabel="Neuron Index"))
+p= Plots.scatter([duration+9000.0],[length(ragged_array_weights)],legend = false,markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:black,xlabel="Time (ms)",ylabel="Neuron Index")
+display(Plots.scatter!(p,Tx,Nx,legend = false,markersize = 0.1,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:black,xlabel="Time (ms)",ylabel="Neuron Index"))
 
 #display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.09,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:black,xlabel="Time (ms)"))
 savefig("NMNIST_Impinged_onto_Potjans.png")
@@ -185,7 +190,7 @@ savefig("NMNIST_Impinged_onto_Potjans.png")
 #julia> display(Plots.scatter(Tx,Nx,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(minimum(Tx), xlimits)))
 
 #1:1220
-#@load "../data2/all_mnmist_complete.jld" storage
+@load "../data2/all_mnmist_complete.jld" storage
 
 #pot_conn[diagind(pot_conn)] .= 0.0
 #=
