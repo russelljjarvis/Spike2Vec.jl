@@ -30,7 +30,7 @@ function potjans_params(ccu)
 
 
     # https://github.com/shimoura/ReScience-submission/blob/ShimouraR-KamijiNL-PenaRFO-CordeiroVL-CeballosCC-RomaroC-RoqueAC-2017/code/netParams.py
-    #= conn_probs = @SMatrix [0.101  0.169 0.044, 0.082, 0.032, 0.,     0.008, 0.     0.    
+    #= conn_probs = @SMatrix [0.101  0.169 0.044 0.082 0.032, 0.     0.008 0.     0.    
                                     0.135  0.137 0.032, 0.052, 0.075, 0.,     0.004 0.     0.    
                                     0.008  0.006 0.050, 0.135, 0.007, 0.0003, 0.045 0.     0.0983
                                     0.069  0.003 0.079, 0.160, 0.003, 0.,     0.106 0.     0.0619
