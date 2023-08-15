@@ -30,7 +30,7 @@ function potjans_params(ccu)
 
 
     # https://github.com/shimoura/ReScience-submission/blob/ShimouraR-KamijiNL-PenaRFO-CordeiroVL-CeballosCC-RomaroC-RoqueAC-2017/code/netParams.py
-    #= conn_probs = @SMatrix [0.101  0.169 0.044, 0.082, 0.032, 0.,     0.008, 0.     0.    
+    #= conn_probs = @SMatrix [0.101  0.169 0.044 0.082 0.032, 0.     0.008 0.     0.    
                                     0.135  0.137 0.032, 0.052, 0.075, 0.,     0.004 0.     0.    
                                     0.008  0.006 0.050, 0.135, 0.007, 0.0003, 0.045 0.     0.0983
                                     0.069  0.003 0.079, 0.160, 0.003, 0.,     0.106 0.     0.0619
@@ -120,13 +120,7 @@ function potjans_layer(scale::Float64)
 end
 export potjans_layer
 
-#"""
-#Build the matrix from the Potjans parameterpotjans_layers.
-#"""
-#function potjans_weights(args)
-    #Ncells, g_strengths, ccu, scale = args
-#   
-#end
+
 
 
 """
@@ -134,29 +128,20 @@ This function contains synapse selection logic seperated from iteration logic fo
 Used inside the nested iterator inside build_matrix.
 Ideally iteration could flatten to support the readability of subsequent code.
 """
-#                      (jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
-        #build_matrix_prot!(jee,jei,wig,Lxx,cumvalues,conn_probs,UInt32(Ncells),syn_pol,g_strengths)
 function build_matrix_prot!(cell_index_to_layer,jee::Real,jei::Real,jie::Real,jii::Real,Lxx::SparseMatrixCSC{Float32, Int64},cum_array::SVector{8, Array{UInt32}}, conn_probs::StaticArraysCore.SMatrix{8, 8, Float64, 64}, syn_pol::Vector{Bool})#, g_strengths::Vector{Float32})
     # excitatory weights.
 
     @inbounds @showprogress for (i,v) in enumerate(cum_array)
-
         @inbounds for (j,v1) in enumerate(cum_array)
             prob = conn_probs[i,j]
-
             @inbounds for src in v
                 cell_index_to_layer[src] = i
                 @inbounds for tgt in v1
-
                     if src!=tgt
-                        
                         if rand()<prob
-
                             syn1 = syn_pol[j]
                             syn0 = syn_pol[i]
-                
                             if syn0==true
-
                                 if syn1==true
                                     
                                     setindex!(Lxx,jee, src,tgt)
@@ -178,92 +163,6 @@ function build_matrix_prot!(cell_index_to_layer,jee::Real,jei::Real,jie::Real,ji
             end
         end
     end
-
-    ## Note to self function return annotations help.
 end
 
 
-#=
-This function is now depreciated, and it was only aspirational at best.
-function make_proj(xx,pop)
-    rowptr, colptr, I, J, index, W = dsparse(xx)
-    fireI, fireJ = pop.fire, pop.fire
-    g = getfield(pop, :ge)
-    SpikingSynapse(W,pre, post, sym)
-    syn = SpikingSynapse(rowptr, colptr, I, J, index, W, fireI, fireJ, g)
-    return syn
-end
-Similar to the methods above except that cells and synapses are instantiated in place to cut down on code.
-Note this method is also asperational and depriciated.
-function build_neurons_connections(Lee::SparseMatrixCSC{Float32, UInt64},Lei::SparseMatrixCSC{Float32, Int64},Lie::SparseMatrixCSC{Float32, Int64},Lii::SparseMatrixCSC{Float32, Int64},cumvalues, Ncells::Int32,syn_pol::StaticArraysCore.SVector{8, Int64})
-    cntet=[]
-    cntit=[]
-    weights=[]
-    cnte = 0
-    cnti = 0
-    
-    @inbounds @showprogress for (i,v) in enumerate(cumvalues)
-        @inbounds for (j,v1) in enumerate(cumvalues)
-            @inbounds for src in v
-                @inbounds for tgt in v1
-                    if src!=tgt
-                        prob = conn_probs[i,j]
-                        
-                        if rand()<prob
-                            syn1 = syn_pol[j]
-                            syn0 = syn_pol[i]
-                            if syn0==1
-			        cnte+=1 
-                                if syn1==1
-                                    push!(cntet,tgt)
-                                    push!(weights,jee)
-                                    setindex!(Lee,jee, src,tgt)
-                                elseif syn1==0# meaning if the same as a logic: Inhibitory post synapse  is true                   
-                                    push!(cntet,src)          
-                                    setindex!(Lei,jei, src,tgt)
-                                    push!(weights,jei)
-                                end
-                            elseif syn0==0         
-			        cnti+=1 
-				if syn1==1 
-                                    push!(cntit,tgt)
-                                    push!(weights,jie)
-        
-                                    setindex!(Lie,wig, src,tgt)
-                                elseif syn1==0pop_size
-                                    push!(cntit,tgt)
-                                    push!(weights,jii)
-                                    cnti+=1
-                                    setindex!(Lii,wig, src,tgt)
-                                end
-                            end 
-                        end
-                    end
-                end
-            end
-        end
-        EE_ = Lee+Lei 
-        II_ = Lii+Lie
-        cntepopsize=0
-        cntipopsize=0
-        for (ind,row) in enumerate(eachcol(EE_'))
-            if sum(row[:])!=0
-                cntepopsize+=1
-            end
-        end
-        for row in enumerate(eachcol(II_'))
-            if sum(row[:])!=0
-                cntipopsize+=1
-            end            
-        end
-    end
-    symtype = Vector{Float32}(zeros(cntepopsize))
-    post_synaptic_targets = Array{Array{UInt64}}(undef,pop_size)
-    for i in 1:pop_size
-        post_synaptic_targets[i] = Array{UInt64}([])
-    end
-    E_ = SNN.IFNF(cntepopsize,sim_type,post_synaptic_targets,weights)
-    I_ = SNN.IFNF(cntipopsize,sim_type,post_synaptic_targets,weights)
-    (E_,I_)
-end
-=#
