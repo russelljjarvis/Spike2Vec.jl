@@ -101,7 +101,7 @@ function routines()
     println("completed 3")
 
     assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
-    repeated_windows = state_transition_trajectory(start_windows,end_windows,sqr_distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="state_transitions_stdp.png")
+    repeated_windows = state_transition_trajectory(start_windows,end_windows,sqr_distmat,assign,assing_progressions,assing_progressions_times;plot=false)#,file_name="state_transitions_stdp.png")
     assign[unique(i -> assign[i], 1:length(assign))].=0.0
     sqr_distmat, assign,tlist, nlist
 end
