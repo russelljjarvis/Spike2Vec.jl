@@ -77,22 +77,29 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
             cnt +=1
         end
     end
-    #weights = 
     LinearAlgebra.normalize(data)
-    #Plots.plot(heatmap(data))
-    #Plots.savefig("heatmap_normalized.png")
     return data
 end
 
 """
 Pre-allocation for get time surface
 """
-function get_ts(nodes,times,dt,tau)
+function get_ts(nodes,times,dt,tau;disk=false)
     num_neurons = Int(length(nodes))+1
     total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
+    @show(time_resolution)
+
+    if !disk
+        final_timesurf = zeros((num_neurons, time_resolution+1))
+
+    else
+        io = open("/tmp/mmap.bin", "w+")
+        # We'll write the dimensions of the array as the first two Ints in the file
+        final_timesurf = mmap(io, Matrix{Float32}, (num_neurons,time_resolution+1))
+    end
+
     # Final output. 
-    final_timesurf = zeros((num_neurons, time_resolution+1))
     # Timestamp and membrane voltage store for generating time surface
     timestamps = zeros((num_neurons)) .- Inf
     mv = zeros((num_neurons))
@@ -110,8 +117,6 @@ function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,ti
 
         #Get the current spike
         neuron = Int(round(nn))
-        #@show(neuron)
-        #@show(length(mv))
 
         time = Int(trunc(Int32,tt))       
         # If time of the next spikes leaps over, make sure to generate 

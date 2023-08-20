@@ -40,7 +40,6 @@ function augment(ttt,nnn,scale)
                     push!(nnn,i);
                     txt = Float32(tt+maxt)
                     push!(ttt,txt)
-                    #@show(i,txt)
                 end
             end
         end
@@ -98,10 +97,8 @@ On a RTSP packet, get a bag of ISIs. So we can analyse the temporal structure of
 function bag_of_isis(spikes_ragged::AbstractArray)
     bag_of_isis = Float32[] # the total lumped population ISI distribution.
     isi_s = []
-    #normalised_rt = Float32[]
     @inbounds for (i, times) in enumerate(spikes_ragged)
         push!(isi_s,[])
-        #push!(isi_s[i],[])
     end
     @inbounds for (i, times) in enumerate(spikes_ragged)
         

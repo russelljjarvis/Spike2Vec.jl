@@ -1,15 +1,6 @@
 using JLD
-#using SpikeTime
-#using
-#using DrWatson
 using Plots
 using SpikeTime
-#ST = SpikeTime.ST
-#using ST
-#using OnlineStats
-#using SparseArrays
-#SNN.@load_units
-#using Test
 using DimensionalData
 using Revise
 using StatsBase
@@ -19,65 +10,54 @@ using PyCall
 using LinearAlgebra
 using Makie
 using JLD
-using CairoMakie#,KernelDensity, Distributions
-using ProgressMeter
 using Distances
-#using Gadfly
-#using Gadfly
-#using SGtSNEpi, Random
-
-using SimpleWeightedGraphs, Graphs
-#using GraphPlot
-using Plots, GraphRecipes
-
-using Plots
-#using PyCall
 using UMAP
 using Plots
-# Other Imports
-#import PyPlot: plt
 import DelimitedFiles: readdlm
-#import Random
-#import StatsBase: quantile
 using Clustering
-using UMAP
-# Songbird metadata
-#num_neurons = 77
-#max_time = 22.2
 using DrWatson
-# Randomly permute neuron labels.
-# (This hides the sequences, to make things interesting.)
-#_p = Random.randperm(num_neurons)
 
-# Load spikes.
-#spikes = seq.Spike[]
+using CSV
+using DataFrames
+using Plots 
+using OnlineStats
+using Revise
+using Distributions
+using ProfileView
+#using Mmap
 function ragged_to_uniform(nodes,times)
-    nnn=Vector{Int32}([])
+    n=Vector{Int32}([])
     ttt=Vector{Float32}([])
     for (i, t) in enumerate(times)
         for tt in t
             if length(t)!=0
-                push!(nnn,i);
+                push!(n,i);
                 push!(ttt,Float32(tt))
             end
         end
     end
-    (nnn,ttt)
+    (n,ttt)
 end
 function load_datasets()
 
-    py"""
-    import pickle
-    def get_pablo_sim():
-
-        temp = pickle.load(open("pablo_conv.p","rb"))
-        return (temp[0],temp[1])
-    """
-    (nodes,times) = py"get_pablo_sim"()
-    (nodes,times) = ragged_to_uniform(nodes,times)
+    df=  CSV.read("output_spikes.csv",DataFrame)
+    # make nodes of type float.
+    nodes = Vector{UInt32}(df.id)
+    nodes = [UInt32(n+1) for n in nodes]
+    times = df.time_ms
+    #maxdistsize = Int(trunc(length(nodes)/200))
+    #un = Uniform(Int,1,Int(maximum(nodes)))
+    #sampled = rand(Int,un, 1,Int(maxdistsize))
+    #@show(sampled)
+    #randix = unique(sampled)
+    #@show(nodes[randix])
+    #@time (nodes,times) = ragged_to_uniform(nodes,times)
+    #@time processed_isis = bag_of_isis(spikes_ragged)
     return (nodes,times)
 end
-
+@time (nodes,times) = load_datasets()
+#@show(times)
+#=
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
     @show(step_size)
@@ -121,6 +101,61 @@ function get_plot(times,nodes,division_size)
     display(mat_of_distances)
     return mat_of_distances
 end
+=#
+
+ε=7.1
+
+resolution = 15
+numb_neurons = UInt64(maximum(nodes))
+maxt = maximum(times)
+
+#@profview (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes[1:10000],times[1:10000],resolution,numb_neurons,maxt;plot=false,disk=false)
+(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt;plot=false,disk=false)
+println("completed")
+#@show(distmat)
+Plots.heatmap(distmat)
+savefig("pre_Distmat_sqaure.png")
+
+#@profview sqr_distmat = label_online_distmat!(distmat;threshold=ε)
+@profview label_online_distmat(distmat[1:200];threshold=ε,disk=true)
+sqr_distmat = label_online_distmat(distmat[1:200];threshold=ε,disk=true)
+
+#Plots.heatmap(sqr_distmat)
+#savefig("Distmat_sqaure.png")
+(R,sort_idx,assign) = cluster_distmat!(sqr_distmat)
+
+assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
+repeated_windows = state_transition_trajectory(start_windows,end_windows,sqr_distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="state_transitions_stdp.png")
+assign[unique(i -> assign[i], 1:length(assign))].=0.0
+
+function plotss_1(assign,nlist,tlist)
+
+    p = Plots.plot()
+    collect_isi_bags = []
+    collect_isi_bags = []
+    collect_isi_bags_map = []
+    p = Plots.plot()
+    collect_isi_bags = []
+    @showprogress for (ind,a) in enumerate(assign)
+        if a!=0
+            Tx = tlist[ind]
+            xlimits = maximum(Tx)
+            Nx = nlist[ind]
+            Plots.scatter!(p,Tx,Nx,legend = false, markercolor=a,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
+            push!(collect_isi_bags,bag_of_isis(Nx,Tx))
+            push!(collect_isi_bags_map,a)
+
+        end
+    end
+    Plots.plot(p)
+    savefig("repeating_states.png")
+    collect_isi_bags,collect_isi_bags_map
+end
+plotss_1(assign,nlist,tlist)
+p1 = Plots.plot()
+Plots.scatter!(p1,times[1:15000],nodes[1:15000],legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
+savefig("scatter_plot_exp2.png")
+
 
 function plot_umap(mat_of_distances; file_name::String="empty.png")
 
@@ -162,7 +197,7 @@ function cluster_distmat(mat_of_distances)
     assign = R.assignments
     R,sort_idx,assign
 end
-
+#=
 (nnn,ttt)= load_datasets()
 #display(Plots.scatter(ttt,nnn))
 resolution = 90
@@ -345,3 +380,4 @@ get_repeated_scatter(ttt,nnn,resolution,assing_progressions)
 
 display(Plots.scatter(assing_progressions))
 
+=#

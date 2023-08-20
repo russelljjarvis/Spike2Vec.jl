@@ -9,13 +9,14 @@ using LinearAlgebra
 using SparseArrays
 using Requires
 using UnPack
-using CUDA
+#using CUDA
 using ProgressMeter
 using Setfield
 using DrWatson
 using StaticArrays
 #using Colors
 using StatsPlots
+using Mmap
 #using StatsBase
 #using Plots
 #using Statistics
@@ -39,6 +40,7 @@ export get_vector_coords
 export get_vector_coords_uniform!
 export surrogate_to_uniform
 export label_online_distmat!
+export label_online_distmat
 export cluster_distmat
 export cluster_distmat!
 export get_division_via_recurrence
@@ -86,6 +88,8 @@ export get_mean_isis
 export plot_umap
 export get_ts!
 export get_ts
+export hist2dHeat
+
 
 #function __init__()
 #    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("plot.jl")

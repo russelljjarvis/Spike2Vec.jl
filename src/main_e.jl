@@ -167,7 +167,7 @@ struct stim_container{P,R}
     end
 end
 
-
+#=
 struct PlasticSpikingSynapse{T<:AbstractArray{Float32},S<:AbstractArray{Int32},Q<:AbstractArray{Bool}}
     tpre::T # = zero(W) # presynaptic spiking time
     tpost::T # = zero(W) # postsynaptic spiking time
@@ -193,7 +193,7 @@ struct PlasticSpikingSynapse{T<:AbstractArray{Float32},S<:AbstractArray{Int32},Q
 
 end
 
-
+=#
 function forwards_euler_weightsSDTP!(pop::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}},W::Vector{Vector{Any}}, t::Float32)
     τpre = 20ms
     τpost  = 20ms
@@ -247,7 +247,7 @@ function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
     forwards_euler_weights!(pp,W)      
 end 
 
-
+#=
 function simx!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}}; dt::Float64, duration::Float64)
 
     @inline  for _ in 0:dt:duration
@@ -256,7 +256,7 @@ function simx!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}
         # at physiologically plausible levels
     end
 end
-
+=#
 function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
 
     @inline  for _ in 0:dt:duration

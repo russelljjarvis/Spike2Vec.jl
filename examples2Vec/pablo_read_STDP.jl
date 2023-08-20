@@ -25,6 +25,23 @@ function load_datasets()
     (nodes,times)
 end
 
+function ts_onlinestats_pca(nodes,times)
+    dt = 20.0
+    tau = 300.0
+    psth = hist2dHeat(nodes, times, 20)
+    @show(psth)
+    final_timesurf = get_ts(nodes,times,dt,tau;disk=true)
+    o = CCIPCA(2, length(final_timesurf'))                # Project 10-dimensional vectors into 2D
+    fit!(o, final_timesurf)                      # Fit to u1
+    OnlineStats.fittransform!(o, final_timesurf) # Fit u4 and then project u4 into the space
+    sort!(o)                         # Sort from high to low eigenvalues
+    #o[1]                             # Get primary (1st) eigenvector
+    #OnlineStats.relativevariances(o)    
+    @show(o[1])
+    (o[1],o[2]) 
+end
+(nodes,times) = load_datasets()
+ts_onlinestats_pca(nodes,times)
 function plot_umap!(mat_of_distances; file_name::String="empty.png")
     Q_embedding = umap(mat_of_distances,5,n_neighbors=5)#, min_dist=0.01, n_epochs=100)
     Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP", markersize = 2.5,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2,legend=false))
