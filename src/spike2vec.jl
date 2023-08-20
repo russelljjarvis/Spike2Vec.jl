@@ -271,7 +271,6 @@ function spike_matrix_divided_no_displacement(nodes::Vector,times::Vector{Float3
     number_of_time_windows = length(end_windows)
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
     mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
-    #mat_of_spikes = [copy([]) for i in 1:length(spikes_raster), j in 1:length(end_windows)]
     for neuron in 1:length(spikes_raster)
         for (windex,toi) in enumerate(end_windows)
             sw = start_windows[windex]
@@ -281,7 +280,6 @@ function spike_matrix_divided_no_displacement(nodes::Vector,times::Vector{Float3
     end
     mat_of_spikes
 end
-#using Base.Iterators
 function get_window!(nlist,tlist,observed_spikes,sw)
     Nx=Vector{UInt32}([])
     Tx=Vector{Float64}([])
@@ -293,7 +291,6 @@ function get_window!(nlist,tlist,observed_spikes,sw)
             end
         end
     end
-
     push!(nlist,Nx)
     push!(tlist,Tx)
 end
@@ -303,14 +300,11 @@ function get_divisions(nodes::Vector{UInt32},times::Vector{Float64},division_siz
     end_windows = Vector{Float64}(collect(step_size:step_size:step_size*division_size))
     spike_distance_size = length(end_windows)
     start_windows = Vector{Float64}(collect(0:step_size:(step_size*division_size)-step_size))
-
     # This can be made an MMAP arrray instead.
     if !disk
-        #mat_of_distances = Matrix{Float64}(zeros(numb_neurons,spike_distance_size))
         mat_of_distances = Array{Float64}(undef, numb_neurons, spike_distance_size)
 
     else
-
         io = open("/tmp/mmap.bin", "w+")
         # We'll write the dimensions of the array as the first two Ints in the file
         mat_of_distances = mmap(io, Matrix{Float32}, (numb_neurons,spike_distance_size));
@@ -322,68 +316,53 @@ function get_divisions(nodes::Vector{UInt32},times::Vector{Float64},division_siz
     linear_uniform_spikes = Vector{Float64}([i for i in temp[:]])
     nlist = Array{Vector{UInt32}}([])
     tlist = Array{Vector{Float64}}([])
-
-
     @inbounds @showprogress for (ind,toi) in enumerate(end_windows)
         sw = start_windows[ind]
         observed_spikes = divide_epoch(nodes,times,sw,toi)    
         self_distances = Vector{Float64}(zeros(numb_neurons))
-
         get_vector_coords_uniform!(linear_uniform_spikes, observed_spikes, self_distances; metric=metric)
         mat_of_distances[:,ind] = self_distances
-            
         if disk
-            Mmap.sync!(mat_of_distances)
-            
+            Mmap.sync!(mat_of_distances) 
         end
-
         get_window!(nlist,tlist,observed_spikes,sw)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-    #complexity_ = sum(cov(mat_of_distances))
-
     @inbounds for (ind,col) in enumerate(eachcol(mat_of_distances))
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     if plot
-    
         Plots.heatmap(mat_of_distances)
         savefig("Unormalised_heatmap_$metric.$file_name.png")
     end
-
     if disk
-        Mmap.sync!(mat_of_distances)
-        
+        Mmap.sync!(mat_of_distances)        
     end
     (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size)
 end
 
 
 function plot_umap_of_dist_vect(mat_of_distances; file_name::String="stateTransMat.png")
-    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)#, min_dist=0.01, n_epochs=50)
+    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)
     Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision,", marker=(1, 1, :auto, stroke(0.05)),legend=true))
     savefig(file_name)
     Q_embedding
 end
 function label_online_distmat!(mat_of_distances::AbstractVecOrMat,distance_matrix;threshold::Real=5)
     @inbounds @showprogress for (ind,row) in enumerate(eachcol(mat_of_distances))
-        stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
-        if ind <= stop_at_half
-            @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
-                if ind!=ind2
-
-                    distance = evaluate(Euclidean(),row,row2)
-                    @show(distance)
-                    if distance<threshold
-                        distance_matrix[ind,ind2] = abs(distance)
-                        #@show(distance_matrix)
-                    #else
-                    #    distance_matrix[ind,ind2] = -5.0
-                    end
+        #stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
+        #if ind <= stop_at_half
+        @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
+            if ind!=ind2
+                distance = evaluate(Euclidean(),row,row2)
+                @show(distance)
+                if distance<threshold
+                    distance_matrix[ind,ind2] = abs(distance)
                 end
             end
         end
+       #end
     end
 end
 
