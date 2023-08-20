@@ -1,56 +1,32 @@
 using JLD
 using Plots
 using SpikeTime
-#using DimensionalData
 using Revise
 using StatsBase
 using ProgressMeter
-#using ColorSchemes
-using PyCall
-using LinearAlgebra
-#using Makie
-using Distances
 using UMAP
-#import DelimitedFiles: readdlm
-#using Clustering
-#using DrWatson
-#
 using CSV
 using DataFrames
 using OnlineStats
-using Revise
 using Distributions
-#using ProfileView
-using OnlinePCA
 function load_datasets()
-
     df=  CSV.read("output_spikes.csv",DataFrame)
     nodes = Vector{UInt32}(df.id)
     nodes = [UInt32(n+1) for n in nodes]
     times = df.time_ms
-    return (nodes,times)
+    (nodes,times)
 end
 
-#@show(distmat)
-#Plots.heatmap(distmat)
-#savefig("pre_Distmat_sqaure.png")
 
 function plot_umap!(mat_of_distances; file_name::String="empty.png")
-    #@show(mat_of_distances)
     Q_embedding = umap(mat_of_distances,5,n_neighbors=5)#, min_dist=0.01, n_epochs=100)
     Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP", markersize = 2.5,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2,legend=false))
-    #Plots.scatter!(p1,times[1:15000],nodes[1:15000],legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
-
-    #Plots.plot(scatter!(p,model.knns)
     savefig(file_name)
-    #Q_embedding
 end
-
+#=
 function onlinePCA_(distmat; file_name::String="empty.png")
-
     tmp = mktempdir()distance_matrix
     OnlinePCA.writecsv(joinpath(tmp, "Data.csv"), distmat)
-
     # Binarization
     OnlinePCA.csv2bin(csvfile=joinpath(tmp, "Data.csv"), binfile=joinpath(tmp, "Data.zst"))
 
@@ -58,37 +34,28 @@ function onlinePCA_(distmat; file_name::String="empty.png")
     @show(OnlinePCA.sumr(binfile=joinpath(tmp, "Data.zst"), outdir=tmp))
 
 end
-function routines()
-    #if !isfile("stdp.jld")
+=#
+function plotting_routines_and_preprocessing()
+    if !isfile("stdp.jld")
         @time (nodes,times) = load_datasets()
         p1 = Plots.plot()
         Plots.scatter!(p1,times,nodes,legend = false,markersize = 0.05,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
         savefig("scatter_plot_exp2.png")
-        
-        ε=223.0
-        resolution = 28
+        resolution = 20
         numb_neurons = UInt64(maximum(nodes))
-        maxt = maximum(times)
-        
+        maxt = maximum(times)        
         (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt;plot=false,disk=false)
         @save "stdp.jld" distmat tlist nlist start_windows end_windows spike_distance_size nodes times
-
         Plots.heatmap(distmat)
         savefig("Distmat_sqaure.png")
         plot_umap!(distmat; file_name="UMAPSTDP.png")
-
-    #else
-    #    @load "stdp.jld" distmat tlist nlist start_windows end_windows spike_distance_size nodes times
-
-    #end
+    else
+        @load "stdp.jld" distmat tlist nlist start_windows end_windows spike_distance_size nodes times
+    end
     
-    #@show(distmat)
-    #onlinePCA_(distmat; file_name="OnlinePCA.png")
-    #println("completed")
-    
-    # @show(distmat)
     if !isfile("stdpLabels.jld")
-    
+        ε=250.0
+
     sqr_distmat = label_online_distmat(distmat;threshold=ε,disk=false)
     @save "STDP_labels.jld" sqr_distmat
     else
@@ -96,40 +63,49 @@ function routines()
     end
     println("completed 2")
     @show(sqr_distmat)
+    if !isfile("Cluster_stdpLabels.jld")
     
-    (R,sort_idx,assign) = cluster_distmat!(sqr_distmat)
-    println("completed 3")
+        (R,sort_idx,assign) = cluster_distmat!(sqr_distmat)
+        println("completed 3")
+    else
+        @load "Cluster_stdpLabels.jld" R sort_idx assign
+    end
 
     assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
     repeated_windows = state_transition_trajectory(start_windows,end_windows,sqr_distmat,assign,assing_progressions,assing_progressions_times;plot=false)#,file_name="state_transitions_stdp.png")
     assign[unique(i -> assign[i], 1:length(assign))].=0.0
-    sqr_distmat, assign,tlist, nlist
+    sqr_distmat,distmat, assign,tlist, nlist
 end
-function plotss_1(assign,nlist,tlist)
-
+function plot_the_repeat_spikes(assign,nlist,tlist,distmat)
     p = Plots.plot()
-    collect_isi_bags = []
-    collect_isi_bags = []
-    collect_isi_bags_map = []
-    p = Plots.plot()
-    collect_isi_bags = []
     @showprogress for (ind,a) in enumerate(assign)
         if a!=0
             Tx = tlist[ind]
             xlimits = maximum(Tx)
             Nx = nlist[ind]
             Plots.scatter!(p,Tx,Nx,legend = false, markercolor=a,markersize = 0.1,markerstrokewidth=0,alpha=0.5, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
-            #push!(collect_isi_bags,bag_of_isis(Nx,Tx))
-            #push!(collect_isi_bags_map,a)
 
         end
     end
     Plots.plot(p)
     savefig("repeating_states.png")
-    #collect_isi_bags,collect_isi_bags_map
 end
-sqr_distmat, assign,tlist, nlist = routines()
-plotss_1(assign,nlist,tlist)
+function plot_the_repeat_vectors(assign,nlist,tlist,distmat)
+
+    for aa in unique(assign)
+        p1 = Plots.plot()
+        for (ind,a) in enumerate(assign)
+            if a==aa && a!=0
+                Plots.plot!(p1,distmat[ind,:], markercolor=a)
+            end
+        end
+        Plots.plot(p1)
+        savefig("repeating_states_vectors$aa.png")
+    end
+end
+sqr_distmat, distmat,assign,tlist, nlist = plotting_routines_and_preprocessing()
+plot_the_repeat_spikes(assign,nlist,tlist,distmat)
+plot_the_repeat_vectors(assign,nlist,tlist,distmat)
 
 #=
 function label_online_distmat(mat_of_distances)#,nclasses)
