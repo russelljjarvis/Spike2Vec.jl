@@ -242,9 +242,6 @@ function array_of_empty_vectors(T, dims...)
 end
 
 
-# this creates a 2x3 matrix with independent Vector{Int}()'s
-#
-
 function spike_matrix_divided(nodes::Vector,times::Vector{Float32},spikes_raster,division_size::Int,numb_neurons::Int,maxt::Real)
     step_size = maxt/division_size
     end_windows = collect(step_size:step_size:step_size*division_size)

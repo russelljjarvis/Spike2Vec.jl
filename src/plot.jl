@@ -77,7 +77,12 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
             cnt +=1
         end
     end
-    LinearAlgebra.normalize(data)
+    @inbounds for (ind,col) in enumerate(eachcol(data))
+        data[:,ind] .= (col.-mean(col))./std(col)
+    end
+    data[isnan.(data)] .= 0.0
+
+    #LinearAlgebra.normalize(data)
     return data
 end
 
