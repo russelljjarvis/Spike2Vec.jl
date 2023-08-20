@@ -313,14 +313,8 @@ function get_divisions(nodes::Vector{UInt32},times::Vector{Float64},division_siz
 
         io = open("/tmp/mmap.bin", "w+")
         # We'll write the dimensions of the array as the first two Ints in the file
-        #write(mat_of_distances, spike_distance_size)
-        #write(mat_of_distances, numb_neurons)
         mat_of_distances = mmap(io, Matrix{Float32}, (numb_neurons,spike_distance_size));
     end
-    #@show(typeof(mat_of_distances))
-    #@show(sizeof(mat_of_distances))
-    #@show(code_lowered(mat_of_distances))
-
     refspikes = divide_epoch(nodes,times,start_windows[2],end_windows[2])
     segment_length = end_windows[2] - start_windows[2]
     max_spk_counts = Int32(round(mean([length(times) for times in enumerate(refspikes[:])])))
@@ -352,40 +346,16 @@ function get_divisions(nodes::Vector{UInt32},times::Vector{Float64},division_siz
         mat_of_distances[:,ind] .= (col.-mean(col))./std(col)
     end
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-    #=
-    if plot
-        complexity_ = sum(cov(SimpleCovariance(corrected=true), mat_of_distances))
-        @show(metric)
-        @show(complexity_)
-    
-        Plots.heatmap(mat_of_distances)
-        savefig("Normalised_heatmap_$metric.$complexity_.$file_name.png")
-    end
-    =#
-    #mat_of_distances = mat_of_distances'[:]
     if plot
     
         Plots.heatmap(mat_of_distances)
-        #complexity(c::ComplexityEstimator, x)
         savefig("Unormalised_heatmap_$metric.$file_name.png")
     end
-    #close(mat_of_distances)
-    #A = rand(1:20, 5, 30)
-    # Now write the data
-
-    # Test by reading it back in
-    #s = open("/tmp/mmap.bin")   # default is read-only
-    #m = read(s, Int)
-    #n = read(s, Int)
-    #A2 = mmap(s, Matrix{Int}, (m,n))
 
     if disk
         Mmap.sync!(mat_of_distances)
-        #write(mat_of_distances)
         
     end
-    #mat_of_distances = mat_of_distances'[:]
-    #@show(typeof(mat_of_distances))
     (mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size)
 end
 

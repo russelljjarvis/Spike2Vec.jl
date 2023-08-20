@@ -17,6 +17,13 @@ function load_datasets()
     (nodes,times)
 end
 
+function load_datasets()
+    df=  CSV.read("output_spikes.csv",DataFrame)
+    nodes = Vector{UInt32}(df.id)
+    nodes = [UInt32(n+1) for n in nodes]
+    times = df.time_ms
+    (nodes,times)
+end
 
 function plot_umap!(mat_of_distances; file_name::String="empty.png")
     Q_embedding = umap(mat_of_distances,5,n_neighbors=5)#, min_dist=0.01, n_epochs=100)
@@ -25,7 +32,8 @@ function plot_umap!(mat_of_distances; file_name::String="empty.png")
 end
 #=
 function onlinePCA_(distmat; file_name::String="empty.png")
-    tmp = mktempdir()distance_matrix
+    tmp = mktempdir()
+    # distance_matrix
     OnlinePCA.writecsv(joinpath(tmp, "Data.csv"), distmat)
     # Binarization
     OnlinePCA.csv2bin(csvfile=joinpath(tmp, "Data.csv"), binfile=joinpath(tmp, "Data.zst"))
