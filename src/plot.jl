@@ -60,7 +60,7 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
         push!(templ[n+1],times[cnt])    
     end
     list_of_artifact_rows = [] # These will be deleted as they bias analysis.
-    for (ind,t) in enumerate(templ)
+    @inbounds @showprogress for (ind,t) in enumerate(templ)
         psth = fit(Histogram,t,temp_vec)
         if sum(psth.weights[:]) == 0.0
             append!(list_of_artifact_rows,ind)
@@ -69,7 +69,7 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
     adjusted_length = ns+1-length(list_of_artifact_rows)
     data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)-1))
     cnt = 1
-    for t in templ
+    @inbounds @showprogress  for t in templ
         psth = fit(Histogram,t,temp_vec)        
         if sum(psth.weights[:]) != 0.0
             data[cnt,:] = psth.weights[:]
@@ -113,7 +113,7 @@ get time surface
 function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
     last_t = 0
 
-    @showprogress for (tt,nn) in zip(times,nodes)
+    @inbounds @showprogress for (tt,nn) in zip(times,nodes)
 
         #Get the current spike
         neuron = Int(round(nn))
@@ -137,7 +137,7 @@ function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,ti
     end
     # Generate the time surface for the rest of the time if there exists no other spikes. 
     timesurf = similar(final_timesurf[:,1])
-    @showprogress for t in collect(last_t:dt:total_time)
+    @inbounds @showprogress  for t in collect(last_t:dt:total_time)
         @. timesurf = mv*exp((timestamps-t)/tau)
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
     end

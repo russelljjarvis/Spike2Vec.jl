@@ -2,3 +2,5 @@
 Manifest.toml
 .png
 .jld
+*.jld
+*.png

@@ -9,6 +9,7 @@ using CSV
 using DataFrames
 using OnlineStats
 using Distributions
+using OhMyREPL
 function load_datasets()
     df=  CSV.read("output_spikes.csv",DataFrame)
     nodes = Vector{UInt32}(df.id)
@@ -25,23 +26,34 @@ function load_datasets()
     (nodes,times)
 end
 
-function ts_onlinestats_pca(nodes,times)
-    dt = 20.0
-    tau = 300.0
-    psth = hist2dHeat(nodes, times, 20)
-    @show(psth)
-    final_timesurf = get_ts(nodes,times,dt,tau;disk=true)
-    o = CCIPCA(2, length(final_timesurf'))                # Project 10-dimensional vectors into 2D
-    fit!(o, final_timesurf)                      # Fit to u1
-    OnlineStats.fittransform!(o, final_timesurf) # Fit u4 and then project u4 into the space
+function onlinestats_pca(nodes,times)
+    if !isfile("psth.jld")
+        psth = hist2dHeat(nodes, Vector{Float32}(times), Float32(5.0))
+        @save "psth.jld" psth
+    else
+        @load "psth.jld" psth
+        Plots.heatmap(psth)
+        savefig("psth.png")
+    end
+    #@show(psth)
+    #final_timesurf = get_ts(nodes,times,dt,tau;disk=true)
+    o = CCIPCA(2, length(psth'))                # Project 10-dimensional vectors into 2D
+    fit!(o, psth[:])                      # Fit to u1
+    OnlineStats.fittransform!(o, psth[:]) # Fit u4 and then project u4 into the space
     sort!(o)                         # Sort from high to low eigenvalues
+    #@show(o)
     #o[1]                             # Get primary (1st) eigenvector
     #OnlineStats.relativevariances(o)    
-    @show(o[1])
-    (o[1],o[2]) 
+    #@show(o[1])
+    #Plots.plot(Plots.scatter(o[1], o[2], title="Spike Time OnlineStatsPCA", markersize = 2.5,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2,legend=false))
+    #savefig("OnlineStatsPCA.png")
+
+    (o[1],o[2],o) 
+
+
 end
 (nodes,times) = load_datasets()
-ts_onlinestats_pca(nodes,times)
+o_1,o_2,o = onlinestats_pca(nodes,times)
 function plot_umap!(mat_of_distances; file_name::String="empty.png")
     Q_embedding = umap(mat_of_distances,5,n_neighbors=5)#, min_dist=0.01, n_epochs=100)
     Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP", markersize = 2.5,markerstrokewidth=0,alpha=1.0, bgcolor=:snow2,legend=false))
@@ -87,7 +99,6 @@ function plotting_routines_and_preprocessing()
         @load "STDP_labels.jld" sqr_distmat
     end
     println("completed 2")
-    @show(sqr_distmat)
     if !isfile("Cluster_stdpLabels.jld")
     
         (R,sort_idx,assign) = cluster_distmat!(sqr_distmat)
@@ -121,7 +132,7 @@ function plot_the_repeat_vectors(assign,nlist,tlist,distmat)
         p1 = Plots.plot()
         for (ind,a) in enumerate(assign)
             if a==aa && a!=0
-                Plots.plot!(p1,distmat[ind,:], markercolor=a)
+                Plots.plot!(p1,distmat[a,:])#, markercolor=a)
             end
         end
         Plots.plot(p1)

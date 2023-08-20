@@ -353,7 +353,6 @@ function label_online_distmat!(mat_of_distances::AbstractVecOrMat,distance_matri
         @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
             if ind!=ind2
                 distance = evaluate(Euclidean(),row,row2)
-                @show(distance)
                 if distance<threshold
                     distance_matrix[ind,ind2] = abs(distance)
                 end
