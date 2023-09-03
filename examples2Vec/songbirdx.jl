@@ -3,24 +3,23 @@ using Plots
 using SpikeTime
 using DrWatson
 using ProgressMeter
-using RecurrenceAnalysis
-using Clustering
 import DelimitedFiles: readdlm
-
+using Revise
 function load_song_bird()
 
     spikes = []
+    #for (n, t) in eachrow(readdlm("../data/songbird_spikes.txt", '\t', Float64, '\n'))
     
-    nodes = [n for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))]
+    nodes = [n for (n, t) in eachrow(readdlm("../data/songbird_spikes.txt", '\t', Float64, '\n'))]
     for _ in 1:maximum(unique(nodes))+1
         push!(spikes,[])
     end
 
-    for (n, t) in eachrow(readdlm("songbird_spikes.txt", '\t', Float64, '\n'))
-        push!(spikes[Int32(n)],t)
+    for (n, t) in eachrow(readdlm("../data/songbird_spikes.txt", '\t', Float64, '\n'))
+        push!(spikes[UInt32(n)],t)
     end
-    nnn=Vector{Int32}([])
-    ttt=Vector{Float32}([])
+    nnn=Vector{UInt32}([])
+    ttt=Vector{Float64}([])
     for (i, t) in enumerate(spikes)
         for tt in t
             if length(t)!=0
@@ -36,19 +35,10 @@ function load_song_bird()
 end
 
 (nodes,times,spikes,numb_neurons,maxt)= load_song_bird()
-resolution = 100 # 65
+inverse_resolution = 100 # 65
 ε=10.5
 
-(mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,resolution,numb_neurons,maxt,plot=false)
-
-
-#get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,plots=true,file_name="songbird.png";threshold= ε)
-
-#fig, ax = 
-#display(Plots.scatter(xs, ys; markersize = 1))
-#ax.aspect = 1
-#display(fig)
-
+(mat_of_distances,tlist,nlist,start_windows,end_windows,spike_distance_size) = get_divisions(nodes,times,inverse_resolution,numb_neurons,maxt,plot=false)
 
 plot_umap_of_dist_vect(mat_of_distances; file_name="umap_songbird.png")
 distmat = label_online_distmat(mat_of_distances;threshold= ε)#,nclasses)
@@ -58,7 +48,9 @@ assing_progressions,assing_progressions_times = get_state_transitions(start_wind
 repeated_windows = state_transition_trajectory(start_windows,end_windows,distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="songbird.png")
 nslices=length(start_windows)
 get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices,file_name="songbird.png")
-get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,plots=true,file_name="songbird.png";threshold= ε)
+get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name="songbird.png",threshold= ε)
+#get_division_scatter_identify2(mat_of_distances,nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows,file_name="songbird.png";threshold= ε)
+
 #get_division_scatter_identify_via_recurrence_mat(nlist,tlist,start_windows,end_windows,nodes,times;file_name::String="recurrence_bird.png",ε::Real=5)
 rqa,xs, ys,sss = get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assign,nlist,tlist,start_windows,end_windows,nodes,times;file_name="recurrence_pfc.png",ε=5)
 #

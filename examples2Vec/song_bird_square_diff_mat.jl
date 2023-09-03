@@ -1,4 +1,4 @@
-using JLD
+#using JLD
 #using SpikeTime
 #using
 #using DrWatson
@@ -10,25 +10,25 @@ using SpikeTime
 #using SparseArrays
 #SNN.@load_units
 #using Test
-using DimensionalData
+#using DimensionalData
 using Revise
 using StatsBase
 using ProgressMeter
-using ColorSchemes
-using PyCall
+#using ColorSchemes
+#using PyCall
 using LinearAlgebra
-using Makie
+#using Makie
 using JLD
-using CairoMakie#,KernelDensity, Distributions
+#using CairoMakie#,KernelDensity, Distributions
 using ProgressMeter
-using Distances
+#using Distances
 #using Gadfly
 #using Gadfly
 #using SGtSNEpi, Random
 
-using SimpleWeightedGraphs, Graphs
+#using SimpleWeightedGraphs, Graphs
 #using GraphPlot
-using Plots, GraphRecipes
+#using Plots, GraphRecipes
 
 using Plots
 #using PyCall
@@ -39,12 +39,12 @@ using Plots
 import DelimitedFiles: readdlm
 #import Random
 #import StatsBase: quantile
-using Clustering
+#using Clustering
 using UMAP
 # Songbird metadata
 #num_neurons = 77
 #max_time = 22.2
-using DrWatson
+#using DrWatson
 # Randomly permute neuron labels.
 # (This hides the sequences, to make things interesting.)
 #_p = Random.randperm(num_neurons)
@@ -78,18 +78,18 @@ function load_datasets()
 end
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
-    @show(step_size)
+    #@show(step_size)
     end_window = collect(step_size:step_size:step_size*division_size)
     spike_distance_size = length(end_window)
     start_windows = collect(0:step_size:(step_size*division_size)-step_size)
 
     mat_of_distances = zeros(spike_distance_size,maximum(unique(nodes))+1)
     
-    @show(last(start_windows),last(end_window))
+    #@show(last(start_windows),last(end_window))
     n0ref = divide_epoch(nodes,times,last(start_windows),last(end_window))
     
     segment_length = end_window[2] - start_windows[2]
-    @show(segment_length)
+    #@show(segment_length)
     mean_spk_counts = Int32(round(mean([length(times) for times in enumerate(n0ref)])))
     t0ref = surrogate_to_uniform(n0ref,segment_length,mean_spk_counts)
     PP = []
@@ -107,7 +107,7 @@ function get_plot(times,nodes,division_size)
         mat_of_distances[ind,:] = self_distances
     end
     
-    cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
+    #cs1 = ColorScheme(distinguishable_colors(spike_distance_size, transform=protanopic))
     mat_of_distances[isnan.(mat_of_distances)] .= 0.0
     Plots.heatmap(mat_of_distances)#, axis=(xticks=(1:7, xs), yticks=(1:10, ys), xticklabelrotation = pi/4) ))
     savefig("Unormalised_heatmap_song_bird.png")
@@ -128,7 +128,7 @@ function get_plot(times,nodes,division_size)
     savefig("just_two_song_bird_raw_vectors.png")
     @save "song_bird_matrix.jld" mat_of_distances
     =#
-    display(mat_of_distances)
+    #display(mat_of_distances)
     return mat_of_distances
 end
 #=
@@ -499,15 +499,15 @@ p1 =Plots.plot()
 Plots.scatter!(p1,assing_progressions,legend=false)
 #https://github.com/open-risk/transitionMatrix
 
-Plots.plot!(p1,assing_progressions,legend=false)
-display(p1)
-savefig("state_transition_trajectory.png")
-g = SimpleWeightedDiGraph(empty)
+#Plots.plot!(p1,assing_progressions,legend=false)
+#display(p1)
+#savefig("state_transition_trajectory.png")
+#g = SimpleWeightedDiGraph(empty)
 
-edge_label = Dict((i,j) => string(empty[i,j]) for i in 1:size(empty, 1), j in 1:size(empty, 2))
+#edge_label = Dict((i,j) => string(empty[i,j]) for i in 1:size(empty, 1), j in 1:size(empty, 2))
 
-graphplot(g; names = 1:length(empty), weights=empty)#,line_z=empty)#, edge_label)
-savefig("state_transition_matrix.png")
+#graphplot(g; names = 1:length(empty), weights=empty)#,line_z=empty)#, edge_label)
+#savefig("state_transition_matrix.png")
 
 function get_repeated_scatter(times,nodes,division_size,repeated_windows)
     step_size = maximum(times)/division_size
@@ -563,7 +563,7 @@ function get_repeated_scatter(times,nodes,division_size,repeated_windows)
 
     savefig("genuinely_repeated_pattern_song_bird.png")
 end
-@show(assing_progressions)
+#@show(assing_progressions)
 get_repeated_scatter(ttt,nnn,resolution,assing_progressions)
 #assing_progressions[(i -> assing_progressions[i]==0, 1:length(assing_progressions))].=0
 

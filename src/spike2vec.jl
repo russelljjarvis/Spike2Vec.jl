@@ -12,8 +12,8 @@ using Revise
 using StatsBase
 using ProgressMeter
 using LinearAlgebra
-using Makie
-using CairoMakie
+#using Makie
+#using CairoMakie
 using Revise
 using UMAP
 using Distances
@@ -58,7 +58,7 @@ function lvr(time_intervals, R=5*0.001)
     lvr
 end
 
-function bag_of_isis(nodes::Vector{UInt32},times::Vector{Real})
+function bag_of_isis(nodes::Vector{<:Integer},times::Vector{<:Real})
     spikes_ragged = Vector{Any}([])
     numb_neurons=Int(maximum(nodes))+1 # Julia doesn't index at 0.
     @inbounds for n in 1:numb_neurons
@@ -95,8 +95,8 @@ end
 On a RTSP packet, get a bag of ISIs. So we can analyse the temporal structure of RTSPs regardless of spatial structure.
 """
 function bag_of_isis(spikes_ragged::AbstractArray)
-    bag_of_isis = Float32[] # the total lumped population ISI distribution.
-    isi_s = []
+    bag_of_isis = Vector{Any}([]) # the total lumped population ISI distribution.
+    isi_s = Float32[]
     @inbounds for (i, times) in enumerate(spikes_ragged)
         push!(isi_s,[])
     end
@@ -108,7 +108,7 @@ function bag_of_isis(spikes_ragged::AbstractArray)
                 push!(isi_s[i],isi_current)
             end
         end
-        append!(bag_of_isis,isi_s[i])
+        append!(bag_of_isis,Vector{Float32}(isi_s[i]))
     end
     bag_of_isis
 end
@@ -131,6 +131,7 @@ function divide_epoch(nodes::AbstractVector,times::AbstractVector,start::Real,st
     for (neuron,t) in zip(n0,t0)
         append!(time_raster[neuron],t)        
     end
+    #print("gets here how?")
     time_raster
 end
 
@@ -222,15 +223,19 @@ function final_plots2(mat_of_distances)
     (angles1,distances1)
 end
 =#
-function divide_epoch(times::AbstractVector,start,stop)
+function divide_epoch(times::AbstractVector,start::Real,stop::Real)
     t0=Vector{Float32}([])
     window_size = stop-start
     for t in times
         if start<=t && t<=stop
             append!(t0,t-start)
+            #@show(typeof(last(t0)))
         end
+
     end
-    t0
+    #@show(typeof(t0))
+
+    t0::Vector{Float32}
 end
 
 function array_of_empty_vectors(T, dims...)
@@ -240,40 +245,58 @@ function array_of_empty_vectors(T, dims...)
     end
     array
 end
-
-
-function spike_matrix_divided(nodes::Vector,times::Vector{Float32},spikes_raster,division_size::Int,numb_neurons::Int,maxt::Real)
-    step_size = maxt/division_size
-    end_windows = collect(step_size:step_size:step_size*division_size)
-    number_of_time_windows = length(end_windows)
-    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
+"""
+sw: start window a length used to filter spikes.
+windex: current window index
+times_associated: times (associated with) indices, before stop window length applied
+"""
+function spike_matrix_divided(spikes_raster::Vector{Any},number_divisions_size::Int,numb_neurons::Int,maxt::Real;displace=true)
+    step_size = maxt/number_divisions_size
+    end_windows = collect(step_size:step_size:step_size*number_divisions_size)
+    start_windows = collect(0:step_size:(step_size*number_divisions_size)-step_size)
+    #T = 
     mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
-    #mat_of_spikes = [copy([]) for i in 1:length(spikes_raster), j in 1:length(end_windows)]
-    for neuron in 1:length(spikes_raster)
-        for (windex,toi) in enumerate(end_windows)
+    spike_matrix_divided!(mat_of_spikes,spikes_raster,step_size,end_windows,start_windows,displace)
+    mat_of_spikes#:::Matrix{Vector{Vector{Float32}}}
+end
+function spike_matrix_divided!(mat_of_spikes::Matrix{Vector{Vector{Float32}}},spikes_raster,step_size,end_windows,start_windows,displace)
+    for neuron_id in 1:length(spikes_raster)
+        for (windex,final_end_time) in enumerate(end_windows)
             sw = start_windows[windex]
-            temp = divide_epoch(spikes_raster[neuron],sw,toi)
-            push!(mat_of_spikes[neuron,windex],temp.+sw)
+            only_one_neuron_spike_times = copy(spikes_raster[neuron_id])
+            epoch_windowed_spikes = divide_epoch(only_one_neuron_spike_times,sw,final_end_time)
+            if displace
+                push!(mat_of_spikes[neuron_id,windex],epoch_windowed_spikes.+sw)
+            else
+                push!(mat_of_spikes[neuron_id,windex],epoch_windowed_spikes)
+            end
         end
     end
-    mat_of_spikes
+    #mat_of_spikes::Matrix{Vector{Vector{Float32}}}
 end
+#=
+sw: start window a length used to filter spikes.
+windex: current window index
+times_associated: times (associated with) indices, before stop window length applied
+"""
+function spike_matrix_divided_nd(spikes_raster::Vector{Any},number_divisions_size::Int,numb_neurons::Int,maxt::Real)
+    step_size = maxt/number_divisions_size
+    end_windows = collect(step_size:step_size:step_size*number_divisions_size)
+    start_windows = collect(0:step_size:(step_size*number_divisions_size)-step_size)
+    T = Vector{Float32}
+    mat_of_spikes = array_of_empty_vectors(T,(length(spikes_raster),length(end_windows)))
+    spike_matrix_divided!(mat_of_spikes,step_size,end_windows,start_windows,T)
+    mat_of_spikes::Array{Vector{T}}
+end
+=#
+#for neuron_id in 1:length(spikes_raster)
+#    for (windex,times_associated) in enumerate(end_windows) # toi: times of (associated with) indices.
+#        sw = start_windows[windex] # sw: start window
+#        epoch_length_spikes = divide_epoch(copy(spikes_raster[neuron_id]),sw,times_associated)
+#        push!(mat_of_spikes[neuron_id,windex],epoch_length_spikes)
+#    end
+#end
 
-function spike_matrix_divided_no_displacement(nodes::Vector,times::Vector{Float32},spikes_raster,division_size::Int,numb_neurons::Int,maxt::Real)
-    step_size = maxt/division_size
-    end_windows = collect(step_size:step_size:step_size*division_size)
-    number_of_time_windows = length(end_windows)
-    start_windows = collect(0:step_size:(step_size*division_size)-step_size)
-    mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
-    for neuron in 1:length(spikes_raster)
-        for (windex,toi) in enumerate(end_windows)
-            sw = start_windows[windex]
-            temp = divide_epoch(spikes_raster[neuron],sw,toi)
-            push!(mat_of_spikes[neuron,windex],temp)
-        end
-    end
-    mat_of_spikes
-end
 function get_window!(nlist,tlist,observed_spikes,sw)
     Nx=Vector{UInt32}([])
     Tx=Vector{Float64}([])
@@ -345,7 +368,7 @@ function plot_umap_of_dist_vect(mat_of_distances; file_name::String="stateTransM
 end
 function label_online_distmat!(mat_of_distances::AbstractVecOrMat,distance_matrix;threshold::Real=5)
     @inbounds @showprogress for (ind,row) in enumerate(eachcol(mat_of_distances))
-        #stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
+        stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
         #if ind <= stop_at_half
         @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
             if ind!=ind2
@@ -355,7 +378,6 @@ function label_online_distmat!(mat_of_distances::AbstractVecOrMat,distance_matri
                 end
             end
         end
-       #end
     end
 end
 
@@ -364,28 +386,26 @@ function label_online_distmat(mat_of_distances::AbstractVecOrMat;threshold::Real
         distance_matrix = zeros(length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances)))
     else
         io = open("/tmp/mmap.bin", "w+")
-        # We'll write the dimensions of the array as the first two Ints in the file
-        #write(mat_of_distances, spike_distance_size)
-        #write(mat_of_distances, numb_neurons)
-        #A2 = mmap(s, Matrix{Int}, (m,n))
         distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
 
     end
-    #@show(typeof(distance_matrix))
     label_online_distmat!(mat_of_distances,distance_matrix;threshold)
     distance_matrix::AbstractVecOrMat
 end
 
 
-function cluster_distmat!(mat_of_distances::AbstractMatrix)#,mat_of_spikes::AbstractMatrix)
-    #distance_matrix = mmap(io, Matrix{Float32}, (length(eachrow(mat_of_distances)),length(eachrow(mat_of_distances))))
-    #distance_matrix = mat_of_distances
-    #Mmap.sync!(distance_matrix)
-
+function cluster_distmat(mat_of_distances::AbstractMatrix)
     R = affinityprop(mat_of_distances)
     sort_idx =  sortperm(assignments(R))
     assign = R.assignments
-    R,sort_idx,assign#,mat_of_distances,mat_of_spikes
+    R,sort_idx,assign
+end
+
+function horizontal_sort_into_tasks(mat_of_distances::AbstractArray)
+    R = affinityprop(mat_of_distances')
+    sort_idx =  sortperm(assignments(R))
+    assign = R.assignments
+    R,sort_idx,assign
 end
 
 function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices;file_name::String="empty.png")
@@ -505,7 +525,7 @@ savefig("identified_unique_pattern_via_recurrence$file_name.png")
          #
 
 
-function get_division_scatter_identify(div_spike_mat,nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name::String="empty.png",threshold::Real=5)
+function get_division_scatter_identify(nlist,tlist,start_windows,end_windows,distmat,assign,nodes,times,repeated_windows;file_name::String="empty.png",threshold::Real=5)
     p=Plots.scatter()
     witnessed_unique=[]
     @inbounds @showprogress for (ind,toi) in enumerate(end_windows)
@@ -623,6 +643,20 @@ function get_state_transitions(start_windows,end_windows,distmat,assign;threshol
         end
     end
     assing_progressions,assing_progressions_times
+end
+
+function return_spike_item_from_matrix(div_spike_mat_no_displacement::AbstractVecOrMat,ind::Integer)
+    Nx = Float32[]
+    Tx = Float32[]
+    for (indy,row) in enumerate(div_spike_mat_no_displacement[:,ind])
+        for (indx,x) in enumerate(row)
+            if length(x)!=0
+                append!(Nx,indy)
+                append!(Tx,x)                
+            end
+        end
+    end
+    (Nx::Vector{Float32},Tx::Vector{Float32})
 end
 function state_transition_trajectory(start_windows,end_windows,distmat,assign,assing_progressions,assing_progressions_times;plot=false, file_name::String="stateTransMat.png")
 

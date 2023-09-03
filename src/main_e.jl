@@ -344,7 +344,7 @@ function restructure_stim(;dt::Real = 1ms, duration::Real = 10ms,spike_stim=spik
     cnt=1
     @showprogress for t in 0:dt:duration
         if t>=onset
-            spike_stim_slice = divide_epoch(spike_stim,prevt,t)
+            spike_stim_slice = get_appropriate_cellid(spike_stim,prevt,t)
             if length(spike_stim_slice)!=0
                 push!(times_versus_neuron_activations,spike_stim_slice)
                 push!(times_,t)
@@ -360,8 +360,10 @@ function restructure_stim(;dt::Real = 1ms, duration::Real = 10ms,spike_stim=spik
     end
     stim_container(times_versus_neuron_activations,times_,indexs_of_times)
 end
-
-function divide_epoch(vector_times::AbstractVector,start::Real,stop::Real)
+"""
+get appropriate cell id
+"""
+function get_appropriate_cellid(vector_times::AbstractVector,start::Real,stop::Real)
     spike_cell_id=Vector{UInt32}([])
     @inbounds for (n,tvec) in enumerate(vector_times)
         for t in tvec
