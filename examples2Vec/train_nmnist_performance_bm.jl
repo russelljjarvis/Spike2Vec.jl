@@ -19,7 +19,7 @@ function build_data_set_native(events,storage,cnt,input_shape,l_change_cnt,l_old
     label = Vector{Int32}([])
     A = zeros((35,35))
     I = LinearIndices(A)
-    pop_stimulation= Vector{Int32}([])#Vector{UInt32}([])#Vector{UInt32}(size(I))
+    pop_stimulation= Vector{Int32}([])#Vector{UInt32}([])
     @inline for (ind_,ev) in enumerate(events)      
         cnt+=1
         (x,y,ts,p,l) = ev
@@ -54,26 +54,17 @@ function bds!()
         events = dataset.get_dataset_item(training_order[batch:batch+1])
         cnt,did_it_exec,l_change_cnt,l_old = build_data_set_native(events,storage,cnt,input_shape,l_change_cnt,l_old)
         @save "part_mnmist_$cnt.jld" did_it_exec
-
-        #@show(l_old)
-        #append!(storage,did_it_exec)
-        #@show(length(storage))
     end
-
-    
-    
 end
 
 
 bds!()
 
 @load "all_mnmist.jld" storage
-#for i in 1:length(storage)
 (x,y,times,p,l,nodes) = (storage[1][1],storage[1][2],storage[1][3],storage[1][4],storage[1][5],storage[1][6])
 
 for (ind,s) in enumerate(storage)
     (x,y,times,p,l,nodes) = (storage[s][1],storage[s][2],storage[s][3],storage[s][4],storage[s][5],storage[s][6])
-    #display(Plots.scatter(times,nodes,markersize=0.1))
     @show(unique(l)[1])#,ind)
 end
 
