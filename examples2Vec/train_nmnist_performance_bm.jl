@@ -10,13 +10,8 @@ using DrWatson
 using LoopVectorization
 using Plots
 
-#ind2subv(shape, indices) = Tuple.(CartesianIndices(shape)[indices])
-#sub2indv(shape, indices) = LinearIndices(shape)[CartesianIndex.(indices)]
-#using SparseArrays
-#using UnicodePlots
-#unicodeplots()
+
 function build_data_set_native(events,storage,cnt,input_shape,l_change_cnt,l_old)
-    #@show(length(events))
     xx = Vector{Int32}([])
     yy = Vector{Int32}([])
     tts = Vector{Float32}([])
@@ -45,7 +40,6 @@ end
 function bds!()
 
     pushfirst!(PyVector(pyimport("sys")."path"), "")
-    #nmnist_module = pyimport("batch_nmnist_motions")
     nmnist_module = pyimport("batch_nmnist_motions")
     dataset::PyObject = nmnist_module.NMNIST("./")
     training_order = 0:dataset.get_count()-1
