@@ -26,7 +26,7 @@ using Distances
 #using Gadfly
 #using SGtSNEpi, Random
 
-using SimpleWeightedGraphs, Graphs
+#using SimpleWeightedGraphs, Graphs
 #using GraphPlot
 using Plots, GraphRecipes
 
