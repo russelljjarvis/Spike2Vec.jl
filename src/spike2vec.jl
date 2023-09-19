@@ -18,12 +18,8 @@ using Revise
 using UMAP
 using Distances
 using StaticArrays
-#using ColorSchemes
-#using LinearAlgebra
 using Clustering
-#using ProgressMeter
 using LoopVectorization
-#using RecurrenceAnalysis
 using StatsBase
 
 

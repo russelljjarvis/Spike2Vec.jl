@@ -47,8 +47,6 @@ end
 Create a 2D histogram/heatmap Its usually good to normalize this retrospectively
 """
 function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bins::Float32)
-    t0 = times
-    n0 = nodes
     stimes = sort(times)
     ns = maximum(unique(nodes))    
     temp_vec = collect(0:Float64(maximum(stimes)/denom_for_bins):maximum(stimes))
@@ -59,15 +57,18 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
     for (cnt,n) in enumerate(nodes)
         push!(templ[n+1],times[cnt])    
     end
+
+    # An artifact row is probably just a neuron that doesn't fire.
     list_of_artifact_rows = [] # These will be deleted as they bias analysis.
     @inbounds @showprogress for (ind,t) in enumerate(templ)
         psth = fit(Histogram,t,temp_vec)
         if sum(psth.weights[:]) == 0.0
             append!(list_of_artifact_rows,ind)
+            #@assert sum(t)==0
         end
     end
     adjusted_length = ns+1-length(list_of_artifact_rows)
-    data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)-1))
+    data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)))#-1))
     cnt = 1
     @inbounds @showprogress  for t in templ
         psth = fit(Histogram,t,temp_vec)        
@@ -77,13 +78,15 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
             cnt +=1
         end
     end
+    # Normalize data
     @inbounds for (ind,col) in enumerate(eachcol(data))
         data[:,ind] .= (col.-mean(col))./std(col)
     end
+    # Clean Nan's
     data[isnan.(data)] .= 0.0
-
-    #LinearAlgebra.normalize(data)
-    return data
+    # Julia's normalizer doesn't work that well, lets apply it too for good measure
+    LinearAlgebra.normalize(data)
+    data::Matrix{Float64}
 end
 
 """
