@@ -34,7 +34,14 @@ module SpikeTime
     #include("neuron/16bit_if.jl")
     #include("neuron/if2.jl")
     #include("neuron/noisy_if.jl")
+    include("ISI.jl")
+    export bag_of_isis
+    include("input_readers.jl")
+    export get_all_exempler_of_days
+    export load_datasets_calcium_jesus
     include("spike2vec.jl")
+    export compute_metrics_on_matrix_divisions
+    export compute_metrics_on_divisions
     export return_spike_item_from_matrix
     export horizontal_sort_into_tasks
     export divide_epoch

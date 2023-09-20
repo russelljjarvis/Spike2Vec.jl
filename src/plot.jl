@@ -7,9 +7,10 @@ using LinearAlgebra
 import LinearAlgebra: normalize
 using Plots
 using ColorSchemes
-function normalised_2dhist(data)
-    foreach(normalize!, eachcol(data'))
-    return data
+
+function normalised_matrix!(X)
+    foreach(normalize!, eachcol(X))
+    #return data
 end
 
 function raster(p::IFNF)
@@ -27,6 +28,66 @@ function raster(p::IFNF)
     x, y
  
 end
+
+function plot_umap_of_dist_vect(mat_of_distances; file_name::String="stateTransMat.png")
+    Q_embedding = umap(mat_of_distances',20,n_neighbors=20)
+    Plots.plot(Plots.scatter(Q_embedding[1,:], Q_embedding[2,:], title="Spike Time Distance UMAP, reduced precision,", marker=(1, 1, :auto, stroke(0.05)),legend=true))
+    savefig(file_name)
+    Q_embedding
+end
+
+"""
+A method to re-represent dense boolean vectors as a two dense vectors of spikes, and times.
+spikes is a matrix with regularly sampled windows, populated by spikes, with calcium spikes.
+"""
+function convert_bool_matrice_to_raster(read_spike_dense::Matrix{Bool}, frame_width::Real)
+    nodes = UInt32[]
+    times = Float32[]
+    for (indy,row) in enumerate(eachrow(read_spike_dense))
+        for (indx,x) in enumerate(row)
+            if x
+                push!(nodes,indy)
+                push!(times,indx*frame_width)                
+            end
+        end
+    end
+    whole_duration = length(read_spike_dense[1,:])*frame_width
+    (nodes::Vector{UInt32},times::Vector{Float32},whole_duration::Real)
+end
+
+"""
+A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to collect them together to get the ISI distribution for the whole cell population
+Also output a ragged array (Array of unequal length array) of spike trains. 
+"""
+function create_ISI_histogram(nodes::Vector{UInt32},times::Vector{Float32})
+    spikes_ragged = []
+    global_isis =Float32[] # the total lumped population ISI distribution.
+    isi_s = []
+    numb_neurons=Int(maximum(nodes))+1 # Julia doesn't index at 0.
+    @inbounds for n in 1:numb_neurons
+        push!(spikes_ragged,[])
+    end
+    @inbounds for i in 1:numb_neurons
+        for (n,t) in zip(nodes,times)
+            if i==n
+                push!(spikes_ragged[i],t)
+            end
+        end
+    end
+    @inbounds for (i, times) in enumerate(spikes_ragged)
+        push!(isi_s,[])
+        for (ind,x) in enumerate(times)
+            if ind>1
+                isi_current = x-times[ind-1]
+                push!(isi_s[i],isi_current)
+            end
+        end
+        append!(global_isis,isi_s[i])
+    end
+    (global_isis:: Vector{Float32},spikes_ragged::Vector{Any},numb_neurons)
+end
+
+
 
 function raster(P::Vector)
     y0 = UInt64[0]
@@ -195,6 +256,21 @@ function plot_umap(amatrix,mat_of_distances, CList_; file_name::String="empty.pn
     savefig(file_name)
     Q_embedding
 end
+"""
+Visualize one epoch, as a spike train raster and then an ISI histogram.
+"""
+
+function plot_ISI_and_raster_scatter()
+    p1 = Plots.plot()
+    Plots.scatter!(p1,times,nodes,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
+    savefig("scatter_plot.png")
+    b_range = range(minimum(global_isis), mean(global_isis)+std(global_isis), length=21)
+    p2 = Plots.plot()
+    Plots.histogram!(p2,global_isis, bins=b_range, normalize=:pdf, color=:gray,xlim=[0.0,mean(global_isis)+std(global_isis)])
+    Plots.plot(p1,p2)
+    savefig("Spike_raster_and_ISI_bar_plot.png")
+    #resolution = 150
+end
 function plot_umap_ts(nodes::Vector{Int32}, times::Vector{Float32},dt,tau; file_name::String="empty.png")
     perm = sortperm(times)
     nodes = nodes[perm]
@@ -305,6 +381,83 @@ function if_curve(model, current; neuron = 1, dt = 0.1ms, duration = 1second)
         push!(f, activity(E))
     end
     plot(current, f)
+end
+
+
+function plotss_1(assign,nlist,tlist)
+
+    p = Plots.plot()
+    collect_isi_bags = []
+    ##for (ind,a) in enumerate(assign)
+     #   if a!=0
+     #       push!(collect_isi_bags,[])
+     #       push!(collect_isi_bags[a],[])
+
+    #    end
+    #end
+    collect_isi_bags = []
+    collect_isi_bags_map = []
+    #@show(length(collect_isi_bags))
+    p = Plots.plot()
+    collect_isi_bags = []
+    for (ind,a) in enumerate(assign)
+        if a!=0
+            Tx = tlist[ind]
+            #@show(div_spike_mat[:])
+
+            xlimits = maximum(Tx)
+            Nx = nlist[ind]
+            Plots.scatter!(p,Tx,Nx,legend = false, markercolor=a,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
+            #@show(bag_of_isis(Nx,Tx))
+            #push!(collect_isi_bags,bag_of_isis(Nx,Tx))
+            #push!(collect_isi_bags_map,a)
+
+            #temp = div_spike_mat[:,ind] #.+sw
+            #@show(length(temp))
+            #Plots.scatter!(p,temp,legend=false, markercolor=a)
+        end
+    end
+    display(Plots.plot(p))# = Plots.plot()
+    savefig("the_jesus_examplar.png")
+    #collect_isi_bags,collect_isi_bags_map
+end
+function plotss_2(assign,div_spike_mat_no_displacement)
+    list_of_correlations = []
+    list_of_heats = []
+    for un in unique(assign)
+        Nxag = Float32[]
+        Txag = Float32[]
+        for (ind,a) in enumerate(assign)
+            if a==un
+                p = Plots.plot()
+                pscatter = Plots.plot()
+                pbar = Plots.plot()        
+                Nx = Float32[]
+                Tx = Float32[]
+                for (indy,row) in enumerate(div_spike_mat_no_displacement[:,ind])
+                    for (indx,x) in enumerate(row)
+                        if length(x)!=0
+                            append!(Nx,indy)
+                            append!(Tx,x)                
+                        end
+                    end
+                end
+                append!(Nxag,Nx)
+                append!(Txag,Tx)
+                if length(Txag)!=0
+                    Plots.scatter!(pscatter,Txag,Nxag,legend = false, markercolor=ind,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
+                    savefig("scatter_match_$un.png")
+                end            
+                o = OnlineStats.HeatMap(minimum(Txag):maximum(Txag)/100:maximum(Txag),minimum(Nxag):1:maximum(Nxag))        
+                fit!(o, zip(Txag,Nxag))
+                display(plot(o, marginals=false, legend=true))
+                savefig("heatmap_$un.png")
+                push!(list_of_heats,length(sparse(o.counts).nzval))
+                push!(list_of_correlations,sum(abs.(cor(o.counts))))
+            end
+        end  
+    end
+    (list_of_correlations,list_of_heats)
 end
 
 # export density

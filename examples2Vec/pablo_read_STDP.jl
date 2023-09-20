@@ -12,14 +12,6 @@ using Distributions
 using OhMyREPL
 
 
-function load_datasets()
-    df=  CSV.read("output_spikes.csv",DataFrame)
-    nodes = Vector{UInt32}(df.id)
-    nodes = [UInt32(n+1) for n in nodes]
-    times = Vector{Float32}(df.time_ms)
-    (nodes,times)
-end
-
 function onlinestats_pca(nodes,times)
     #if !isfile("psth.jld")
         psth = hist2dHeat(nodes, Vector{Float32}(times), Float32(1825))
