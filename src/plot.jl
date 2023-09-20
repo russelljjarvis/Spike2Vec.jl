@@ -263,7 +263,7 @@ Visualize one epoch, as a spike train raster and then an ISI histogram.
 function plot_ISI_and_raster_scatter()
     p1 = Plots.plot()
     Plots.scatter!(p1,times,nodes,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
-    savefig("scatter_plot.png")
+    savefig("scatter_plot.png")Spike
     b_range = range(minimum(global_isis), mean(global_isis)+std(global_isis), length=21)
     p2 = Plots.plot()
     Plots.histogram!(p2,global_isis, bins=b_range, normalize=:pdf, color=:gray,xlim=[0.0,mean(global_isis)+std(global_isis)])

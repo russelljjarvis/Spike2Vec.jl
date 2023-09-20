@@ -5,16 +5,16 @@ using MAT
 using StatsBase
 using JLD2
 using Plots
-using SpikeTime
-using DrWatson
-using ProgressMeter
+#using SpikeTime
+#using DrWatson
+#using ProgressMeter
 using OnlineStats
 using SparseArrays
 #using CSV, Tables
 
 using DelimitedFiles
 using DataFrames
-
+using Revise
 
 function pablo_load_datasets()
     df=  CSV.read("output_spikes.csv",DataFrame)
@@ -49,8 +49,8 @@ function load_datasets_calcium_jesus()
     (nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons) 
 end
 function get_105_neurons(nn,tt)
-    times=[]
-    nodes=[]
+    times=Vector{Float32}([])
+    nodes=Vector{Float32}([])
 
     for (t,n) in zip(tt,nn)
         if n<105
@@ -58,7 +58,7 @@ function get_105_neurons(nn,tt)
             push!(nodes,n)
         end
     end
-    current_max_t = maximum(new_t)
+    current_max_t = maximum(times)
 
     @save "105_neurons.jld" times nodes current_max_t
     times,nodes,current_max_t
@@ -75,7 +75,7 @@ function get_280_neurons(nn,tt)
             end
         end
     end
-    current_max_t = maximum(new_t)
+    current_max_t = maximum(times)
     @save "280_neurons.jld" times nodes current_max_t
     times,nodes,current_max_t
 end
@@ -110,8 +110,8 @@ function get_all_exempler_of_days()
     end
     #_,_,_ = get_280_neurons(copy(nn),copy(tt))
     tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
-    display(Plots.scatter(tt,nn,legend = false, markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,))
-    savefig("mysterious_scatter_plot.png")
+    #display(Plots.scatter(tt,nn,legend = false, markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,))
+    #savefig("mysterious_scatter_plot.png")
     (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 
 end
