@@ -8,7 +8,7 @@ using DrWatson
 using ProgressMeter
 using OnlineStats
 using SparseArrays
-
+using OhMyREPL
 using DelimitedFiles
 using DataFrames
 #if isfile("280_neurons.jld")
@@ -17,13 +17,19 @@ using DataFrames
 (nodes,times,whole_duration,global_isis,spikes,numb_neurons) = load_datasets_calcium_jesus()
 #end
 maxt = maximum(times)
-div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
-div_spike_mat_no_displacement = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=false)
+resolution = 200
+#@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
+@time div_spike_mat_no_displacement = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=false)
 
 ε=17.7
 
-(distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,mat_of_distances,metric="LV")
-#(distmat,tlist,nlist,start_windows,end_windows,spike_distance_size,variance) = compute_metrics_on_divisions(nodes,Vector{Float64}(times),resolution,numb_neurons,maxt,plot=false,metric="LV")
+if !isfile("jesus_int.jld")
+    @time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")
+    @save "jesus_int.jld" distmat variance
+else 
+    @load "jesus_int.jld" distmat variance
+end
+@time (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size,variance) = compute_metrics_on_divisions(nodes,Vector{Float64}(times),resolution,numb_neurons,maxt,plot=false,metric="LV")
 #Plots.heatmap(distmat)
 #savefig("pre_Distmat_sqaure.png")
 sqr_distmat = label_online_distmat(distmat;threshold=ε,disk=false)#,nclasses)
