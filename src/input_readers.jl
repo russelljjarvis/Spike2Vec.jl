@@ -4,7 +4,7 @@ using Plots
 using MAT
 using StatsBase
 using JLD2
-using Plots
+#using Plots
 #using SpikeTime
 #using DrWatson
 #using ProgressMeter
@@ -50,7 +50,7 @@ function load_datasets_calcium_jesus()
 end
 function get_105_neurons(nn,tt)
     times=Vector{Float32}([])
-    nodes=Vector{Float32}([])
+    nodes=Vector{UInt32}([])
 
     for (t,n) in zip(tt,nn)
         if n<105
@@ -61,7 +61,7 @@ function get_105_neurons(nn,tt)
     current_max_t = maximum(times)
 
     @save "105_neurons.jld" times nodes current_max_t
-    times,nodes,current_max_t
+    times::Vector{Float32},nodes::Vector{UInt32},current_max_t
 end
 function get_280_neurons(nn,tt)
     times=Vector{Float32}([])

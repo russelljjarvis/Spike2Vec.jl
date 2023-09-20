@@ -248,18 +248,18 @@ end
 function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};metric="kreuz",disk=false)
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float64}(undef, nrow, ncol)
-    refspikes = div_spike_mat_no_displacement[:,2] 
+    refspikes = div_spike_mat_no_displacement[:,:] 
     max_spk_counts = Int32(round(mean([length(times) for times in enumerate(refspikes[:])])))
     @show(max_spk_counts)
     #@show(div_spike_mat_no_displacement[2,2])
     #@show(typeof(div_spike_mat_no_displacement[2,2]))
-    get_max_time = maximum(div_spike_mat_no_displacement[2,2])
-    @show(get_max_time)
+    get_max_time = maximum(maximum(div_spike_mat_no_displacement[2,2]))
+    #@show(get_max_time)
     temp = LinRange(0.0, get_max_time, max_spk_counts)
     linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
     sum_varr = 0.0
 
-    compute_metrics_on_matrix_divisions!(mat_of_distances,linear_uniform_spikes,nrow)    
+    compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement,mat_of_distances,linear_uniform_spikes,nrow)    
     (mat_of_distances::Array{Float64},sum_varr::Float32)
 end
 function compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{Float64},linear_uniform_spikes::Vector{Float32},nrow::UInt32;sum_varr=nothing,metric="kreuz")
