@@ -12,17 +12,9 @@ using Distributions
 using OhMyREPL
 
 
-function load_datasets()
-    df=  CSV.read("output_spikes.csv",DataFrame)
-    nodes = Vector{UInt32}(df.id)
-    nodes = [UInt32(n+1) for n in nodes]
-    times = Vector{Float32}(df.time_ms)
-    (nodes,times)
-end
-
 function onlinestats_pca(nodes,times)
-   # if !isfile("psth.jld")
-        psth = hist2dHeat(nodes, Vector{Float32}(times), Float32(325))
+    #if !isfile("psth.jld")
+        psth = hist2dHeat(nodes, Vector{Float32}(times), Float32(1825))
         @save "psth.jld" psth
     #else
         @load "psth.jld" psth
@@ -31,10 +23,10 @@ function onlinestats_pca(nodes,times)
     #end
     #@show(psth)
     #final_timesurf = get_ts(nodes,times,dt,tau;disk=true)
-    o = CCIPCA(2, length(psth))                # Project 10-dimensional vectors into 2D
-    fit!(o, psth[:])                      # Fit to u1
-    #OnlineStats.fittransform!(o, psth[:]) # Fit u4 and then project u4 into the space
-    sort!(o)                         # Sort from high to low eigenvalues
+    #o = CCIPCA(2, length(psth))                # Project 10-dimensional vectors into 2D
+    #fit!(o, psth)                      # Fit to u1
+    ##OnlineStats.fittransform!(o, psth[:]) # Fit u4 and then project u4 into the space
+    #sort!(o)                         # Sort from high to low eigenvalues
     #@show(o)
     #o[1]                             # Get primary (1st) eigenvector
     #OnlineStats.relativevariances(o)    
