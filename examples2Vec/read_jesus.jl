@@ -14,35 +14,90 @@ using DataFrames
 #if isfile("280_neurons.jld")
 #    @load "280_neurons.jld" new_t new_n current_max_t
 #else
-(nodes,times,whole_duration,global_isis,spikes,numb_neurons) = load_datasets_calcium_jesus()
-#end
-maxt = maximum(times)
-resolution = 200
-#@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
-@time div_spike_mat_no_displacement = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=false)
+if !isfile("jesus_data_set.jld")
+    (nodes,times,whole_duration,spikes_ragged,numb_neurons)  = load_datasets_calcium_jesus()
+    @show(nodes)
+    @save "jesus_data_set.jld" nodes times whole_duration spikes_ragged numb_neurons
 
-ε=17.7
+else
+    @load "jesus_data_set.jld" nodes times whole_duration spikes_ragged numb_neurons
+end
+#display(Plots.scatter(times,nodes))
 
 if !isfile("jesus_int.jld")
-    @time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")
-    @save "jesus_int.jld" distmat variance
-else 
-    @load "jesus_int.jld" distmat variance
-end
-@time (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size,variance) = compute_metrics_on_divisions(nodes,Vector{Float64}(times),resolution,numb_neurons,maxt,plot=false,metric="LV")
-#Plots.heatmap(distmat)
-#savefig("pre_Distmat_sqaure.png")
-sqr_distmat = label_online_distmat(distmat;threshold=ε,disk=false)#,nclasses)
-#Plots.heatmap(sqr_distmat)
-#savefig("Distmat_sqaure.png")
-R,sort_idx,horizonta_assign = horizontal_sort_into_tasks(sqr_distmat)
-(R,sort_idx,assign) = cluster_distmat(sqr_distmat)
-assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
-repeated_windows = state_transition_trajectory(start_windows,end_windows,sqr_distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="calcium.png")
-assign[unique(i -> assign[i], 1:length(assign))].=0.0
-plotss_1(assign,nlist,tlist)
+    #end
+    maxt = maximum(times)
+    resolution = 300
 
-list_of_correlations,list_of_heats = plotss_2(assign,div_spike_mat_no_displacement)
+    #@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
+    @time div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,maxt;displace=false)
+    
+    @save "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
+else 
+    @load "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
+end
+ε=9.7
+#@time time_windows = Vector{Any}([Tuple(s,e) for (s,e) in zip(start_windows,end_windows)])
+
+#@show(div_spike_mat_no_displacement)
+#if !isfile("jesus_int_processed2.jld")
+
+    @time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    #@show(variance)
+    #@time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")
+    #@show(variance)
+
+    #@time (distmat,tlist,nlist,start_windows,end_windows,spike_distance_size,variance) = compute_metrics_on_divisions(nodes,Vector{Float64}(times),resolution,numb_neurons,maxt,plot=false,metric="LV")
+    Plots.heatmap(distmat)
+    savefig("pre_Distmat_sqaure.png")
+    sqr_distmat = label_exhuastively_distmat(distmat;threshold=ε,disk=false)#,nclasses)
+    Plots.heatmap(sqr_distmat)
+    savefig("Distmat_sqaure.png")
+    #R,sort_idx,horizonta_assign = horizontal_sort_into_tasks(sqr_distmat)
+    (R,sort_idx,assign) = cluster_distmat(sqr_distmat)
+    assing_progressions,assing_progressions_times = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
+    repeated_windows = state_transition_trajectory(start_windows,end_windows,sqr_distmat,assign,assing_progressions,assing_progressions_times;plot=true,file_name="long_duration.png")
+    assign[unique(i -> assign[i], 1:length(assign))].=0.0
+    @save "jesus_int_processed2.jld" assign
+    # repeated_windows assing_progressions assing_progressions_times distmat sqr_distmat
+
+#else
+    @load "jesus_int_processed2.jld" assign #repeated_windows assing_progressions assing_progressions_times distmat sqr_distmat
+
+#end
+labels2cols = internal_validation1(assign,div_spike_mat_no_displacement);
+
+#times = div_spike_mat_no_displacement[:,3]
+
+#nodes3,times3=ragged_to_uniform(times)
+#times = div_spike_mat_no_displacement[:,2]
+#nodes2,times2=ragged_to_uniform(times)
+
+#display(Plots.scatter(nodes3,times3))
+#display(Plots.scatter(nodes2,times2))
+
+#list_of_correlations,list_of_heats = 
+
+#plotss_1(assign,div_spike_mat_no_displacement)
+#=
+function ragged_to_uniform1(times)
+    n=Vector{UInt32}([])
+    ttt=Vector{Float32}([])
+    for (i, t) in enumerate(times)
+        if length(t)!=0
+            for tt in t
+                push!(n,i);
+                for t in tt 
+                    push!(ttt,Float32(t)) 
+                end
+            end
+        end
+    end
+    (n::Vector{UInt32},ttt::Vector{Float32})
+end
+@show(times)
+=#
+#@show(typeof(times))
 #@show(o)
 
 #@show(unique(assign))

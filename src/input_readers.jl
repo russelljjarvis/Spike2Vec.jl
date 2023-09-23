@@ -42,11 +42,12 @@ Of course the absolute paths below will need to be wrangled to match your direct
 
 function load_datasets_calcium_jesus()
     (nodes,times,whole_duration) = get_all_exempler_of_days()
+    #@show(nodes)
     #(nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 
-    global_isis,spikes_ragged,numb_neurons = create_ISI_histogram(nodes,times)
+    spikes_ragged,numb_neurons = create_spikes_ragged(nodes,times)
     #(nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons)
-    (nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons) 
+    (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Float32,spikes_ragged::Vector{Any},numb_neurons::UInt32) 
 end
 function get_105_neurons(nn,tt)
     times=Vector{Float32}([])
@@ -65,7 +66,7 @@ function get_105_neurons(nn,tt)
 end
 function get_280_neurons(nn,tt)
     times=Vector{Float32}([])
-    nodes=Vector{Float32}([])
+    nodes=Vector{UInt32}([])
     current_max_t = 1820
     for (t,n) in zip(tt,nn)
         if t<current_max_t
@@ -77,7 +78,7 @@ function get_280_neurons(nn,tt)
     end
     current_max_t = maximum(times)
     @save "280_neurons.jld" times nodes current_max_t
-    times,nodes,current_max_t
+    times::Vector{Float32},nodes::Vector{UInt32},current_max_t
 end
 
 function get_all_exempler_of_days()
@@ -90,7 +91,7 @@ function get_all_exempler_of_days()
 
     current_max_t = 0.0
     tt = Vector{Float32}([])
-    nn = Vector{UInt32}([])
+    nn = Vector{Int32}([])
     @inbounds for i in 1:length_of_spike_mat0
         #if "Transients" in keys(matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i])
         #    init_mat = matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
@@ -110,9 +111,10 @@ function get_all_exempler_of_days()
     end
     #_,_,_ = get_280_neurons(copy(nn),copy(tt))
     tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
-    #display(Plots.scatter(tt,nn,legend = false, markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,))
-    #savefig("mysterious_scatter_plot.png")
-    (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
+    #display(
+    Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
+    savefig("longmysterious_scatter_plot.png")
+    (nn::Vector{Int32},tt::Vector{Float32},current_max_t::Real)
 
 end
 

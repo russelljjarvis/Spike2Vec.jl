@@ -40,6 +40,7 @@ module SpikeTime
     export get_all_exempler_of_days
     export load_datasets_calcium_jesus
     include("spike2vec.jl")
+    export create_spikes_ragged
     export compute_metrics_on_matrix_divisions
     export compute_metrics_on_divisions
     export return_spike_item_from_matrix
@@ -48,7 +49,8 @@ module SpikeTime
     export get_vector_coords
     export get_vector_coords_uniform!
     export surrogate_to_uniform
-    export label_online_distmat!
+    export label_exhuastively_distmat!
+    export label_exhuastively_distmat
     export label_online_distmat
     export cluster_distmat
     export cluster_distmat!
@@ -98,5 +100,8 @@ module SpikeTime
     export get_ts!
     export get_ts
     export hist2dHeat
+    export internal_validation1
+    export internal_validation0
+    export ragged_to_uniform
 
 end

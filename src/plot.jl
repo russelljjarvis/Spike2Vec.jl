@@ -67,10 +67,10 @@ function create_ISI_histogram(nodes::Vector{UInt32},times::Vector{Float32})
     @inbounds for n in 1:numb_neurons
         push!(spikes_ragged,[])
     end
-    @inbounds for i in 1:numb_neurons
-        for (n,t) in zip(nodes,times)
+    @inbounds for (n,t) in zip(nodes,times)
+        @inbounds for i in 1:numb_neurons
             if i==n
-                push!(spikes_ragged[i],t)
+                push!(spikes_ragged[n],t)
             end
         end
     end
@@ -157,7 +157,7 @@ function get_ts(nodes,times,dt,tau;disk=false)
     num_neurons = Int(length(nodes))+1
     total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
-    @show(time_resolution)
+    #@show(time_resolution)
 
     if !disk
         final_timesurf = zeros((num_neurons, time_resolution+1))
@@ -384,7 +384,7 @@ function if_curve(model, current; neuron = 1, dt = 0.1ms, duration = 1second)
 end
 
 
-function plotss_1(assign,nlist,tlist)
+function plotss_isi(assign,nlist,tlist)
 
     p = Plots.plot()
     collect_isi_bags = []
@@ -421,44 +421,124 @@ function plotss_1(assign,nlist,tlist)
     savefig("the_jesus_examplar.png")
     #collect_isi_bags,collect_isi_bags_map
 end
-function plotss_2(assign,div_spike_mat_no_displacement)
-    list_of_correlations = []
-    list_of_heats = []
-    for un in unique(assign)
+
+function internal_validation0(assign,)
+    p = Plots.plot()
+    collect_isi_bags = []
+    for (ind,a) in enumerate(assign)
+        if a!=0
+            #Tx = tlist[ind]
+            #xlimits = maximum(Tx)
+            #Nx = nlist[ind]
+            Plots.scatter!(p,Tx,Nx,legend = false, markercolor=a,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
+        end
+    end
+    #display(Plots.plot(p))# = Plots.plot()
+    savefig("the_jesus_examplar.png")
+end
+
+function ragged_to_uniform(times)
+    n=Vector{UInt32}([])
+    ttt=Vector{Float32}([])
+    for (i, t) in enumerate(times)
+        if length(t)!=0
+            for tt in t
+                push!(n,i);
+                for t in tt 
+                    push!(ttt,Float32(t)) 
+                end
+            end
+        end
+    end
+    (n::Vector{UInt32},ttt::Vector{Float32})
+end
+using Statistics
+#function internal_validation1(assign::AbstractVecOrMat,div_spike_mat_no_displacement::AbstractVecOrMat)
+function internal_validation1(assign::Vector{Int64}, div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}})
+
+    assign = [a+1 for a in assign]
+    labels = Vector{Float32}(unique(assign))
+    labels2cols=Vector{Any}([])#Dict()
+    
+    for l in labels
+        push!(labels2cols,[])
+    end
+    @inbounds for l in labels
         Nxag = Float32[]
         Txag = Float32[]
-        for (ind,a) in enumerate(assign)
-            if a==un
-                p = Plots.plot()
-                pscatter = Plots.plot()
-                pbar = Plots.plot()        
-                Nx = Float32[]
-                Tx = Float32[]
-                for (indy,row) in enumerate(div_spike_mat_no_displacement[:,ind])
-                    for (indx,x) in enumerate(row)
-                        if length(x)!=0
-                            append!(Nx,indy)
-                            append!(Tx,x)                
+        color_code = Int64[]
+        color_codes = Int64[]
+
+        pscatter = Plots.plot()
+        Nxold = []
+        Txold = []
+
+        @inbounds for (col,label) in enumerate(assign)
+            if label==l
+                Nx = UInt32[]
+                Tx = Vector{Float32}([])
+                push!(labels2cols[Int32(label)],col)
+                @inbounds for (ind_cell,row) in enumerate(eachrow(div_spike_mat_no_displacement[:,col]))
+                    if length(row)!=0
+                        @inbounds for times in row
+                            @inbounds for tt in times
+                                @inbounds for t in tt
+                                    push!(Tx,t) 
+                                    push!(Nx,ind_cell)
+                                    push!(color_code,col)
+                                end
+                            end
                         end
-                    end
+                    end               
                 end
                 append!(Nxag,Nx)
                 append!(Txag,Tx)
-                if length(Txag)!=0
-                    Plots.scatter!(pscatter,Txag,Nxag,legend = false, markercolor=ind,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
-                    savefig("scatter_match_$un.png")
-                end            
-                o = OnlineStats.HeatMap(minimum(Txag):maximum(Txag)/100:maximum(Txag),minimum(Nxag):1:maximum(Nxag))        
-                fit!(o, zip(Txag,Nxag))
-                display(plot(o, marginals=false, legend=true))
-                savefig("heatmap_$un.png")
-                push!(list_of_heats,length(sparse(o.counts).nzval))
-                push!(list_of_correlations,sum(abs.(cor(o.counts))))
+                append!(color_codes,color_code)
+                if length(Txold)>0
+                    o0 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:0.1:maximum(Tx))
+                    fit!(o0, zip(Nx, Tx))
+                    ts0 = copy(o0.counts)
+                    o1 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:0.1:maximum(Tx))
+                    fit!(o1, zip(Nxold, Txold))                    
+                    ts1 = copy(o1.counts)
+                    temp = cor(ts0,ts1)                    
+                    #@show(temp)
+                    avg_len=length(temp)
+                    temp[isnan.(temp)] .= 0.0
+                    temp = sum(temp)/avg_len
+                    #@show(temp)
+
+                    if abs(temp)>=0.1
+                        p2=Plots.scatter(Tx,Nx,markercolor=4,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
+                        p3=Plots.scatter(Txold,Nxold,markercolor=3,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
+                        l = @layout [a ; b ]
+                        Plots.plot(p2, p3, layout = l)
+                        savefig("NEW_correlated_Scatter_$temp.png")
+                        p2=Plots.heatmap(ts0)
+                        p3=Plots.heatmap(ts1)
+                        l = @layout [a ; b ]
+                        Plots.plot(p2, p3, layout = l)
+                        savefig("NEW_correlated_heatmap_$temp.png")
+
+                    end
+                end
+                Nxold=Nx
+                Txold=Tx
+        
             end
-        end  
+
+        end
+
+        #if length(Txag)!=0
+            #@show()
+            #display(Plots.scatter!(pscatter,Txag,Nxag,legend = false, markercolor=color_codes,markersize = 0.8,markerstrokewidth=0,alpha=0.6, bgcolor=:snow2, fontcolor=:blue))
+            #savefig("NEW_scatter_match_$l.png")
+        #end                            
+
     end
-    (list_of_correlations,list_of_heats)
+    labels2cols
 end
+
 
 # export density
 # function density(p, sym)
