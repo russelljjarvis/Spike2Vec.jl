@@ -13,6 +13,8 @@ module SpikeTime
     using ProgressMeter
     using Setfield
     using DrWatson
+    #initialize_project(@__DIR__)
+    quickactivate(@__DIR__)
     using StaticArrays
     #using Colors
     #using StatsPlots

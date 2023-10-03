@@ -225,7 +225,7 @@ function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matr
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float64}(undef, nrow, ncol)
     refspikes = div_spike_mat_no_displacement[:,:] 
-    avg_spk_countst = Int32(trunc(mean([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
+    avg_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
     maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
     
     temp = LinRange(0.0, maximum_time, avg_spk_countst)
@@ -417,7 +417,6 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
         @inbounds for i in 1:numb_neurons
             if i==n
                 push!(spikes_ragged[n],t)
-                #@show(length(spikes_ragged[n]))
             end
         end
     end
@@ -428,7 +427,7 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
             display(Plots.scatter!(p1,spikes_ragged[neuron_id],nodes,legend = false,xlabel="time (Seconds)",ylabel="Cell Id"))
         end
     end
-    (spikes_ragged::Vector{Any},numb_neurons::UInt32)
+    (spikes_ragged::Vector{Any},numb_neurons::Int)
 end
 
 #=

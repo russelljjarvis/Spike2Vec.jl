@@ -24,19 +24,19 @@ else
 end
 #display(Plots.scatter(times,nodes))
 
-if !isfile("jesus_int.jld")
+#if !isfile("jesus_int.jld")
     #end
     maxt = maximum(times)
-    resolution = 300
+    resolution = 100
 
     #@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
     @time div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,maxt;displace=false)
     
     @save "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
-else 
+#else 
     @load "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
-end
-ε=9.7
+#end
+ε=11.7
 #@time time_windows = Vector{Any}([Tuple(s,e) for (s,e) in zip(start_windows,end_windows)])
 
 #@show(div_spike_mat_no_displacement)

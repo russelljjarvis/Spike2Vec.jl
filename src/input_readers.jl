@@ -4,14 +4,8 @@ using Plots
 using MAT
 using StatsBase
 using JLD2
-#using Plots
-#using SpikeTime
-#using DrWatson
-#using ProgressMeter
 using OnlineStats
 using SparseArrays
-#using CSV, Tables
-
 using DelimitedFiles
 using DataFrames
 using Revise
@@ -29,7 +23,7 @@ Just a helper method to get some locally stored spike data if it exists.
 """
 function fromHDF5spikes()
     hf5 = h5open("spikes.h5","r")
-    nodes = Vector{Int64}(read(hf5["spikes"]["v1"]["node_ids"]))
+    nodes = Vector{UInt32}(read(hf5["spikes"]["v1"]["node_ids"]))
     nodes = [n+1 for n in nodes]
     times = Vector{Float64}(read(hf5["spikes"]["v1"]["timestamps"]))
     close(hf5)
@@ -42,12 +36,10 @@ Of course the absolute paths below will need to be wrangled to match your direct
 
 function load_datasets_calcium_jesus()
     (nodes,times,whole_duration) = get_all_exempler_of_days()
-    #@show(nodes)
-    #(nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 
     spikes_ragged,numb_neurons = create_spikes_ragged(nodes,times)
-    #(nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons)
-    (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Float32,spikes_ragged::Vector{Any},numb_neurons::UInt32) 
+    @show(typeof(numb_neurons))
+    (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Real,spikes_ragged::Vector{Any},numb_neurons::Int) 
 end
 function get_105_neurons(nn,tt)
     times=Vector{Float32}([])
@@ -82,23 +74,23 @@ function get_280_neurons(nn,tt)
 end
 
 function get_all_exempler_of_days()
-    FPS = matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"][1]["Movie"]["FPS"]
+    FPS = matread("../datasets/M4 analyzed2DaysV.mat")["dataIntersected"][1]["Movie"]["FPS"]
     frame_width = 1.0/FPS #0.08099986230023408 #second, sample_rate =  12.3457#Hz
-    length_of_spike_mat0 = length(matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"])
+    length_of_spike_mat0 = length(matread("../datasets/M4 analyzed2DaysV.mat")["dataIntersected"])
     length_of_spike_mat1 = 1:6
 
-    init_mat = matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
+    init_mat = matread("../datasets/M1 analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
 
     current_max_t = 0.0
     tt = Vector{Float32}([])
-    nn = Vector{Int32}([])
+    nn = Vector{UInt32}([])
     @inbounds for i in 1:length_of_spike_mat0
         #if "Transients" in keys(matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i])
         #    init_mat = matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
         # end
         @inbounds for j in 1:6
-           if "Transients" in keys(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i])
-               temp = matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
+           if "Transients" in keys(matread("../datasets/M$j analyzed2DaysV.mat")["dataIntersected"][i])
+               temp = matread("../datasets/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
                init_mat = vcat(init_mat,temp)
            end
         end
@@ -109,12 +101,10 @@ function get_all_exempler_of_days()
         append!(nn,nodes)
 
     end
-    #_,_,_ = get_280_neurons(copy(nn),copy(tt))
     tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
-    #display(
     Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
     savefig("longmysterious_scatter_plot.png")
-    (nn::Vector{Int32},tt::Vector{Float32},current_max_t::Real)
+    (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 
 end
 
