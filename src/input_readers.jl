@@ -6,10 +6,6 @@ using StatsBase
 using JLD2
 using OnlineStats
 using SparseArrays
-<<<<<<< HEAD
-=======
-
->>>>>>> f08c9093d337bef4d9fc1f7433a7a1f8e5501ebe
 using DelimitedFiles
 using DataFrames
 using Revise
@@ -65,14 +61,10 @@ function load_datasets_calcium_jesus()
     (nodes,times,whole_duration) = get_all_exempler_of_days()
 
     spikes_ragged,numb_neurons = create_spikes_ragged(nodes,times)
-<<<<<<< HEAD
-    @show(typeof(numb_neurons))
     (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Real,spikes_ragged::Vector{Any},numb_neurons::Int) 
-=======
-    #(nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons)
-    (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Float32,spikes_ragged::Vector{Any},numb_neurons) 
->>>>>>> f08c9093d337bef4d9fc1f7433a7a1f8e5501ebe
+    
 end
+#(times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Float32,spikes_ragged::Vector{Any},numb_neurons) 
 function get_105_neurons(nn,tt)
     times=Vector{Float32}([])
     nodes=Vector{UInt32}([])
@@ -111,28 +103,16 @@ function get_all_exempler_of_days()
     length_of_spike_mat0 = length(matread("../datasets/M4 analyzed2DaysV.mat")["dataIntersected"])
     length_of_spike_mat1 = 1:6
 
-<<<<<<< HEAD
-    init_mat = matread("../datasets/M1 analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
-=======
->>>>>>> f08c9093d337bef4d9fc1f7433a7a1f8e5501ebe
 
     current_max_t = 0.0
     tt = Vector{Float32}([])
     nn = Vector{UInt32}([])
-<<<<<<< HEAD
-=======
     init_mat = Vector{Any}([])
->>>>>>> f08c9093d337bef4d9fc1f7433a7a1f8e5501ebe
     @inbounds for i in 1:length_of_spike_mat0
         #if "Transients" in keys(matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i])
         #    init_mat = matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
         # end
         @inbounds for j in 1:6
-<<<<<<< HEAD
-           if "Transients" in keys(matread("../datasets/M$j analyzed2DaysV.mat")["dataIntersected"][i])
-               temp = matread("../datasets/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
-               init_mat = vcat(init_mat,temp)
-=======
 
            if "Transients" in keys(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i])
 
@@ -142,7 +122,6 @@ function get_all_exempler_of_days()
                else
                     init_mat = vcat(init_mat,copy(temp))
                end
->>>>>>> f08c9093d337bef4d9fc1f7433a7a1f8e5501ebe
            end
         end
         (nodes,times,whole_duration) = convert_bool_matrice_to_raster(init_mat,frame_width)
@@ -152,13 +131,8 @@ function get_all_exempler_of_days()
         append!(nn,nodes)
 
     end
-<<<<<<< HEAD
-    tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
-=======
-    #_,_,_ = get_280_neurons(copy(nn),copy(tt))
+    #tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
     tt,nn,current_max_t = get_250_neurons(copy(nn),copy(tt))
-    #display(
->>>>>>> f08c9093d337bef4d9fc1f7433a7a1f8e5501ebe
     Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
     savefig("longmysterious_scatter_plot.png")
     (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
