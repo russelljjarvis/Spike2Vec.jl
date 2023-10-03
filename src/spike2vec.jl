@@ -124,44 +124,42 @@ function divide_epoch(times::AbstractVector,start::Real,stop::Real)
 end
 
 function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArray, self_distances::AbstractArray;metric="kreuz")
-
+    @assert length(uniform)>1
     @inbounds for (ind,n1_) in enumerate(neuron1)
-        #show(size(n1_))
+
         n1_ = n1_[1]
         if length(n1_) != 0
             pooledspikes = vcat(uniform,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
             t1_ = sort(unique(n1_))
-            if metric=="kreuz"
-                _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
-                self_distances[ind]=abs(sum(S))
-            elseif metric=="CV"
-                if length(t1_)>1
-                    self_distances[ind] = CV(t1_)
-                else
-                    self_distances[ind]=0
-                end                
-            elseif metric=="autocov"
-                if length(t1_)>1
-                    self_distances[ind] = autocov( t1_, [length(t1_)-1],demean=true)[1]
-                else
-                    self_distances[ind]=0
+            if length(t1_)>1
+
+                if metric=="kreuz"
+                    _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
+                    self_distances[ind] = abs(sum(S))
+                elseif metric=="CV"
+                        self_distances[ind] = CV(t1_)
+                elseif metric=="autocov"
+                        self_distances[ind] = autocov( t1_, [length(t1_)-1],demean=true)[1]
+
+                elseif metric=="LV"
+
+                        self_distances[ind] = lvr(t1_,maximum(t1_))
+                elseif metric=="hybrid"
+                        _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
+                        self_distances[ind] = abs(sum(S))
+                        self_distances[ind] += lvr(t1_,maximum(t1_))
+                        self_distances[ind] += sum(t1_)
+
+                elseif metric=="count"
+                        self_distances[ind] = sum(t1_)
                 end
-            elseif metric=="LV"
-                if length(t1_)>1
 
-                    self_distances[ind]= lvr(t1_,maximum(t1_))
-                else
-                    self_distances[ind]=0
-                end                    
+            else
+                self_distances[ind]=abs(length(n1_)-length(t1_))
             end
-        else
-            self_distances[ind]=0
         end
-
     end
-    #@show(metric)
-    #@show(self_distances)
 end
 
 function array_of_empty_vectors(T, dims...)
@@ -180,12 +178,9 @@ function spike_matrix_divided(spikes_raster::Vector{Any},number_divisions_size::
     step_size = maxt/number_divisions_size
     end_windows = Vector{Float32}(collect(step_size:step_size:step_size*number_divisions_size))
     start_windows = Vector{Float32}(collect(0:step_size:(step_size*number_divisions_size)-step_size))
-    #@time time_windows = Vector{Any}([Tuple(s,e) for (s,e) in zip(start_windows,end_windows)])
+
     mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(end_windows)))
-    #$@show(spikes_raster)
-    #@show(mat_of_spikes)
     spike_matrix_divided!(mat_of_spikes,spikes_raster,step_size,end_windows,start_windows,displace)
-    #@show(mat_of_spikes)
 
     mat_of_spikes::Matrix{Vector{Vector{Float32}}},start_windows::Vector{Float32},end_windows::Vector{Float32}
 end
@@ -225,7 +220,7 @@ function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matr
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float64}(undef, nrow, ncol)
     refspikes = div_spike_mat_no_displacement[:,:] 
-    avg_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
+    avg_spk_countst = Int32(trunc(mean([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
     maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
     
     temp = LinRange(0.0, maximum_time, avg_spk_countst)
@@ -417,6 +412,7 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
         @inbounds for i in 1:numb_neurons
             if i==n
                 push!(spikes_ragged[n],t)
+                #@show(length(spikes_ragged[n]))
             end
         end
     end
@@ -427,7 +423,7 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
             display(Plots.scatter!(p1,spikes_ragged[neuron_id],nodes,legend = false,xlabel="time (Seconds)",ylabel="Cell Id"))
         end
     end
-    (spikes_ragged::Vector{Any},numb_neurons::Int)
+    (spikes_ragged::Vector{Any},numb_neurons::UInt32)
 end
 
 #=

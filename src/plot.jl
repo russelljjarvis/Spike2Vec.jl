@@ -7,6 +7,8 @@ using LinearAlgebra
 import LinearAlgebra: normalize
 using Plots
 using ColorSchemes
+using Statistics
+
 
 function normalised_matrix!(X)
     foreach(normalize!, eachcol(X))
@@ -43,8 +45,8 @@ spikes is a matrix with regularly sampled windows, populated by spikes, with cal
 function convert_bool_matrice_to_raster(read_spike_dense::Matrix{Bool}, frame_width::Real)
     nodes = UInt32[]
     times = Float32[]
-    for (indy,row) in enumerate(eachrow(read_spike_dense))
-        for (indx,x) in enumerate(row)
+    @inbounds for (indy,row) in enumerate(eachrow(read_spike_dense))
+        @inbounds for (indx,x) in enumerate(row)
             if x
                 push!(nodes,indy)
                 push!(times,indx*frame_width)                
@@ -60,9 +62,9 @@ A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to
 Also output a ragged array (Array of unequal length array) of spike trains. 
 """
 function create_ISI_histogram(nodes::Vector{UInt32},times::Vector{Float32})
-    spikes_ragged = []
-    global_isis =Float32[] # the total lumped population ISI distribution.
-    isi_s = []
+    global_isis,spikes_ragged,isi_s = Float32[],Any[],Float32[]
+    #global_isis = # the total lumped population ISI distribution.
+    
     numb_neurons=Int(maximum(nodes))+1 # Julia doesn't index at 0.
     @inbounds for n in 1:numb_neurons
         push!(spikes_ragged,[])
@@ -452,18 +454,15 @@ function ragged_to_uniform(times)
     end
     (n::Vector{UInt32},ttt::Vector{Float32})
 end
-using Statistics
-#function internal_validation1(assign::AbstractVecOrMat,div_spike_mat_no_displacement::AbstractVecOrMat)
-function internal_validation1(assign::Vector{Int64}, div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}})
+function internal_validation1(assign::Vector{UInt32}, div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}})
 
-    assign = [a+1 for a in assign]
     labels = Vector{Float32}(unique(assign))
-    labels2cols=Vector{Any}([])#Dict()
+    #labels2cols = Vector{Any}([])
     
+    #for l in labels
+    #    push!(labels2cols,[])
+    #end
     for l in labels
-        push!(labels2cols,[])
-    end
-    @inbounds for l in labels
         Nxag = Float32[]
         Txag = Float32[]
         color_code = Int64[]
@@ -473,16 +472,16 @@ function internal_validation1(assign::Vector{Int64}, div_spike_mat_no_displaceme
         Nxold = []
         Txold = []
 
-        @inbounds for (col,label) in enumerate(assign)
+        for (col,label) in enumerate(assign)
             if label==l
                 Nx = UInt32[]
                 Tx = Vector{Float32}([])
-                push!(labels2cols[Int32(label)],col)
-                @inbounds for (ind_cell,row) in enumerate(eachrow(div_spike_mat_no_displacement[:,col]))
+                #push!(labels2cols[Int32(label)],col)
+                for (ind_cell,row) in enumerate(eachrow(div_spike_mat_no_displacement[:,col]))
                     if length(row)!=0
-                        @inbounds for times in row
-                            @inbounds for tt in times
-                                @inbounds for t in tt
+                        for times in row
+                            for tt in times
+                                for t in tt
                                     push!(Tx,t) 
                                     push!(Nx,ind_cell)
                                     push!(color_code,col)
@@ -495,39 +494,35 @@ function internal_validation1(assign::Vector{Int64}, div_spike_mat_no_displaceme
                 append!(Txag,Tx)
                 append!(color_codes,color_code)
                 if length(Txold)>0
-                    o0 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:0.1:maximum(Tx))
+                    o0 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Tx)/length(Tx):maximum(Tx))
                     fit!(o0, zip(Nx, Tx))
                     ts0 = copy(o0.counts)
-                    o1 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:0.1:maximum(Tx))
+                    o1 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Tx)/length(Tx):maximum(Tx))
                     fit!(o1, zip(Nxold, Txold))                    
                     ts1 = copy(o1.counts)
-                    temp = cor(ts0,ts1)                    
-                    #@show(temp)
+                    temp = cor(ts0,ts1)    
                     avg_len=length(temp)
                     temp[isnan.(temp)] .= 0.0
-                    temp = sum(temp)/avg_len
-                    #@show(temp)
+                    temp = mean(temp)/avg_len
+                    @show(mean(temp),sum(temp))
 
-                    if abs(temp)>=0.1
-                        p2=Plots.scatter(Tx,Nx,markercolor=4,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
-                        p3=Plots.scatter(Txold,Nxold,markercolor=3,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
-                        l = @layout [a ; b ]
-                        Plots.plot(p2, p3, layout = l)
-                        savefig("NEW_correlated_Scatter_$temp.png")
-                        p2=Plots.heatmap(ts0)
-                        p3=Plots.heatmap(ts1)
-                        l = @layout [a ; b ]
-                        Plots.plot(p2, p3, layout = l)
-                        savefig("NEW_correlated_heatmap_$temp.png")
+                    p2=Plots.heatmap(ts0,legend=false)
+                    p3=Plots.heatmap(ts1,legend=false)
+                    l = @layout [a ; b ]
+                    Plots.plot(p2, p3, layout = l,legend=false)
+                    savefig("zebra_correlated_heatmap_$temp.png")
 
-                    end
                 end
-                Nxold=Nx
-                Txold=Tx
-        
+                append!(Nxold,Nx)
+                append!(Txold,Tx)
             end
-
         end
+        p2 = Plots.scatter(Txag,Nxag,markercolor=4,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,legend=false)
+
+        p3 = Plots.scatter!(p2,Txold,Nxold,markercolor=3,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,legend=false)
+        Plots.plot(p3,legend=false)
+        savefig("zebra_correlated_Scatter_.png")
+        
 
         #if length(Txag)!=0
             #@show()
@@ -536,7 +531,7 @@ function internal_validation1(assign::Vector{Int64}, div_spike_mat_no_displaceme
         #end                            
 
     end
-    labels2cols
+    #labels2cols
 end
 
 

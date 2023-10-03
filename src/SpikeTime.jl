@@ -41,6 +41,7 @@ module SpikeTime
     include("input_readers.jl")
     export get_all_exempler_of_days
     export load_datasets_calcium_jesus
+    export load_zebra_finche_nmc_dataset
     include("spike2vec.jl")
     export create_spikes_ragged
     export compute_metrics_on_matrix_divisions

@@ -5,14 +5,11 @@ using JLD
 using Plots
 using SpikeTime
 using DrWatson
+
+
 using ProgressMeter
-#using RecurrenceAnalysis
-#using Clustering
-#import DelimitedFiles: readdlm
-#using UMAP
 using OnlineStats
 using SparseArrays
-using CSV, Tables
 
 using DelimitedFiles
 

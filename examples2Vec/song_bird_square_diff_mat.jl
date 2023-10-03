@@ -1,56 +1,20 @@
-#using JLD
-#using SpikeTime
-#using
-#using DrWatson
 using Plots
 using SpikeTime
-#ST = SpikeTime.ST
-#using ST
-#using OnlineStats
-#using SparseArrays
-#SNN.@load_units
-#using Test
-#using DimensionalData
 using Revise
 using StatsBase
 using ProgressMeter
-#using ColorSchemes
-#using PyCall
 using LinearAlgebra
-#using Makie
 using JLD
-#using CairoMakie#,KernelDensity, Distributions
 using ProgressMeter
-#using Distances
-#using Gadfly
-#using Gadfly
-#using SGtSNEpi, Random
-
-#using SimpleWeightedGraphs, Graphs
-#using GraphPlot
-#using Plots, GraphRecipes
-
 using Plots
-#using PyCall
 using UMAP
 using Plots
-# Other Imports
-#import PyPlot: plt
 import DelimitedFiles: readdlm
-#import Random
-#import StatsBase: quantile
-#using Clustering
 using UMAP
 # Songbird metadata
-#num_neurons = 77
-#max_time = 22.2
-#using DrWatson
-# Randomly permute neuron labels.
-# (This hides the sequences, to make things interesting.)
-#_p = Random.randperm(num_neurons)
-
-# Load spikes.
-#spikes = seq.Spike[]
+num_neurons = 77
+max_time = 22.2
+using DrWatson
 
 function load_datasets()
 
@@ -76,6 +40,8 @@ function load_datasets()
     end
     (nnn,ttt)
 end
+
+
 function get_plot(times,nodes,division_size)
     step_size = maximum(times)/division_size
     #@show(step_size)
@@ -172,6 +138,12 @@ function final_plots2(distances0,angles0,ll)
 end
 #(nodes,times) = load_datasets()
 =#
+
+maxt = maximum(times)
+resolution = 225
+
+#@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
+@time div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,maxt;displace=false)
 
 function plot_umap(mat_of_distances; file_name::String="empty.png")
     #model = UMAP_(mat_of_distances', 10)
@@ -343,22 +315,6 @@ function cluster_distmat(mat_of_distances)
     assign = R.assignments
     R,sort_idx,assign
 end
-
-(nnn,ttt)= load_datasets()
-display(Plots.scatter(ttt,nnn))
-resolution = 90
-mat_of_distances = get_plot(ttt,nnn,resolution)
-#plot_umap(mat_of_distances;file_name="UMAP_song_bird.png")
-#nclasses=10
-#(scatter_indexs,yes,sort_idx) = label_online(mat_of_distances,nclasses)
-display(mat_of_distances)
-#@show(mat_of_distances)
-#using CategoricalArrays
-distmat = label_online_distmat(mat_of_distances)#,nclasses)
-display(distmat)
-(R,sort_idx,assign) = cluster_distmat(distmat)
-display(Plots.heatmap(distmat))
-#using ColorSchemes
 function get_division_scatter2(times,nodes,division_size,distmat,sort_idx,assign)
     #yes = yes[sort_idx]
     step_size = maximum(times)/division_size

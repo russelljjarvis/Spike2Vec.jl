@@ -42,7 +42,22 @@ end
 #@show(div_spike_mat_no_displacement)
 #if !isfile("jesus_int_processed2.jld")
 
-    @time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    @time (distmat,variance,mat2vec_hybrid) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="hybrid")
+
+    p1=Plots.histogram(mat2vec_hybrid)
+    (distmat,variance,mat2vec_kreuz) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+
+    p2=Plots.histogram!(p1,mat2vec_kreuz)
+    (distmat,variance,mat2vec_LV) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")#,label="LV")
+
+    p3=Plots.histogram!(p2,mat2vec_LV)
+
+    (distmat,variance,mat2vec_sum) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="count")#,label="LV")
+    p4=Plots.histogram!(p3,mat2vec_sum)
+
+    Plots.plot(p4)
+    savefig("variance_of.png")
+
     #@show(variance)
     #@time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")
     #@show(variance)

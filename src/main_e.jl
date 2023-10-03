@@ -1,6 +1,5 @@
 using Revise
 using StatsBase
-#using SetField
 using ProgressMeter
 
 function set_syn_values!(container::SpikingSynapse, new_values::CuArray{Bool})
@@ -34,8 +33,6 @@ function NMNIST_pre_process_spike_data(temp_container_store;duration=25)
         push!(empty_spike_cont,[])
     end
     cnt = 0
-
-
     @inbounds @showprogress for (ind,s) in enumerate(temp_container_store)
         (times,labels,nodes) = (s[1],s[2],s[3]) 
         maxt = maximum(times)
@@ -49,35 +46,12 @@ function NMNIST_pre_process_spike_data(temp_container_store;duration=25)
                 push!(packet_window_boundaries,(min_,maxt))
                 cnt+=1
             end
-            #push!(spike_packet_lists,spike_packet_labeled)
-
         end
     end
     return empty_spike_cont,labelsl,packet_window_boundaries
 end
 
 
-#=
-
-
-
-#function sim!(P, C;conn_map=nothing, dt = 0.1ms, duration = 10ms,current_stim=nothing)
-
-function count_syn(C::Vector{SpikingSynapse},testval::SpikeTime.SpikingSynapse{SparseMatrixCSC})
-    cnt_synapses=0
-    for sparse_connections in C
-        cnt_synapses+=length(sparse_connections.W.nzval)
-    end    
-    println("synapses to be simulated: ",cnt_synapses)
-end
-function count_syn(C,testval::SpikeTime.SpikingSynapse{CuArray})
-    cnt_synapses=0
-    for sparse_connections in C
-        cnt_synapses+=length(sparse_connections.W)
-    end    
-    println("synapses to be simulated: ",cnt_synapses)
-end
-=#
 function integrate_neuron!(N::Integer,dt::Real,pp)
     τm = 20ms
     τe = 5ms
@@ -113,48 +87,33 @@ function integrate_neuron!(N::Integer,dt::Real,pp)
         end
     
     end
-    #replace!(v, Inf=>(Vr+Vt)/2.0)
-    #replace!(v, NaN=>(Vr+Vt)/2.0)   
-    #replace!(v,-Inf16=>(Vr+Vt)/2.0)
-    #replace!(v,-Inf32=>(Vr+Vt)/2.0)
-    #replace!(v, NaN32=>(Vr+Vt)/2.0)   
-    #replace!(v, NaN16=>(Vr+Vt)/2.0)       
+  
 end
+
 
 """
 # impinge a current proportional to weight on post synaptic cell
 # membrane.
 """
-
-#forwards_euler_weights!(post_targets::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Any}}, W::Vector{Any}, fireJ::Vector{Bool}, g::Vector{Float64})
-
 function forwards_euler_weights!(post_targets::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}},W::Vector{Vector{Any}})    
-    @inline for (ind,cell_post_row) in enumerate(W)
+    @inbounds for (ind,cell_post_row) in enumerate(W)
         if post_targets.fire[ind] || post_targets.fire_cnt[ind]>0
             post_targets.fire_cnt[ind]+=1
             if post_targets.fire_cnt[ind]==rand(1:6) || post_targets.fire_cnt[ind]>=6
                 post_targets.fire_cnt[ind]=0
-                @inline for (s,w) in enumerate(cell_post_row)
+                @inbounds for (s,w) in enumerate(cell_post_row)
 
                     if w>0
 
-                        post_targets.ge[s] = w#*2.55
+                        post_targets.ge[s] = w
                     else
-                        post_targets.gi[s] = w#*8.5 
+                        post_targets.gi[s] = w
                     end
                 end 
             end
         end
     end
 
-    #replace!(post_targets.gi, Inf=>0.0)
-    #replace!(post_targets.gi, NaN=>0.0)   
-    #replace!(post_targets.gi,-Inf16=>0.0)
-    #replace!(post_targets.gi, NaN32=>0.0) 
-    #replace!(post_targets.ge, Inf=>0.0)
-    #replace!(post_targets.ge, NaN=>0.0)   
-    #replace!(post_targets.ge,-Inf16=>0.0)
-    #replace!(post_targets.ge, NaN32=>0.0) 
       
 end
 
@@ -200,9 +159,9 @@ function forwards_euler_weightsSDTP!(pop::IFNF{Int64, Vector{Bool}, Vector{Float
     Wmax  = 0.01
     ΔApre  = 0.01 * Wmax
     ΔApost  = -ΔApre * τpre / τpost * 1.05
-    @inline for (pre_syn,_) in enumerate(W)
+    @inbounds for (pre_syn,_) in enumerate(W)
         if pop.fire[pre_syn]
-            @inline for (post_syn,_) in enumerate(cell)
+            @inbounds for (post_syn,_) in enumerate(cell)
                 Apre[post_syn] *= exp32(- (t - tpre[post_syn]) / τpre)
                 Apost[post_syn] *= exp32(- (t - tpost[post_syn]) / τpost)
                 Apre[post_syn] += ΔApre
@@ -211,8 +170,8 @@ function forwards_euler_weightsSDTP!(pop::IFNF{Int64, Vector{Bool}, Vector{Float
             end
         end
     end
-    @inline for (pre_syn,_) in enumerate(W)
-        @inline for (post_syn,_) in enumerate(cell)
+    @inbounds for (pre_syn,_) in enumerate(W)
+        @inbounds for (post_syn,_) in enumerate(cell)
             if pop.fire[post_syn]
                 Apre[pre_syn] *= exp32(- (t - tpre[pre_syn]) / τpre)
                 Apost[pre_syn] *= exp32(- (t - tpost[pre_syn]) / τpost)
@@ -238,7 +197,7 @@ function sim!(pp,dt,spike_stim_slice,external_layer_indexs)
     W = pp.post_synaptic_weights
     pp.fire = Vector{Bool}([false for i in 1:length(pp.fire)])
     if length(spike_stim_slice)!=0
-        @inline for ind in external_layer_indexs[spike_stim_slice]
+        @inbounds for ind in external_layer_indexs[spike_stim_slice]
             pp.ge[ind] = 9.9125
         end
     end
@@ -250,7 +209,7 @@ end
 #=
 function simx!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}, Vector{Vector{Any}}}; dt::Float64, duration::Float64)
 
-    @inline  for _ in 0:dt:duration
+    @inbounds  for _ in 0:dt:duration
         simx!(P, dt)
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
@@ -259,7 +218,7 @@ end
 =#
 function sim!(P::IFNF{Int64, Vector{Bool}, Vector{Float32}}; dt::Real = 1ms, duration::Real = 10ms)#;current_stim=nothing)
 
-    @inline  for _ in 0:dt:duration
+    @inbounds  for _ in 0:dt:duration
         sim!(P, dt)
         # TODO Throttle maximum firing rate
         # at physiologically plausible levels
