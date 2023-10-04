@@ -4,13 +4,8 @@ using Plots
 using MAT
 using StatsBase
 using JLD2
-#using Plots
-#using SpikeTime
-#using DrWatson
-#using ProgressMeter
 using OnlineStats
 using SparseArrays
-#using CSV, Tables
 
 using DelimitedFiles
 using DataFrames
@@ -22,6 +17,29 @@ function pablo_load_datasets()
     nodes = [UInt32(n+1) for n in nodes]
     times = Vector{Float32}(df.time_ms)
     (nodes,times)
+end
+
+function load_zebra_finche_nmc_dataset()
+    spikes = []    
+    file_path = "../data/songbird_spikes.txt"
+    nodes = [n for (n, _) in eachrow(readdlm(file_path, '\t', Float64, '\n'))]
+    @inbounds for _ in 1:maximum(unique(nodes))+1
+        push!(spikes,[])
+    end
+    @inbounds for (n, t) in eachrow(readdlm(file_path, '\t', Float64, '\n'))
+        push!(spikes[Int32(n)],t)
+    end
+    nodesdense=Vector{UInt32}([])
+    timesdense=Vector{Float32}([])
+    @inbounds for (i, timeslist) in enumerate(spikes)
+        @inbounds for times in timeslist
+            if length(times)!=0
+                push!(nodesdense,i);
+                push!(timesdense,Float32(times))
+            end
+        end
+    end
+    (nodesdense,timesdense)
 end
 
 """
@@ -47,7 +65,7 @@ function load_datasets_calcium_jesus()
 
     spikes_ragged,numb_neurons = create_spikes_ragged(nodes,times)
     #(nodes,times,whole_duration,global_isis,spikes_ragged,numb_neurons)
-    (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Float32,spikes_ragged::Vector{Any},numb_neurons::UInt32) 
+    (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Float32,spikes_ragged::Vector{Any},numb_neurons) 
 end
 function get_105_neurons(nn,tt)
     times=Vector{Float32}([])
@@ -64,20 +82,20 @@ function get_105_neurons(nn,tt)
     @save "105_neurons.jld" times nodes current_max_t
     times::Vector{Float32},nodes::Vector{UInt32},current_max_t
 end
-function get_280_neurons(nn,tt)
+function get_250_neurons(nn,tt)
     times=Vector{Float32}([])
     nodes=Vector{UInt32}([])
-    current_max_t = 1820
+    current_max_t = 1750
     for (t,n) in zip(tt,nn)
         if t<current_max_t
-            if n<280
+            if n<250
                 push!(times,t)
                 push!(nodes,n)
             end
         end
     end
     current_max_t = maximum(times)
-    @save "280_neurons.jld" times nodes current_max_t
+    @save "250_neurons.jld" times nodes current_max_t
     times::Vector{Float32},nodes::Vector{UInt32},current_max_t
 end
 
@@ -87,19 +105,25 @@ function get_all_exempler_of_days()
     length_of_spike_mat0 = length(matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"])
     length_of_spike_mat1 = 1:6
 
-    init_mat = matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
 
     current_max_t = 0.0
     tt = Vector{Float32}([])
-    nn = Vector{Int32}([])
+    nn = Vector{UInt32}([])
+    init_mat = Vector{Any}([])
     @inbounds for i in 1:length_of_spike_mat0
         #if "Transients" in keys(matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i])
         #    init_mat = matread("../JesusMatlabFiles/M1 analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
         # end
         @inbounds for j in 1:6
+
            if "Transients" in keys(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i])
+
                temp = matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
-               init_mat = vcat(init_mat,temp)
+               if j==1 
+                    init_mat = copy(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"])
+               else
+                    init_mat = vcat(init_mat,copy(temp))
+               end
            end
         end
         (nodes,times,whole_duration) = convert_bool_matrice_to_raster(init_mat,frame_width)
@@ -110,11 +134,11 @@ function get_all_exempler_of_days()
 
     end
     #_,_,_ = get_280_neurons(copy(nn),copy(tt))
-    tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
+    tt,nn,current_max_t = get_250_neurons(copy(nn),copy(tt))
     #display(
     Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
     savefig("longmysterious_scatter_plot.png")
-    (nn::Vector{Int32},tt::Vector{Float32},current_max_t::Real)
+    (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 
 end
 

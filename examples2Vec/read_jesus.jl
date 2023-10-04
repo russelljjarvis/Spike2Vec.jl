@@ -16,7 +16,7 @@ using DataFrames
 #else
 if !isfile("jesus_data_set.jld")
     (nodes,times,whole_duration,spikes_ragged,numb_neurons)  = load_datasets_calcium_jesus()
-    @show(nodes)
+#    @show(nodes)
     @save "jesus_data_set.jld" nodes times whole_duration spikes_ragged numb_neurons
 
 else
@@ -24,25 +24,40 @@ else
 end
 #display(Plots.scatter(times,nodes))
 
-if !isfile("jesus_int.jld")
+#if !isfile("jesus_int.jld")
     #end
     maxt = maximum(times)
-    resolution = 300
+    resolution = 225
 
     #@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
     @time div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,maxt;displace=false)
     
     @save "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
-else 
+#else 
     @load "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
-end
-ε=9.7
+#end
+ε=20.7
 #@time time_windows = Vector{Any}([Tuple(s,e) for (s,e) in zip(start_windows,end_windows)])
 
 #@show(div_spike_mat_no_displacement)
 #if !isfile("jesus_int_processed2.jld")
 
-    @time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    @time (distmat,variance,mat2vec_hybrid) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="hybrid")
+
+    p1=Plots.histogram(mat2vec_hybrid)
+    (distmat,variance,mat2vec_kreuz) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+
+    p2=Plots.histogram!(p1,mat2vec_kreuz)
+    (distmat,variance,mat2vec_LV) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")#,label="LV")
+
+    p3=Plots.histogram!(p2,mat2vec_LV)
+
+    (distmat,variance,mat2vec_sum) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="count")#,label="LV")
+    p4=Plots.histogram!(p3,mat2vec_sum)
+
+    Plots.plot(p4)
+    savefig("variance_of.png")
+
     #@show(variance)
     #@time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")
     #@show(variance)
