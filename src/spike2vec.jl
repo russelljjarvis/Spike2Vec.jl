@@ -86,10 +86,9 @@ Divide epoch into windows
 function divide_epoch(nodes::AbstractVector,times::AbstractVector,start::Real,stop::Real)
     n0=Vector{UInt32}([])
     t0=Vector{Float32}([])
-    window_size = stop-start
     @inbounds for (n,t) in zip(nodes,times)
         if start<=t && t<=stop
-            append!(t0,t-start)
+            append!(t0,t)#)
             append!(n0,n)
         end
     end
@@ -102,11 +101,10 @@ end
 
 function divide_epoch(times::AbstractVector,start::Real,stop::Real)
     t0=Vector{Float32}([])
-    window_size = stop-start
     @inbounds for t in times
         if start<=t && t<=stop
             @assert start<=t<=stop
-            push!(t0,abs(t-start))
+            push!(t0,abs(t))
         end
     end
     #@inbounds for tx in t0
@@ -155,7 +153,9 @@ function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArr
                         self_distances[ind] = sum(t1_)
                 end
 
-            else
+            else # If no spikes in this window, don't reflect that there was agreement
+                 # ie self_distances[ind] = 0, reflects agreement
+                 # reflect a big disagreement.
                 self_distances[ind]=abs(length(n1_)-length(t1_))
             end
         end
@@ -185,19 +185,18 @@ function spike_matrix_divided(spikes_raster::Vector{Any},number_divisions_size::
     mat_of_spikes::Matrix{Vector{Vector{Float32}}},start_windows::Vector{Float32},end_windows::Vector{Float32}
 end
 function spike_matrix_divided!(mat_of_spikes::Matrix{Vector{Vector{Float32}}},spikes_raster,step_size,end_windows,start_windows,displace)
-    #px = Plots.plot()
-    #len= length(start_windows)
-    #p1 = Plots.plot()
     @inbounds for (neuron_id,only_one_neuron_spike_times) in enumerate(spikes_raster)# in 1:length(spikes_raster)
         @inbounds @showprogress for (windex,final_end_time) in enumerate(end_windows)
             sw = start_windows[windex]
             observed_spikes = divide_epoch(only_one_neuron_spike_times,sw,final_end_time)
-            push!(mat_of_spikes[neuron_id,windex],observed_spikes)
-        end
-        #only_one_neuron_spike_times = mat_of_spikes[neuron_id,:]
-        #nodes = [Int32(neuron_id) for (_,_) in enumerate(only_one_neuron_spike_times)]
-        #display(Plots.scatter!(p1,only_one_neuron_spike_times,nodes,legend = false,xlabel="time (Seconds)",ylabel="Cell Id"))
+            if displace
+                push!(mat_of_spikes[neuron_id,windex],observed_spikes)
 
+            else
+                push!(mat_of_spikes[neuron_id,windex],observed_spikes.-sw)
+
+            end
+        end
     end
 end
 
@@ -220,10 +219,10 @@ function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matr
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float64}(undef, nrow, ncol)
     refspikes = div_spike_mat_no_displacement[:,:] 
-    avg_spk_countst = Int32(trunc(mean([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
+    max_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
     maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
     
-    temp = LinRange(0.0, maximum_time, avg_spk_countst)
+    temp = LinRange(0.0, maximum_time, max_spk_countst)
     linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
     sum_varr = Float32(0.0)
 
@@ -238,12 +237,15 @@ function compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement::Mat
         mat_of_distances[:,indc] = self_distances
 
     end
-    mat_of_distances[isnan.(mat_of_distances)] .= 0.0
-    normalize!(mat_of_distances)
+    #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+    #normalize!(mat_of_distances)
+    #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+
     sum_varr=0
     @inbounds for row in eachrow(mat_of_distances)
         sum_varr+=var(row)
     end
+    @show(sum_varr)
 end
 
 function compute_metrics_on_divisions(division_size::Integer,numb_neurons::Integer,maxt::Real;plot=false,file_name="stateTransMat.png",metric="kreuz",disk=false)
@@ -285,6 +287,8 @@ function compute_metrics_on_divisions!(mat_of_distances::Array{Float64},nodes::V
     for col in eachcol(mat_of_distances)
         sum_varc+=var(col)
     end
+    @show(sum_varr)
+    @show(sum_varc)
     
 
 end
@@ -293,18 +297,27 @@ previously label_online_distmat
 """
 
 function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance_matrix::AbstractVecOrMat;threshold::Real=5)
+    cnts_total = 0.0
+    cnts_threshold = 0.0
+
+
     @inbounds @showprogress for (ind,row) in enumerate(eachcol(mat_of_distances))
-        stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
+        #stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
         #if ind <= stop_at_half
         @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
             if ind!=ind2
+                cnts_total += 1.0
                 distance = evaluate(Euclidean(),row,row2)
                 if distance<threshold
+                    cnts_threshold += 1.0
                     distance_matrix[ind,ind2] = abs(distance)
                 end
             end
         end
     end
+    repeatitive = cnts_threshold/cnts_total
+    repeatitive
+
 end
 """
 label_exhuastively_distmat!
@@ -316,7 +329,13 @@ function label_exhuastively_distmat(mat_of_distances::AbstractVecOrMat;threshold
     #    io = open("/tmp/mmap.bin", "w+")
     #    distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
     #end
-    label_exhuastively_distmat!(mat_of_distances,distance_matrix;threshold)
+    #repeatitive = 
+    #repeatitive = zeros(1,1)
+    #@show(typeof(repeatitive))
+    repeatitive = label_exhuastively_distmat!(mat_of_distances,distance_matrix;threshold)
+    @show(repeatitive)
+    #repetitive = cnts_threshold/cnts_total
+    #@show(repetitive)
     distance_matrix::AbstractVecOrMat
 end
 
@@ -423,7 +442,7 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
             display(Plots.scatter!(p1,spikes_ragged[neuron_id],nodes,legend = false,xlabel="time (Seconds)",ylabel="Cell Id"))
         end
     end
-    (spikes_ragged::Vector{Any},numb_neurons::UInt32)
+    (spikes_ragged::Vector{Any},numb_neurons::Int)
 end
 
 #=
@@ -595,23 +614,26 @@ function get_state_transitions(start_windows,end_windows,distmat,assign;threshol
     nunique = length(unique(assign))
     assing_progressions=[]
     assing_progressions_times=[]
+    assing_progressions_time_indexs=[]
 
-    @inbounds for row in eachrow(distmat)
+    @assert size(distmat)[1]==length(start_windows)
+    @inbounds for (xi,row) in enumerate(eachrow(distmat))
         @inbounds for (ii,xx) in enumerate(row)
-            #sw_old = -1
             if abs(xx)<threshold
-                sw = start_windows[ii]
-               # if sw!=sw_old
+                sw = start_windows[ii]#+end_windows[ii]
                 push!(assing_progressions,assign[ii])
                 push!(assing_progressions_times,sw)
-                #end
-                #sw_old = sw
+                push!(assing_progressions_time_indexs,ii)
     
             end
         end
     end
-    assing_progressions,assing_progressions_times
+    assing_progressions[unique(i -> assing_progressions[i], 1:length(assing_progressions))].=-1
+
+    assing_progressions,assing_progressions_times,assing_progressions_time_indexs
 end
+
+
 
 function return_spike_item_from_matrix(div_spike_mat_no_displacement::AbstractVecOrMat,ind::Integer)
     Nx = Float32[]
@@ -645,15 +667,21 @@ function state_transition_trajectory(start_windows,end_windows,distmat,assign,as
 
             elseif val>1
                 repititions[ind,y] = val 
-                #push!(repeated_windows,ind)
                 push!(repeated_windows,y)
 
             end 
         end
     end
     
-    #end
+    assing_progressions[unique(i -> assing_progressions[i], 1:length(assing_progressions))].=-1
     if plot
+
+        p1 = Plots.plot()
+        Plots.scatter!(p1,assing_progressions_times,assing_progressions,markercolor=assing_progressions,legend=false)
+        #https://github.com/open-risk/transitionMatrix
+
+        savefig("state_transition_trajectory$file_name.png")
+
         (n,m) = size(stateTransMat)
         
         #cols = columns(stateTransMat)
@@ -663,27 +691,7 @@ function state_transition_trajectory(start_windows,end_windows,distmat,assign,as
         savefig("corr_state_transition_matrix$file_name.png")
         Plots.heatmap(stateTransMat, fc=cgrad([:white,:dodgerblue4]), xticks=(1:n,m), xrot=90, yticks=(1:m,n), yflip=true)
         savefig("state_transition_matrix$file_name.png")
-
-    end
-    assing_progressions[unique(i -> assing_progressions[i], 1:length(assing_progressions))].=-1
-    assing_progressions[unique(i -> assing_progressions[i], 1:length(assing_progressions))].=-1
-    if plot
-
-        p1 = Plots.plot()
-        Plots.scatter!(p1,assing_progressions_times,assing_progressions,legend=false)
-        #https://github.com/open-risk/transitionMatrix
-
-        #Plots.plot!(p1,assing_progressions,assing_progressions_times,legend=false)
-        #display(p1)
-        savefig("state_transition_trajectory$file_name.png")
-        if false
-            g = SimpleWeightedDiGraph(stateTransMat)
-
-            edge_label = Dict((i,j) => string(stateTransMat[i,j]) for i in 1:size(stateTransMat, 1), j in 1:size(stateTransMat, 2))
-
-            graphplot(g; names = 1:length(stateTransMat), weights=stateTransMat)
-            savefig("state_transition_graph$file_name.png")
-        end
+    
     end
  
     repeated_windows

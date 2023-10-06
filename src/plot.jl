@@ -306,7 +306,7 @@ function plot_umap_ts(nodes::Vector{Int32}, times::Vector{Float32},dt,tau; file_
     #CList = collect(0:length(times)/length(res_jl):length(times))
 
     display(Plots.plot(scatter(res_jl[1,:], res_jl[2,:],zcolor=CList_, title="Spike Timing: UMAP", marker=(2, 2, :auto, stroke(3.5)),legend=false)))
-    @time Plots.savefig(file_name)
+    Plots.savefig(file_name)
     
     #return 
 end
@@ -454,15 +454,16 @@ function ragged_to_uniform(times)
     end
     (n::Vector{UInt32},ttt::Vector{Float32})
 end
-function internal_validation1(assign::Vector{UInt32}, div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}})
+function internal_validation1(assign::Vector{UInt32}, div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};file_path="")
 
     labels = Vector{Float32}(unique(assign))
+    #@show(labels)
     #labels2cols = Vector{Any}([])
     
     #for l in labels
     #    push!(labels2cols,[])
     #end
-    for l in labels
+    @inbounds for l in labels
         Nxag = Float32[]
         Txag = Float32[]
         color_code = Int64[]
@@ -472,12 +473,14 @@ function internal_validation1(assign::Vector{UInt32}, div_spike_mat_no_displacem
         Nxold = []
         Txold = []
 
-        for (col,label) in enumerate(assign)
+        @inbounds for (col,label) in enumerate(assign)
+            px = Plots.plot()
             if label==l
+                
+
                 Nx = UInt32[]
                 Tx = Vector{Float32}([])
-                #push!(labels2cols[Int32(label)],col)
-                for (ind_cell,row) in enumerate(eachrow(div_spike_mat_no_displacement[:,col]))
+                @inbounds for (ind_cell,row) in enumerate(eachrow(div_spike_mat_no_displacement[:,col]))
                     if length(row)!=0
                         for times in row
                             for tt in times
@@ -494,36 +497,43 @@ function internal_validation1(assign::Vector{UInt32}, div_spike_mat_no_displacem
                 append!(Txag,Tx)
                 append!(color_codes,color_code)
                 if length(Txold)>0
-                    o0 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Tx)/length(Tx):maximum(Tx))
-                    fit!(o0, zip(Nx, Tx))
-                    ts0 = copy(o0.counts)
-                    o1 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Tx)/length(Tx):maximum(Tx))
-                    fit!(o1, zip(Nxold, Txold))                    
-                    ts1 = copy(o1.counts)
-                    temp = cor(ts0,ts1)    
-                    avg_len=length(temp)
-                    temp[isnan.(temp)] .= 0.0
-                    temp = mean(temp)/avg_len
-                    @show(mean(temp),sum(temp))
+                    if length(Tx)>1
+                        o0 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Tx)/length(Tx):maximum(Tx))
+                        fit!(o0, zip(Nx, Tx))
+                        ts0 = copy(o0.counts)
+                        o1 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Txold)/length(Txold):maximum(Txold))
+                        fit!(o1, zip(Nxold, Txold))                    
+                        ts1 = copy(o1.counts)
+                        temp = cor(ts0,ts1)    
+                        avg_len=length(temp)
+                        temp[isnan.(temp)] .= 0.0
+                        temp = mean(temp)/avg_len
+                        #@show(mean(temp),sum(temp))
+                        if temp>0.1
+                            p2=Plots.heatmap(ts0,legend=false)
+                            p3=Plots.heatmap(ts1,legend=false)
+                            layout = @layout [a ; b ]
+                            Plots.plot(p2, p3, layout=layout,legend=false)
+                            savefig("zebra_correlated_heatmap_$temp.png")
+                        end
 
-                    p2=Plots.heatmap(ts0,legend=false)
-                    p3=Plots.heatmap(ts1,legend=false)
-                    l = @layout [a ; b ]
-                    Plots.plot(p2, p3, layout = l,legend=false)
-                    savefig("zebra_correlated_heatmap_$temp.png")
-
-                end
+                    end
+                    end
                 append!(Nxold,Nx)
                 append!(Txold,Tx)
             end
+            p2 = Plots.scatter!(px,Txag,Nxag,markercolor=Int(l),markersize = 1.2,markerstrokewidth=0,alpha=0.8, fontcolor=:blue,legend=false)
+            p3 = Plots.scatter!(p2,Txold,Nxold,markercolor=Int(l)+1,markersize = 1.8,markerstrokewidth=0,alpha=0.8, fontcolor=:blue,legend=false)
+            Plots.plot(p3,legend=false)
+            ##
+            # TODO use DrWatson there.
+            ## to save the path
+            #@show(l)
+            savefig("correlated_Scatter_.$col.png")
+            
+    
+    
         end
-        p2 = Plots.scatter(Txag,Nxag,markercolor=4,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,legend=false)
-
-        p3 = Plots.scatter!(p2,Txold,Nxold,markercolor=3,markersize = 1.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,legend=false)
-        Plots.plot(p3,legend=false)
-        savefig("zebra_correlated_Scatter_.png")
-        
-
         #if length(Txag)!=0
             #@show()
             #display(Plots.scatter!(pscatter,Txag,Nxag,legend = false, markercolor=color_codes,markersize = 0.8,markerstrokewidth=0,alpha=0.6, bgcolor=:snow2, fontcolor=:blue))
@@ -533,7 +543,139 @@ function internal_validation1(assign::Vector{UInt32}, div_spike_mat_no_displacem
     end
     #labels2cols
 end
+function internal_validation_dict(assignments::Vector{UInt32}, div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};file_path="")
+    labels = Vector{Float32}(unique(assignments))
+    spike_motif_dict_both = Dict()
+    spike_motif_dict_times = Dict()
+    spike_motif_dict_nodes = Dict()
 
+    for l in labels 
+        spike_motif_dict_both[l] = []
+    end
+
+    @inbounds for l in labels
+        @inbounds for (col,label) in enumerate(assignments)
+            if label==l
+                append!(spike_motif_dict_both[l],col)#
+            end
+        end
+    end
+    internal_validation_dict!(div_spike_mat_no_displacement,spike_motif_dict_both,spike_motif_dict_nodes,spike_motif_dict_times)
+end
+function unpack_spikes_from_columns!(div_spike_mat_no_displacement,column,Tx,Nx)
+    row = div_spike_mat_no_displacement[:,column]
+    for (ind_cell,times) in enumerate(row)
+        for tt in times
+            for t in tt
+                push!(Tx,t) 
+                push!(Nx,ind_cell)
+            end
+        end
+    end
+end
+
+
+function internal_validation_dict!(div_spike_mat_no_displacement,spike_motif_dict_both::Dict,spike_motif_dict_nodes::Dict,spike_motif_dict_times::Dict)
+    for (key,value) in pairs(spike_motif_dict_both)
+        spike_motif_dict_nodes[key] = Dict()
+        spike_motif_dict_times[key] = Dict()
+    end
+
+    for (key,value) in pairs(spike_motif_dict_both)
+        for (pattern_occurance_ind,column) in enumerate(value)
+            Tx = []
+            Nx = []
+            unpack_spikes_from_columns!(div_spike_mat_no_displacement,column,Tx,Nx)
+            spike_motif_dict_nodes[key][pattern_occurance_ind] = copy(Nx)
+            spike_motif_dict_times[key][pattern_occurance_ind] = copy(Tx)
+
+        end
+
+    end
+    plot_internal_validation_dict(spike_motif_dict_nodes,spike_motif_dict_times)
+end
+
+function plot_internal_validation_dict(spike_motif_dict_nodes,spike_motif_dict_times)
+    for k0 in keys(spike_motif_dict_nodes)
+        Px = Plots.scatter()    
+        for  (k1,_) in pairs(spike_motif_dict_nodes[k0])
+            nodes = spike_motif_dict_nodes[k0][k1]
+            times = spike_motif_dict_times[k0][k1]
+            Plots.scatter!(Px,times,nodes,markercolor=Int(k1),label="occurance_$k1",legend=false)
+        end
+        len=length(spike_motif_dict_nodes[k0])
+        savefig("scatter_match.$k0.$len.png")
+
+    end
+end
+        #=
+            @inbounds for (ind_cell,row) in enumerate(eachrow(div_spike_mat_no_displacement[:,col]))
+                if length(row)!=0
+                    for times in row
+                        for tt in times
+                            for t in tt
+                                push!(Tx,t) 
+                                push!(Nx,ind_cell)
+                                push!(color_code,col)
+                            end
+                        end
+                    end
+                    append!(spike_motif_dict_nodes[label],Nx)
+                    append!(spike_motif_dict_times[label],Tx)
+
+                end               
+            end
+            append!(Nxag,Nx)
+            append!(Txag,Tx)
+            append!(color_codes,color_code)
+            if length(Txold)>0
+                if length(Tx)>1
+                    o0 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Tx)/length(Tx):maximum(Tx))
+                    fit!(o0, zip(Nx, Tx))
+                    ts0 = copy(o0.counts)
+                    o1 = HeatMap(1:1:length(div_spike_mat_no_displacement[:,col]), 0.0:maximum(Txold)/length(Txold):maximum(Txold))
+                    fit!(o1, zip(Nxold, Txold))                    
+                    ts1 = copy(o1.counts)
+                    temp = cor(ts0,ts1)    
+                    avg_len=length(temp)
+                    temp[isnan.(temp)] .= 0.0
+                    temp = mean(temp)/avg_len
+                    #@show(mean(temp),sum(temp))
+                    if temp>0.1
+                        p2=Plots.heatmap(ts0,legend=false)
+                        p3=Plots.heatmap(ts1,legend=false)
+                        layout = @layout [a ; b ]
+                        Plots.plot(p2, p3, layout=layout,legend=false)
+                        savefig("zebra_correlated_heatmap_$temp.png")
+                    end
+
+                end
+                end
+            append!(Nxold,Nx)
+            append!(Txold,Tx)
+        end
+        p2 = Plots.scatter!(px,Txag,Nxag,markercolor=Int(l),markersize = 1.2,markerstrokewidth=0,alpha=0.8, fontcolor=:blue,legend=false)
+        p3 = Plots.scatter!(p2,Txold,Nxold,markercolor=Int(l)+1,markersize = 1.8,markerstrokewidth=0,alpha=0.8, fontcolor=:blue,legend=false)
+        Plots.plot(p3,legend=false)
+        ##
+        # TODO use DrWatson there.
+        ## to save the path
+        #@show(l)
+        savefig("correlated_Scatter_.$col.png")
+        
+
+
+    end
+    #if length(Txag)!=0
+        #@show()
+        #display(Plots.scatter!(pscatter,Txag,Nxag,legend = false, markercolor=color_codes,markersize = 0.8,markerstrokewidth=0,alpha=0.6, bgcolor=:snow2, fontcolor=:blue))
+        #savefig("NEW_scatter_match_$l.png")
+    #end                            
+
+end
+#labels2cols
+end
+=#
 
 # export density
 # function density(p, sym)

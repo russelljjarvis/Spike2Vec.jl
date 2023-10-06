@@ -105,6 +105,7 @@ module SpikeTime
     export hist2dHeat
     export internal_validation1
     export internal_validation0
+    export internal_validation_dict
     export ragged_to_uniform
 
 end
