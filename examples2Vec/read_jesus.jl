@@ -14,6 +14,8 @@ using DataFrames
 #if isfile("280_neurons.jld")
 #    @load "280_neurons.jld" new_t new_n current_max_t
 #else
+resolution = 300
+
 if !isfile("jesus_data_set.jld")
     (nodes,times,whole_duration,spikes_ragged,numb_neurons)  = load_datasets_calcium_jesus()
     @show(nodes)
@@ -27,7 +29,6 @@ end
 if !isfile("jesus_int.jld")
     #end
     maxt = maximum(times)
-    resolution = 300
 
     #@time div_spike_mat = spike_matrix_divided(spikes,resolution,numb_neurons,maxt;displace=true)
     @time div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,maxt;displace=false)
@@ -40,24 +41,31 @@ end
 #@time time_windows = Vector{Any}([Tuple(s,e) for (s,e) in zip(start_windows,end_windows)])
 
 #@show(div_spike_mat_no_displacement)
-if !isfile("jesus_int_processed2.jld")
-
-    (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="hybrid")
-    @show(variance)
-    Plots.heatmap(distmat)
-    savefig("Blah.png")
+#if !isfile("jesus_int_processed2.jld")
+    distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="hybrid")
+    #@show(variance)
+    #Plots.heatmap(distmat)
+    #savefig("Blah.png")
     #p1=Plots.histogram(mat2vec_hybrid)
-    (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
 
-    @show(variance)
+    #@show(variance)
     #p2=Plots.histogram!(p1,mat2vec_kreuz)
-    (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")#,label="LV")
+    distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")#,label="LV")
 
-    @show(variance)
+    #@show(variance)
     #p3=Plots.histogram!(p2,mat2vec_LV)
 
-    (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="count")#,label="LV")
-    @show(variance)
+    #distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="count")#,label="LV")
+    #@show(variance)
+    
+    #distmat = compute_metrics_on_matrix_self_past_divisions(div_spike_mat_no_displacement)
+    #Plots.heatmap(distmat)
+    #savefig("relative_to_self_Distmat_sqaure.png")
+
+    #compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displacement,metric="count")
+    #Plots.heatmap(distmat)
+
     #p4=Plots.histogram!(p3,mat2vec_sum)
 
     #Plots.plot(p4)
@@ -81,7 +89,8 @@ if !isfile("jesus_int_processed2.jld")
         assing_progressions[i]=-1
         end
     end
-    
+    max_time = maximum(times)
+
     div_spike_mat,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,max_time;displace=true)
 
     p2 = Plots.scatter(assing_progressions_times,assing_progressions,markercolor=assing_progressions,legend=false,markersize = 1.1,markerstrokewidth=0,alpha=0.8)
@@ -117,7 +126,7 @@ if !isfile("jesus_int_processed2.jld")
 
 #else
 
-end
+#end
 @load "jesus_int_processed2.jld" assign #repeated_windows assing_progressions assing_progressions_times distmat sqr_distmat
 
 #labels2cols = internal_validation1(assign,div_spike_mat_no_displacement);
@@ -125,7 +134,7 @@ assign = Vector{UInt32}(assign)
 #@save "zebra_finche.jld" assign
 #@load "zebra_finche.jld" assign #repeated_windows assing_progressions assing_progressions_times distmat sqr_distmat
 #spike_motif_dict_both = 
-div_spike_mat_no_displacement,_,_ = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,max_time;displace=true)
+#div_spike_mat_no_displacement,_,_ = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,max_time;displace=true)
 
 internal_validation_dict(assign,div_spike_mat_no_displacement;file_path=projectdir())
 
