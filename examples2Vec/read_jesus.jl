@@ -14,19 +14,24 @@ using DataFrames
 #if isfile("280_neurons.jld")
 #    @load "280_neurons.jld" new_t new_n current_max_t
 #else
-resolution = 300
 
-if !isfile("jesus_data_set.jld")
-    (nodes,times,whole_duration,spikes_ragged,numb_neurons)  = load_datasets_calcium_jesus()
+
+
+resolution = 150
+
+#if !isfile("jesus_data_set.jld")
+    (times,nodes,whole_duration,spikes_ragged,numb_neurons)  = load_datasets_calcium_v1()
+
+    
     @show(nodes)
     @save "jesus_data_set.jld" nodes times whole_duration spikes_ragged numb_neurons
 
-else
+#else
     @load "jesus_data_set.jld" nodes times whole_duration spikes_ragged numb_neurons
-end
+#end
 #display(Plots.scatter(times,nodes))
 
-if !isfile("jesus_int.jld")
+#if !isfile("jesus_int.jld")
     #end
     maxt = maximum(times)
 
@@ -34,29 +39,36 @@ if !isfile("jesus_int.jld")
     @time div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,maxt;displace=false)
     
     @save "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
-else 
+#else 
     @load "jesus_int.jld" div_spike_mat_no_displacement start_windows end_windows
-end
-ε=25.7
+#end
+ε=22.7
 #@time time_windows = Vector{Any}([Tuple(s,e) for (s,e) in zip(start_windows,end_windows)])
 
 #@show(div_spike_mat_no_displacement)
 #if !isfile("jesus_int_processed2.jld")
     distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="hybrid")
     #@show(variance)
-    #Plots.heatmap(distmat)
-    #savefig("Blah.png")
+    Plots.heatmap(distmat)
+    savefig("hybrid.png")
     #p1=Plots.histogram(mat2vec_hybrid)
     distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    Plots.heatmap(distmat)
+    savefig("kreuz.png")
 
     #@show(variance)
     #p2=Plots.histogram!(p1,mat2vec_kreuz)
     distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="LV")#,label="LV")
+    Plots.heatmap(distmat)
+    savefig("LV.png")
 
     #@show(variance)
     #p3=Plots.histogram!(p2,mat2vec_LV)
 
-    #distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="count")#,label="LV")
+    distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="count")#,label="LV")
+    Plots.heatmap(distmat)
+    savefig("count.png")
+
     #@show(variance)
     
     #distmat = compute_metrics_on_matrix_self_past_divisions(div_spike_mat_no_displacement)
@@ -97,13 +109,16 @@ end
     p3 = Plots.scatter()
     for (ti,category) in zip(assing_progressions_time_indexs,assing_progressions)
         if 3==category
-            (nodes,times)=return_spike_item_from_matrix(div_spike_mat,ti)
-            times=times.+assing_progressions_times[ti]
+            (nn,tt)=return_spike_item_from_matrix(div_spike_mat_no_displacement,ti)
+            #@show(tt)
+            tt=assing_progressions_times[ti].+tt
         #@show(nodes,times)
-            Plots.scatter!(p3,times,nodes,markersize = 1.1,markerstrokewidth=0,alpha=0.8)
+            Plots.scatter!(p3,nn,tt,markersize = 1.1,markerstrokewidth=0,alpha=0.8)
         end
     end
-    p1 = Plots.scatter(times,nodes)
+    (nodes_,times_,whole_duration,spikes_ragged,numb_neurons)  = load_datasets_calcium_jesus()
+
+    p1 = Plots.scatter(nodes_,times_,markersize = 0.5,markerstrokewidth=0,alpha=0.8)
         #only_one_neuron_spike_times = mat_of_spikes[neuron_id,:]
         #nodes = [Int32(neuron_id) for (_,_) in enumerate(only_one_neuron_spike_times)]
         #display(Plots.scatter!(p1,only_one_neuron_spike_times,nodes,legend = false,xlabel="time (Seconds)",ylabel="Cell Id"))

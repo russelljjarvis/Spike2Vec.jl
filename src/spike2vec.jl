@@ -23,11 +23,16 @@ import OnlineStatsBase.CircBuff
 #using Arrow 
 #using DataStructures
 
+using Statistics
+scale(A) = (A .- mean(A,dims=1)) ./ std(A,dims=1)
+#=
 function normalize!(A::Matrix)
     @inbounds for (ind,col) in enumerate(eachcol(A))
-        A[:,ind] .= (col.-mean(col))./std(col)
+        A[:,ind] .= (col.-mean(A))./std(A)
     end
 end
+=#
+normalize(A) = (A .- mean(A,dims=1)) ./ std(A,dims=1)
 #@show(help(svdvals))
 """
 Augment by lengthening with duplication useful for sanity checking algorithm.
@@ -121,19 +126,17 @@ function divide_epoch(times::AbstractVector,start::Real,stop::Real)
     t0::Vector{Float32}
 end
 
-function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArray, self_distances::AbstractArray;metric="kreuz")
-    @assert length(uniform)>1
-    @inbounds for (ind,n1_) in enumerate(neuron1)
-
-        n1_ = n1_[1]
-        if length(n1_) != 0
-            pooledspikes = vcat(uniform,n1_)
+function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, neurons_obs::AbstractArray, self_distances::AbstractArray;metric="kreuz")
+    @inbounds for (ind,n1_) in enumerate(neurons_obs)
+        if length(n1_) > 0 && length(one_neuron_surrogate) > 0
+            pooledspikes = copy(one_neuron_surrogate)
+            append!(pooledspikes,n1_)
             maxt = maximum(sort!(unique(pooledspikes)))
             t1_ = sort(unique(n1_))
             if length(t1_)>1
 
                 if metric=="kreuz"
-                    _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
+                    _, S = SPIKE_distance_profile(t1_,one_neuron_surrogate;t0=0,tf = maxt)
                     self_distances[ind] = abs(sum(S))
                 elseif metric=="CV"
                         self_distances[ind] = CV(t1_)
@@ -144,7 +147,7 @@ function get_vector_coords_uniform!(uniform::AbstractArray, neuron1::AbstractArr
 
                         self_distances[ind] = lvr(t1_,maximum(t1_))
                 elseif metric=="hybrid"
-                        _, S = SPIKE_distance_profile(t1_,uniform;t0=0,tf = maxt)
+                        _, S = SPIKE_distance_profile(t1_,one_neuron_surrogate;t0=0,tf = maxt)
                         self_distances[ind] = abs(sum(S))
                         self_distances[ind] += lvr(t1_,maximum(t1_))
                         self_distances[ind] += sum(t1_)
@@ -217,22 +220,78 @@ function get_window!(nlist,tlist,observed_spikes,sw)
 end
 function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};metric="kreuz",disk=false)
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
-    mat_of_distances = Array{Float64}(undef, nrow, ncol)
+    mat_of_distances = Array{Float32}(undef, nrow, ncol)
     refspikes = div_spike_mat_no_displacement[:,:] 
     max_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
     maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
     
     temp = LinRange(0.0, maximum_time, max_spk_countst)
     linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
-    sum_varr = Float32(0.0)
 
     compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement,mat_of_distances,linear_uniform_spikes,nrow;metric=metric)    
-    (mat_of_distances::Array{Float64},sum_varr::Float32)
+    (mat_of_distances::Array{Float32})
 end
-function compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{Float64},linear_uniform_spikes::Vector{Float32},nrow::UInt32;sum_varr=nothing,metric="kreuz")
+
+function compute_metrics_on_matrix_self_past_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};disk=false)
+    (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
+    mat_of_distances = Array{Float64}(undef, nrow, ncol)
+    #refspikes = div_spike_mat_no_displacement[:,:] 
+    #max_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
+    #maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
+    
+    #temp = LinRange(0.0, maximum_time, max_spk_countst)
+    #linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
+    #sum_varr = Float32(0.0)
+
+    compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displacement,mat_of_distances)    
+    (mat_of_distances::Array{Float64})
+end
+function compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{Float64})
+    (nrow::Int32,ncol::UInt32)=size(div_spike_mat_no_displacement)
+    neurons_old = div_spike_mat_no_displacement[:,1]
     @inbounds for (indc,neurons) in enumerate(eachcol(div_spike_mat_no_displacement))
-        self_distances = Vector{Float64}(zeros(nrow))
-        nx = [ n[1] for n in neurons if length(n[1])>0 ]
+        neurons = neurons[1]
+        #if indc==1 
+        #    neurons_old = neurons
+        @show(indc!=1 && length(neurons_old)>0  && length(neurons)>0)
+        @show(indc!=1)
+        @show(length(neurons_old)>0)
+        @show(length(neurons)>0)
+        if indc!=1 && length(neurons_old)>0  && length(neurons)>0
+            self_distances = Vector{Float32}(zeros(nrow))
+            #pooledspikes = copy(neurons)
+            #append!(neurons,neurons_old)
+            get_vector_coords_uniform!(neurons_old, neurons, self_distances; metric="kreuz")
+            mat_of_distances[:,indc] = copy(self_distances)
+            #neurons_old = neurons
+
+
+        end
+        neurons_old = copy(neurons)
+
+    end
+    mat_of_distances[isnan.(mat_of_distances)] .= maximum(mat_of_distances[!isnan.(mat_of_distances)])
+    normalize!(mat_of_distances)
+    #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
+
+    sum_varr=0
+    @inbounds for row in eachrow(mat_of_distances)
+        sum_varr+=var(row)
+    end
+    @show(sum_varr)
+end
+
+
+function compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{<:Real},linear_uniform_spikes::Vector{Float32},nrow::UInt32;metric="kreuz")
+    @inbounds for (indc,neurons) in enumerate(eachcol(div_spike_mat_no_displacement))
+        self_distances = Vector{Float32}(zeros(nrow))
+        if !isa(neurons[1], Number)
+            neurons = [ n[1] for n in neurons ]
+        end
+        #if !isa(one_neuron_surrogate[1], Number)
+        #    one_neuron_surrogate = one_neuron_surrogate[1]
+        #end
+
         get_vector_coords_uniform!(linear_uniform_spikes, neurons, self_distances; metric=metric)
         mat_of_distances[:,indc] = self_distances
 
@@ -323,17 +382,17 @@ end
 label_exhuastively_distmat!
 """
 function label_exhuastively_distmat(mat_of_distances::AbstractVecOrMat;threshold::Real=5, disk=false)
-    #if !disk
-    distance_matrix = zeros(length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances)))
-    #else
-    #    io = open("/tmp/mmap.bin", "w+")
-    #    distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
-    #end
+    if !disk
+        distance_matrix = zeros(length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances)))
+    else
+        io = open("/tmp/mmap.bin", "w+")
+        distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
+    end
     #repeatitive = 
     #repeatitive = zeros(1,1)
     #@show(typeof(repeatitive))
     repeatitive = label_exhuastively_distmat!(mat_of_distances,distance_matrix;threshold)
-    @show(repeatitive)
+    #@show(repeatitive)
     #repetitive = cnts_threshold/cnts_total
     #@show(repetitive)
     distance_matrix::AbstractVecOrMat
@@ -421,9 +480,9 @@ end
 A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to collect them together to get the ISI distribution for the whole cell population
 Also output a ragged array (Array of unequal length array) of spike trains. 
 """
-function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=false)
+function create_spikes_ragged(nodes::Vector{UInt32},times::Vector{<:Real};plot=false)
     spikes_ragged = Vector{Any}([])
-    numb_neurons=UInt32(maximum(nodes))+1 # Julia doesn't index at 0.
+    numb_neurons = UInt32(maximum(nodes))+1 # Julia doesn't index at 0.
     @inbounds for n in 1:numb_neurons
         push!(spikes_ragged,[])
     end
@@ -431,7 +490,6 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
         @inbounds for i in 1:numb_neurons
             if i==n
                 push!(spikes_ragged[n],t)
-                #@show(length(spikes_ragged[n]))
             end
         end
     end
@@ -445,6 +503,29 @@ function create_spikes_ragged(nodes::Vector{<:Real},times::Vector{Float32};plot=
     (spikes_ragged::Vector{Any},numb_neurons::Int)
 end
 
+function doanalysis(d)
+    @unpack nodes,times,dataset, window_size, similarity_threshold = d
+    numb_neurons = length(unique(nodes))
+    maxt = maximum(times)
+    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times)
+    div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,window_size,numb_neurons,maxt;displace=false)
+    distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    sqr_distmat = label_exhuastively_distmat(distmat;threshold=similarity_threshold,disk=false)
+    (R,sort_idx,assign) = cluster_distmat(sqr_distmat)
+    assing_progressions,assing_progressions_times,assing_progressions_time_indexs = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
+    reassign_no_pattern_group!(assing_progressions)
+    internal_validation_dict(assign,div_spike_mat_no_displacement;file_path=plotsdir()+str(d["calcium_v1_ensemble"]))
+    f=(div_spike_mat_no_displacement,distmat,sqr_distmat,assign,assing_progressions)
+    f
+end
+
+function reassign_no_pattern_group!(assing_progressions)
+    for i in 1:length(assing_progressions) 
+        if assing_progressions[i]==1
+            assing_progressions[i]=-1
+        end
+    end
+end
 #=
 function create_ISI_histogram(nodes,spikes)
     spikes = []

@@ -10,6 +10,42 @@ using DelimitedFiles
 using DataFrames
 using Revise
 
+function load_datasets_pfc()
+    spikes = []
+    file_read_list =  readdlm("../data2/150628_SpikeData.dat", '\t', Float64, '\n')
+    nodes = [n for (t, n) in eachrow(file_read_list)]
+    numb_neurons=Int(maximum(nodes))+1
+    @inbounds for (t, n) in eachrow(file_read_list)
+        if length(t)!=0
+            push!(spikes,[])
+            #@show(spikes[Int32(n)])
+
+        end
+    end
+    @inbounds for (t, n) in eachrow(file_read_list)
+        if length(t)!=0
+
+            push!(spikes[Int32(n)],t)
+            #@show(spikes[Int32(n)])
+        end
+    end
+    nnn_scatter=Vector{UInt32}([])
+    ttt_scatter=Vector{Float32}([])
+    @inbounds @showprogress for (i, t) in enumerate(spikes)
+        @inbounds for tt in t
+            if length(t)!=0
+                push!(nnn_scatter,i)
+                push!(ttt_scatter,Float32(tt))
+            end
+        end
+    end
+    maxt = (maximum(ttt_scatter))    
+    #@show(spikes)
+    (nnn_scatter,ttt_scatter,spikes,numb_neurons,maxt)
+    
+end
+
+
 function pablo_load_datasets()
     df=  CSV.read("output_spikes.csv",DataFrame)
     nodes = Vector{UInt32}(df.id)
@@ -57,7 +93,7 @@ end
 Of course the absolute paths below will need to be wrangled to match your directory tree.
 """
 
-function load_datasets_calcium_jesus()
+function load_datasets_calcium_v1()
     (nodes,times,whole_duration) = get_all_exempler_of_days()
 
     spikes_ragged,numb_neurons = create_spikes_ragged(nodes,times)
@@ -83,7 +119,7 @@ end
 function get_250_neurons(nn,tt)
     times=Vector{Float32}([])
     nodes=Vector{UInt32}([])
-    current_max_t = 1750
+    current_max_t = 1150
     for (t,n) in zip(tt,nn)
         if t<current_max_t
             if n<250
@@ -98,9 +134,9 @@ function get_250_neurons(nn,tt)
 end
 
 function get_all_exempler_of_days()
-    FPS = matread("../datasets/M4 analyzed2DaysV.mat")["dataIntersected"][1]["Movie"]["FPS"]
+    FPS = matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"][1]["Movie"]["FPS"]
     frame_width = 1.0/FPS #0.08099986230023408 #second, sample_rate =  12.3457#Hz
-    length_of_spike_mat0 = length(matread("../datasets/M4 analyzed2DaysV.mat")["dataIntersected"])
+    length_of_spike_mat0 = length(matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"])
     length_of_spike_mat1 = 1:6
 
 
@@ -133,7 +169,7 @@ function get_all_exempler_of_days()
     end
     #tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
     tt,nn,current_max_t = get_250_neurons(copy(nn),copy(tt))
-    Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue)
+    Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="Time (ms)", ylabel="Neuron ID")
     savefig("longmysterious_scatter_plot.png")
     (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 

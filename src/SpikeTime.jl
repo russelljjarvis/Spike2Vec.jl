@@ -40,11 +40,14 @@ module SpikeTime
     export bag_of_isis
     include("input_readers.jl")
     export get_all_exempler_of_days
-    export load_datasets_calcium_jesus
+    export load_datasets_calcium_v1
     export load_zebra_finche_nmc_dataset
     include("spike2vec.jl")
+    export doanalysis
+    export reassign_no_pattern_group!
     export create_spikes_ragged
     export compute_metrics_on_matrix_divisions
+    export compute_metrics_on_matrix_self_past_divisions
     export compute_metrics_on_divisions
     export return_spike_item_from_matrix
     export horizontal_sort_into_tasks

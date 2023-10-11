@@ -22,8 +22,8 @@ max_time = 22.2
 #display(Plots.scatter(ttt,nnn))
 maxt = maximum(ttt)
 #@show(maxt)
-resolution = 250
-ε=6.7
+resolution = 100
+ε=20.7
 
 spikes_ragged,numb_neurons = create_spikes_ragged(nnn,ttt)
 div_spike_mat,start_windows,end_windows = spike_matrix_divided(spikes_ragged,resolution,numb_neurons,max_time;displace=false)
@@ -34,23 +34,23 @@ window_length_unit_time = maxt/window_length
 #window_lengths2 = end_windows[2]-start_windows[2]
 #@show(window_lengths2)
 
-(distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat,metric="kreuz")
-@show(variance)
-Plots.heatmap(sqr_distmat)
-savefig("kreuz_Distmat.png")
 
-(distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat,metric="LV")
+distmat = compute_metrics_on_matrix_divisions(div_spike_mat,metric="LV")
 @show(variance)
-Plots.heatmap(sqr_distmat)
+Plots.heatmap(distmat)
 savefig("LV_Distmat.png")
 
-(distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat,metric="count")
+distmat = compute_metrics_on_matrix_divisions(div_spike_mat,metric="count")
 @show(variance)
-Plots.heatmap(sqr_distmat)
+Plots.heatmap(distmat)
 savefig("count_Distmat.png")
+distmat = compute_metrics_on_matrix_divisions(div_spike_mat,metric="kreuz")
+@show(variance)
+Plots.heatmap(distmat)
+savefig("kreuz_Distmat.png")
 
 sqr_distmat = label_exhuastively_distmat(distmat;threshold=ε,disk=false)
-Plots.heatmap(sqr_distmat)
+Plots.heatmap(distmat)
 savefig("Distmat_sqaure.png")
 (R,sort_idx,assign) = cluster_distmat(sqr_distmat)
 assing_progressions,assing_progressions_times,assing_progressions_time_indexs = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
@@ -61,7 +61,7 @@ for i in 1:length(assing_progressions)
 end
 #@show(assing_progressions[assing_progressions==3])
 
-@show(mode(assing_progressions))
+#@show(mode(assing_progressions))
 #@show(times)
 #assing_progressions_times= [t+window_length_unit_time for t in assing_progressions_times]
 #p1 = Plots.plot()
@@ -77,6 +77,7 @@ for (ti,category) in zip(assing_progressions_time_indexs,assing_progressions)
         Plots.scatter!(p3,times,nodes,markersize = 1.1,markerstrokewidth=0,alpha=0.8)
     end
 end
+savefig("what_was_thing.png")
 
     #only_one_neuron_spike_times = mat_of_spikes[neuron_id,:]
     #nodes = [Int32(neuron_id) for (_,_) in enumerate(only_one_neuron_spike_times)]
