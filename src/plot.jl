@@ -38,24 +38,6 @@ function plot_umap_of_dist_vect(mat_of_distances; file_name::String="stateTransM
     Q_embedding
 end
 
-"""
-A method to re-represent dense boolean vectors as a two dense vectors of spikes, and times.
-spikes is a matrix with regularly sampled windows, populated by spikes, with calcium spikes.
-"""
-function convert_bool_matrice_to_raster(read_spike_dense::Matrix{Bool}, frame_width::Real)
-    nodes = UInt32[]
-    times = Float32[]
-    @inbounds for (indy,row) in enumerate(eachrow(read_spike_dense))
-        @inbounds for (indx,x) in enumerate(row)
-            if x
-                push!(nodes,indy)
-                push!(times,indx*frame_width)                
-            end
-        end
-    end
-    whole_duration = length(read_spike_dense[1,:])*frame_width
-    (nodes::Vector{UInt32},times::Vector{Float32},whole_duration::Real)
-end
 
 """
 A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to collect them together to get the ISI distribution for the whole cell population

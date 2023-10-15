@@ -42,6 +42,8 @@ module SpikeTime
     export get_all_exempler_of_days
     export load_datasets_calcium_v1
     export load_zebra_finche_nmc_dataset
+    export convert_bool_matrice_to_raster
+    export load_datasets_pfc
     include("spike2vec.jl")
     export doanalysis
     export reassign_no_pattern_group!

@@ -15,6 +15,10 @@ using JLD2
 ## * 
 #@quickactivate "SpikeThroughput.jl" #
 
+function get_window_size()
+    return
+end
+
 allparams = Dict(
     "dataset" => ["calcium_v1_ensemble", "zebra_finche", "pfc","hippocampus"],         # it is inside vector. It is expanded.
     "window_size" => [100, 200],         # same

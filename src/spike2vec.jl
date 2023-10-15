@@ -19,6 +19,7 @@ using StaticArrays
 using Clustering
 using StatsBase
 import OnlineStatsBase.CircBuff
+using Infiltrator
 
 #using Arrow 
 #using DataStructures
@@ -112,17 +113,6 @@ function divide_epoch(times::AbstractVector,start::Real,stop::Real)
             push!(t0,abs(t))
         end
     end
-    #@inbounds for tx in t0
-    #    @assert start<=tx+start<=stop
-    #end
-    #if length(t0)>0
-    #    @show(minimum(t0))
-    #    @show(maximum(t0))
-    #    actual_size = maximum(t0)-minimum(t0)
-    #    @assert actual_size<=window_size
-    ##    @show(actual_size)
-     #   @show(window_size)
-    #end
     t0::Vector{Float32}
 end
 
@@ -235,13 +225,6 @@ end
 function compute_metrics_on_matrix_self_past_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};disk=false)
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float64}(undef, nrow, ncol)
-    #refspikes = div_spike_mat_no_displacement[:,:] 
-    #max_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
-    #maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
-    
-    #temp = LinRange(0.0, maximum_time, max_spk_countst)
-    #linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
-    #sum_varr = Float32(0.0)
 
     compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displacement,mat_of_distances)    
     (mat_of_distances::Array{Float64})
@@ -251,16 +234,8 @@ function compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displac
     neurons_old = div_spike_mat_no_displacement[:,1]
     @inbounds for (indc,neurons) in enumerate(eachcol(div_spike_mat_no_displacement))
         neurons = neurons[1]
-        #if indc==1 
-        #    neurons_old = neurons
-        @show(indc!=1 && length(neurons_old)>0  && length(neurons)>0)
-        @show(indc!=1)
-        @show(length(neurons_old)>0)
-        @show(length(neurons)>0)
         if indc!=1 && length(neurons_old)>0  && length(neurons)>0
             self_distances = Vector{Float32}(zeros(nrow))
-            #pooledspikes = copy(neurons)
-            #append!(neurons,neurons_old)
             get_vector_coords_uniform!(neurons_old, neurons, self_distances; metric="kreuz")
             mat_of_distances[:,indc] = copy(self_distances)
             #neurons_old = neurons
@@ -270,15 +245,17 @@ function compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displac
         neurons_old = copy(neurons)
 
     end
+    normalize!(mat_of_distances)
     mat_of_distances[isnan.(mat_of_distances)] .= maximum(mat_of_distances[!isnan.(mat_of_distances)])
     normalize!(mat_of_distances)
+
     #mat_of_distances[isnan.(mat_of_distances)] .= 0.0
 
     sum_varr=0
     @inbounds for row in eachrow(mat_of_distances)
         sum_varr+=var(row)
     end
-    @show(sum_varr)
+    #@show(sum_varr)
 end
 
 
@@ -388,13 +365,7 @@ function label_exhuastively_distmat(mat_of_distances::AbstractVecOrMat;threshold
         io = open("/tmp/mmap.bin", "w+")
         distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
     end
-    #repeatitive = 
-    #repeatitive = zeros(1,1)
-    #@show(typeof(repeatitive))
     repeatitive = label_exhuastively_distmat!(mat_of_distances,distance_matrix;threshold)
-    #@show(repeatitive)
-    #repetitive = cnts_threshold/cnts_total
-    #@show(repetitive)
     distance_matrix::AbstractVecOrMat
 end
 
@@ -425,23 +396,88 @@ function get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assig
     #p=Plots.scatter()
     return rqa(R),xs, ys,sss,R
 end
-function cluster_distmat(mat_of_distances::AbstractMatrix)
-    R = affinityprop(mat_of_distances)
-    sort_idx =  sortperm(assignments(R))
-    assign = R.assignments
-    numb_categories = length(unique(assign))
-    #o = fit!(KMeans((numb_categories, numb_categories), eachcol(mat_of_distances))
-    #sort!(o; rev=true)  # Order clusters by number of observations
-    #@show(classify(o, mat_of_distances[1]))  # returns index of cluster closest to x[1]
-    R,sort_idx,assign
-end
+function horizontal_sort_into_tasks(distmat::AbstractMatrix)
+    cluster_centres = Vector{Any}([])
+    labels = Vector{Int32}([])
+    ncentres = 10
+    km = KMeans(ncentres)
+    o = fit!(km,distmat[1,:])
+    for (x,row) in enumerate(eachrow(distmat))
+        if x>1
+            o = fit!(km,transpose(row))
+        end
+    end
+    sort!(o)
+    for i in 1:ncentres
+        push!(cluster_centres,o.value[i])
+    end
+    for (x,row) in enumerate(eachrow(distmat))
+        push!(labels,Int32(classify(o,distmat[:,x])))
+    end
+    println(size(distmat)[2],length(labels))
 
-function horizontal_sort_into_tasks(mat_of_distances::AbstractArray)
-    R = affinityprop(mat_of_distances')
-    sort_idx =  sortperm(assignments(R))
-    assign = R.assignments
-    R,sort_idx,assign
+    println(size(distmat)[1],length(labels))
+    println(size(distmat)[1])
+    jobs = unique(labels)
+    sub_jobs = Dict()
+    for j in jobs
+        for (i,label) in enumerate(labels)
+            if label==j
+                sub_jobs[label] = Vector{Int32}()
+            end
+
+        end
+    end
+    for j in jobs
+        for (i,label) in enumerate(labels)
+            if label==j
+                push!(sub_jobs[label],i)
+            end
+
+        end
+    end
+    Array_of_arrays = Vector{Any}()
+    for j in jobs
+        newArray = zeros(size(distmat[:,1])[1],length(sub_jobs[j]))
+
+        for (enum,index) in enumerate(sub_jobs[j])
+            @show(newArray[:,index],distmat[:,index])
+            newArray[:,index] =  distmat[:,index]
+            println("done",enum)
+
+        end
+        push!(Array_of_arrays,newArray)
+    end
+    #@show(Array_of_arrays)
+    Array_of_arrays
 end
+#=
+function horizontal_sort_into_tasks(mat_of_distances::AbstractArray)
+    cluster_centres = Vector{Any}([])
+    #km = KMeans(size(distmat)[2],size(distmat)[1])
+    ncentres = 10
+    km = KMeans(ncentres)
+
+    o = fit!(km,distmat[:,1])
+
+    for (x,col) in enumerate(eachcol(distmat))
+        if x>1
+            col = distmat[:,x]
+            o = fit!(km,col)
+        end
+    end
+    sort!(o)
+    for i in 1:ncentres
+        push!(cluster_centres,o.value[i])
+        @show(o.value[i])
+    end
+    return cluster_centres,o
+    #R = affinityprop(mat_of_distances')
+    #sort_idx =  sortperm(assignments(R))
+    #assign = R.assignments
+    #R,sort_idx,assign
+end
+=#
 
 function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_windows,nodes,times,nslices;file_name::String="empty.png")
     p=Plots.scatter()
@@ -509,9 +545,17 @@ function doanalysis(d)
     maxt = maximum(times)
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times)
     div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,window_size,numb_neurons,maxt;displace=false)
+
     distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
+    Array_of_arrays = horizontal_sort_into_tasks(distmat)
+    distmat = Array_of_arrays[1]
+    @show(distmat)
+    #@show(o)
+    #@show(labels)
+
+    #distmat = distmat[sortperm(distmat[:, labels],dims=1), :] # sorted by the 4th column
     sqr_distmat = label_exhuastively_distmat(distmat;threshold=similarity_threshold,disk=false)
-    (R,sort_idx,assign) = cluster_distmat(sqr_distmat)
+    
     assing_progressions,assing_progressions_times,assing_progressions_time_indexs = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
     reassign_no_pattern_group!(assing_progressions)
     internal_validation_dict(assign,div_spike_mat_no_displacement;file_path=plotsdir()+str(d["calcium_v1_ensemble"]))

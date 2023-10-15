@@ -10,6 +10,27 @@ using DelimitedFiles
 using DataFrames
 using Revise
 
+
+"""
+A method to re-represent dense boolean vectors as a two dense vectors of spikes, and times.
+spikes is a matrix with regularly sampled windows, populated by spikes, with calcium spikes.
+"""
+function convert_bool_matrice_to_raster(read_spike_dense::Matrix{Bool}, frame_width::Real)
+    nodes = UInt32[]
+    times = Float32[]
+    @inbounds for (indy,row) in enumerate(eachrow(read_spike_dense))
+        for (indx,x) in enumerate(row)
+            if x
+                #@show(indx,indy)
+                push!(nodes,indy)
+                push!(times,indx*frame_width)                
+            end
+        end
+    end
+    whole_duration = length(read_spike_dense[1,:])*frame_width
+    (nodes::Vector{UInt32},times::Vector{Float32},whole_duration::Real)
+end
+
 function load_datasets_pfc()
     spikes = []
     file_read_list =  readdlm("../data2/150628_SpikeData.dat", '\t', Float64, '\n')
@@ -152,7 +173,7 @@ function get_all_exempler_of_days()
 
            if "Transients" in keys(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i])
 
-               temp = matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"]
+               temp = matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
                if j==1 
                     init_mat = copy(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"])
                else
@@ -160,7 +181,10 @@ function get_all_exempler_of_days()
                end
            end
         end
+        #@show(init_mat)
         (nodes,times,whole_duration) = convert_bool_matrice_to_raster(init_mat,frame_width)
+        Plots.scatter(times,nodes)
+        savefig("plot_scatter.png")
         times = [t+current_max_t for t in times ]
         current_max_t = maximum(times)
         append!(tt,times)
@@ -168,9 +192,9 @@ function get_all_exempler_of_days()
 
     end
     #tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
-    tt,nn,current_max_t = get_250_neurons(copy(nn),copy(tt))
-    Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="Time (ms)", ylabel="Neuron ID")
-    savefig("longmysterious_scatter_plot.png")
+    #tt,nn,current_max_t = get_250_neurons(copy(nn),copy(tt))
+    Plots.scatter(tt[200:13010],nn[200:13010],legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="Time (ms)", ylabel="Neuron ID")
+    savefig("long.png")
     (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
 
 end
