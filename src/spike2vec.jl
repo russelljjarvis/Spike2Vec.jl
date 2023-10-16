@@ -20,7 +20,7 @@ using Clustering
 using StatsBase
 import OnlineStatsBase.CircBuff
 using Infiltrator
-
+using InducingPoints
 #using Arrow 
 #using DataStructures
 
@@ -396,37 +396,137 @@ function get_division_scatter_identify_via_recurrence_mat(mat_of_distances,assig
     #p=Plots.scatter()
     return rqa(R),xs, ys,sss,R
 end
+#=
+"Cluster center and the number of observations"
+mutable struct Cluster{T<:Number}
+    value::Vector{T}
+    n::Int
+    Cluster(T, p::Integer = 0) = new{T}(zeros(T, p), 0)
+end
+Base.show(io::IO, o::Cluster) = print(io, "Cluster: nobs=$(o.n), value=$(o.value)")
+Base.isless(a::Cluster, b::Cluster) = isless(a.n, b.n)
+nobs(o::Cluster) = o.n
+value(o::Cluster) = o.value
+
+"""
+    KMeans(k; rate=LearningRate(.6))
+
+Approximate K-Means clustering of `k` clusters.
+
+# Example
+
+    x = [randn() + 5i for i in rand(Bool, 10^6), j in 1:2]
+
+    o = fit!(KMeans(2, 2), eachrow(x))
+
+    sort!(o; rev=true)  # Order clusters by number of observations
+
+    classify(o, x[1])  # returns index of cluster closest to x[1]
+"""
+#import OnlineStats.VectorOb
+const VectorOb{T} = Union{AbstractVector{<:T}, Tup{T}}
+mutable struct KMeans{T, C <: NTuple{N, Cluster{T}} where N, W} <: OnlineStat{VectorOb{Number}}
+    value::C
+    buffer::Vector{T}
+    rate::W
+    n::Int
+end
+KMeans(T::Type{<:Number}, k::Integer; kw...) = KMeans(k, T; kw...)
+
+function KMeans(k::Integer, T::Type{<:Number} = Float64; rate=LearningRate())
+    KMeans(Tuple(Cluster(T) for i in 1:k), zeros(T, k), rate, 0)
+end
+
+Base.show(io::IO, o::KMeans) = AbstractTrees.print_tree(io, o)
+AbstractTrees.printnode(io::IO, o::KMeans) = print(io, "KMeans($(length(o.value))) | n=$(nobs(o))")
+AbstractTrees.children(o::KMeans) = value(o)
+function Base.sort!(o::KMeans; kw...)
+    o.value = Tuple(sort!(collect(o.value); kw...))
+    o
+end
+
+function _fit!(o::KMeans{T}, x) where {T}
+    o.n += 1
+    if o.n == 1
+        p = length(x)
+        o.value = Tuple(Cluster(T, p) for _ in o.value)
+    end
+    if o.n ≤ length(o.value)
+        cluster = o.value[o.n]
+        cluster.value[:] = collect(x)
+        cluster.n += 1
+    else
+        # fill!(o.buffer, 0.0)
+        for k in eachindex(o.buffer)
+            cluster = o.value[k]
+            o.buffer[k] = norm(x .- cluster.value)
+        end
+        k_star = argmin(o.buffer)
+        cluster = o.value[k_star]
+        smooth!(cluster.value, x, o.rate(cluster.n += 1))
+    end
+end
+
+classify(o::KMeans, x) = findmin(c -> norm(x .- c.value), o.value)[2]
+
+
+
+#classify(o::KMeans, x) = findmin(c -> norm(x .- c.value), o.value)[2]
+=#
 function horizontal_sort_into_tasks(distmat::AbstractMatrix)
     cluster_centres = Vector{Any}([])
     labels = Vector{Int32}([])
     ncentres = 10
+    #alg = OIPS(ncentres) # We expect 200 inducing points
+    #x_1 = [row for row in eachrow(distmat)][1] # We have some initial data
+    #alg = StreamKmeans(ncentres)
+    #Z = inducingpoints(alg,distmat)
+    #Z = inducingpoints(alg, x_1)
+    #for row in eachrow(distmat)
+    #    updateZ!(Z, alg,row)
+    #end
+
+    #findmin(c -> norm(x .- c.value), o.value)
+    #@show(Z)
+    @infiltrate
+    #Z = inducingpoints(alg, x_1)
+    #for x in eachbatch([row for row in eachrow(distmat)])
+    #    updateZ!(Z, alg, x)
+    #end
+    #Z = inducingpoints(alg, X; kernel=kernel) # We create an initial vector
+    #X_new = [rand(5) for _ in 1:50] # We get some new data
+    #for row in eachrow(distmat)
+    #    updateZ!(Z, alg, row; kernel=kernel) # Points will be acordingly added (or removed!)
+    #end
+    #@show(Z)
+    #@infiltrate
     km = KMeans(ncentres)
-    o = fit!(km,distmat[1,:])
-    for (x,row) in enumerate(eachrow(distmat))
-        if x>1
-            o = fit!(km,transpose(row))
-        end
+    #o = fit!(km,[])
+    #@infiltrate
+    
+    for row in eachrow(distmat)
+         o = fit!(km,row'[:])
     end
     sort!(o)
+    #for (x,row) in enumerate(eachrow(distmat))
+    #    if x==1
+    #        o = fit!(km,eachrow(distmat))
+
+    #    if x>1
+    #        o = fit!(km,row)
+    #    end
+    #end
+    
     for i in 1:ncentres
         push!(cluster_centres,o.value[i])
     end
     for (x,row) in enumerate(eachrow(distmat))
         push!(labels,Int32(classify(o,distmat[:,x])))
     end
-    println(size(distmat)[2],length(labels))
-
-    println(size(distmat)[1],length(labels))
-    println(size(distmat)[1])
     jobs = unique(labels)
     sub_jobs = Dict()
-    for j in jobs
-        for (i,label) in enumerate(labels)
-            if label==j
-                sub_jobs[label] = Vector{Int32}()
-            end
-
-        end
+    for label_ in unique(labels)
+        sub_jobs[label_] = Vector{Int32}()
     end
     for j in jobs
         for (i,label) in enumerate(labels)
