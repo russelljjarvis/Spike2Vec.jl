@@ -488,7 +488,7 @@ function horizontal_sort_into_tasks(distmat::AbstractMatrix)
 
     #findmin(c -> norm(x .- c.value), o.value)
     #@show(Z)
-    @infiltrate
+    #@infiltrate
     #Z = inducingpoints(alg, x_1)
     #for x in eachbatch([row for row in eachrow(distmat)])
     #    updateZ!(Z, alg, x)
@@ -501,11 +501,13 @@ function horizontal_sort_into_tasks(distmat::AbstractMatrix)
     #@show(Z)
     #@infiltrate
     km = KMeans(ncentres)
-    #o = fit!(km,[])
+    o = fit!(km,distmat'[:,1])
     #@infiltrate
     
-    for row in eachrow(distmat)
-         o = fit!(km,row'[:])
+    for (x,row) in enumerate(eachrow(distmat))
+        if x>1
+             o = fit!(km,row'[:])
+        end
     end
     sort!(o)
     #for (x,row) in enumerate(eachrow(distmat))
@@ -521,7 +523,7 @@ function horizontal_sort_into_tasks(distmat::AbstractMatrix)
         push!(cluster_centres,o.value[i])
     end
     for (x,row) in enumerate(eachrow(distmat))
-        push!(labels,Int32(classify(o,distmat[:,x])))
+        push!(labels,Int32(classify(o,row'[:])))
     end
     jobs = unique(labels)
     sub_jobs = Dict()
