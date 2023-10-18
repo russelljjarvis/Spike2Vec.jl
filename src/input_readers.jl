@@ -21,7 +21,6 @@ function convert_bool_matrice_to_raster(read_spike_dense::Matrix{Bool}, frame_wi
     @inbounds for (indy,row) in enumerate(eachrow(read_spike_dense))
         for (indx,x) in enumerate(row)
             if x
-                #@show(indx,indy)
                 push!(nodes,indy)
                 push!(times,indx*frame_width)                
             end
@@ -39,20 +38,17 @@ function load_datasets_pfc()
     @inbounds for (t, n) in eachrow(file_read_list)
         if length(t)!=0
             push!(spikes,[])
-            #@show(spikes[Int32(n)])
 
         end
     end
     @inbounds for (t, n) in eachrow(file_read_list)
         if length(t)!=0
-
-            push!(spikes[Int32(n)],t)
-            #@show(spikes[Int32(n)])
+            push!(spikes[UInt32(n)],t)
         end
     end
     nnn_scatter=Vector{UInt32}([])
     ttt_scatter=Vector{Float32}([])
-    @inbounds @showprogress for (i, t) in enumerate(spikes)
+    @inbounds for (i, t) in enumerate(spikes)
         @inbounds for tt in t
             if length(t)!=0
                 push!(nnn_scatter,i)
@@ -61,7 +57,6 @@ function load_datasets_pfc()
         end
     end
     maxt = (maximum(ttt_scatter))    
-    #@show(spikes)
     (nnn_scatter,ttt_scatter,spikes,numb_neurons,maxt)
     
 end
@@ -154,10 +149,10 @@ function get_250_neurons(nn,tt)
     times::Vector{Float32},nodes::Vector{UInt32},current_max_t
 end
 
-function get_all_exempler_of_days()
-    FPS = matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"][1]["Movie"]["FPS"]
+function get_all_exempler_days()
+    FPS = matread("../JPMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"][1]["Movie"]["FPS"]
     frame_width = 1.0/FPS #0.08099986230023408 #second, sample_rate =  12.3457#Hz
-    length_of_spike_mat0 = length(matread("../JesusMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"])
+    length_of_spike_mat0 = length(matread("../JPMatlabFiles/M4 analyzed2DaysV.mat")["dataIntersected"])
     length_of_spike_mat1 = 1:6
 
 
@@ -171,11 +166,11 @@ function get_all_exempler_of_days()
         # end
         @inbounds for j in 1:6
 
-           if "Transients" in keys(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i])
+           if "Transients" in keys(matread("../JPMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i])
 
-               temp = matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
+               temp = matread("../JPMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][1]["Transients"]["Raster"]
                if j==1 
-                    init_mat = copy(matread("../JesusMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"])
+                    init_mat = copy(matread("../JPMatlabFiles/M$j analyzed2DaysV.mat")["dataIntersected"][i]["Transients"]["Raster"])
                else
                     init_mat = vcat(init_mat,copy(temp))
                end
@@ -191,11 +186,8 @@ function get_all_exempler_of_days()
         append!(nn,nodes)
 
     end
-    #tt,nn,current_max_t = get_105_neurons(copy(nn),copy(tt))
-    #tt,nn,current_max_t = get_250_neurons(copy(nn),copy(tt))
-    Plots.scatter(tt[200:13010],nn[200:13010],legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="Time (ms)", ylabel="Neuron ID")
+    Plots.scatter(tt,nn,legend = false, markersize = 0.5,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="Time (ms)", ylabel="Neuron ID")
     savefig("long.png")
     (nn::Vector{UInt32},tt::Vector{Float32},current_max_t::Real)
-
 end
 

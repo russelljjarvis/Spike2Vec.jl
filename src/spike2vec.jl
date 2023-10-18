@@ -20,7 +20,7 @@ using Clustering
 using StatsBase
 import OnlineStatsBase.CircBuff
 using Infiltrator
-using InducingPoints
+#using InducingPoints
 #using Arrow 
 #using DataStructures
 
@@ -303,8 +303,7 @@ function compute_metrics_on_divisions!(mat_of_distances::Array{Float64},nodes::V
     max_spk_counts = Int32(round(mean([length(times) for times in enumerate(refspikes[:])])))
     temp = LinRange(0.0, maximum(end_windows[2]), max_spk_counts)
     linear_uniform_spikes = Vector{Float64}([i for i in temp[:]])
-
-    @inbounds @showprogress for (ind,toi) in enumerate(end_windows)
+    @inbounds for (ind,toi) in enumerate(end_windows)
         sw = start_windows[ind]
         observed_spikes = divide_epoch(nodes,times,sw,toi)    
         self_distances = Vector{Float64}(zeros(numb_neurons))
@@ -316,16 +315,13 @@ function compute_metrics_on_divisions!(mat_of_distances::Array{Float64},nodes::V
     normalize!(mat_of_distances)
 
     sum_varr=0
-    for row in eachrow(mat_of_distances)
+    @inbounds for row in eachrow(mat_of_distances)
         sum_varr+=var(row)
     end
     sum_varc=0
-    for col in eachcol(mat_of_distances)
+    @inbounds for col in eachcol(mat_of_distances)
         sum_varc+=var(col)
-    end
-    @show(sum_varr)
-    @show(sum_varc)
-    
+    end   
 
 end
 """
@@ -337,7 +333,7 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
     cnts_threshold = 0.0
 
 
-    @inbounds @showprogress for (ind,row) in enumerate(eachcol(mat_of_distances))
+    @inbounds for (ind,row) in enumerate(eachcol(mat_of_distances))
         #stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
         #if ind <= stop_at_half
         @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
@@ -473,11 +469,40 @@ classify(o::KMeans, x) = findmin(c -> norm(x .- c.value), o.value)[2]
 
 #classify(o::KMeans, x) = findmin(c -> norm(x .- c.value), o.value)[2]
 =#
-function horizontal_sort_into_tasks(distmat::AbstractMatrix)
-    cluster_centres = Vector{Any}([])
-    labels = Vector{Int32}([])
+
+function cluster_distmat_online(distmat)
+    labels = Vector{UInt32}([])
+    distmat = copy(transpose(distmat)[:])
     ncentres = 10
-    #alg = OIPS(ncentres) # We expect 200 inducing points
+    km = KMeans(ncentres)
+    #row1 = view(distmat',:,1)
+    row1 = distmat'[:,1]
+
+    o = fit!(km,row1)
+    
+    @inbounds for (x,row) in enumerate(eachrow(distmat))
+        if x>1
+             o = fit!(km,row'[:])
+        end
+    end
+    sort!(o)
+    
+    @inbounds for row in eachrow(distmat)
+        push!(labels,Int32(classify(o,row'[:])))
+    end
+    labels
+end    
+function cluster_distmat!(mat_of_distances)
+
+    #display(mat_of_distances)
+    R = affinityprop(mat_of_distances)
+    sort_idx =  sortperm(assignments(R))
+    assign = R.assignments
+    R,sort_idx,assign
+end
+
+function call_inducingpoints()
+        #alg = OIPS(ncentres) # We expect 200 inducing points
     #x_1 = [row for row in eachrow(distmat)][1] # We have some initial data
     #alg = StreamKmeans(ncentres)
     #Z = inducingpoints(alg,distmat)
@@ -500,58 +525,64 @@ function horizontal_sort_into_tasks(distmat::AbstractMatrix)
     #end
     #@show(Z)
     #@infiltrate
+end
+function horizontal_sort_into_tasks(distmat::AbstractMatrix,div_spike_mat_no_displacement::AbstractMatrix)
+    labels = Vector{UInt32}([])
+    ncentres = 10
     km = KMeans(ncentres)
     o = fit!(km,distmat'[:,1])
-    #@infiltrate
-    
-    for (x,row) in enumerate(eachrow(distmat))
+    @inbounds for (x,row) in enumerate(eachrow(distmat))
         if x>1
              o = fit!(km,row'[:])
         end
     end
-    sort!(o)
-    #for (x,row) in enumerate(eachrow(distmat))
-    #    if x==1
-    #        o = fit!(km,eachrow(distmat))
-
-    #    if x>1
-    #        o = fit!(km,row)
-    #    end
-    #end
-    
-    for i in 1:ncentres
-        push!(cluster_centres,o.value[i])
-    end
-    for (x,row) in enumerate(eachrow(distmat))
+    sort!(o)    
+    @inbounds for row in eachrow(distmat)
         push!(labels,Int32(classify(o,row'[:])))
     end
+    use_labels(distmat,labels,div_spike_mat_no_displacement)
+end
+"""
+Use and populate labels
+"""
+function use_labels(distmat::AbstractMatrix,labels::Vector{UInt32},div_spike_mat_no_displacement::AbstractMatrix)
     jobs = unique(labels)
     sub_jobs = Dict()
-    for label_ in unique(labels)
-        sub_jobs[label_] = Vector{Int32}()
+    @inbounds for label_ in unique(labels)
+        sub_jobs[label_] = Vector{UInt32}()
     end
-    for j in jobs
-        for (i,label) in enumerate(labels)
+    @inbounds for j in jobs
+        @inbounds for (i,label) in enumerate(labels)
             if label==j
                 push!(sub_jobs[label],i)
             end
 
         end
     end
-    Array_of_arrays = Vector{Any}()
-    for j in jobs
-        newArray = zeros(size(distmat[:,1])[1],length(sub_jobs[j]))
+    Array_of_arraysV = Vector{Any}()
+    Array_of_arraysS = Vector{Any}()
 
-        for (enum,index) in enumerate(sub_jobs[j])
-            @show(newArray[:,index],distmat[:,index])
-            newArray[:,index] =  distmat[:,index]
-            println("done",enum)
-
+    @inbounds for j in jobs
+        # zeros(NROWS,NCOLUMNS)
+        newArrayVectors = zeros(length(sub_jobs[j]),size(distmat)[2])
+        #newArraySpikes = zeros(length(sub_jobs[j]),size(div_spike_mat_no_displacement)[2])
+        #newArraySpikes = zeros(size(div_spike_mat_no_displacement))
+        newArraySpikes = div_spike_mat_no_displacement[sub_jobs[j],:]
+        @inbounds for (enum,index) in enumerate(sub_jobs[j])
+            newArrayVectors[enum,:] = distmat[index,:]
         end
-        push!(Array_of_arrays,newArray)
+
+        #@inbounds for (enum,index) in enumerate(sub_jobs[j])
+        #    newArraySpikes[enum,:] = 
+        #    @show(newArraySpikes[enum,:])
+        #end
+
+        #newArraySpikes[vec(mapslices(col -> any(col .!= 0), newArraySpikes, dims = 2)), :]
+        push!(Array_of_arraysV,newArrayVectors)
+        push!(Array_of_arraysS,newArraySpikes)
+
     end
-    #@show(Array_of_arrays)
-    Array_of_arrays
+    Array_of_arraysV::Vector{Any},labels::Vector{UInt32},Array_of_arraysS::Vector{Any}
 end
 #=
 function horizontal_sort_into_tasks(mat_of_distances::AbstractArray)
@@ -641,28 +672,52 @@ function create_spikes_ragged(nodes::Vector{UInt32},times::Vector{<:Real};plot=f
     (spikes_ragged::Vector{Any},numb_neurons::Int)
 end
 
+function cluster_distmat(mat_of_distances)
+    R = affinityprop(mat_of_distances)
+    sort_idx =  sortperm(assignments(R))
+    assign = R.assignments
+    R,sort_idx,assign
+end
+
 function doanalysis(d)
     @unpack nodes,times,dataset, window_size, similarity_threshold = d
+    list_of_jobs = Vector{Any}([])
     numb_neurons = length(unique(nodes))
     maxt = maximum(times)
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times)
     div_spike_mat_no_displacement,start_windows,end_windows = spike_matrix_divided(spikes_ragged,window_size,numb_neurons,maxt;displace=false)
 
     distmat = compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement,metric="kreuz")
-    Array_of_arrays = horizontal_sort_into_tasks(distmat)
-    distmat = Array_of_arrays[1]
-    @show(distmat)
-    #@show(o)
-    #@show(labels)
+    Array_of_arraysV,assign1,Array_of_arraysSpikes = horizontal_sort_into_tasks(distmat,div_spike_mat_no_displacement)
+    for (job,(distmat,spike_packet)) in enumerate(zip(Array_of_arraysV,Array_of_arraysSpikes))
+        Plots.heatmap(distmat)
+        savefig("matrices_$job"*".png")
+        sqr_distmat = label_exhuastively_distmat(distmat;threshold=similarity_threshold,disk=false)
+        assign = cluster_distmat_online(distmat)    
+        #assing_progressions,assing_progressions_times,assing_progressions_time_indexs = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= similarity_threshold)
+        #reassign_no_pattern_group!(assing_progressions)
+        #row = spike_packet[:,column]
+        Nx = []
+        Tx = []
+        for row in eachrow(spike_packet)
+            for (ind_cell,times) in enumerate(row)
+                for tt in times
+                    for t in tt
+                        push!(Tx,t) 
+                        push!(Nx,ind_cell)
+                    end
+                end
+            end
+        end
+        Plots.scatter(Tx,Nx)
+        savefig("spikes_$job"*".png")
 
-    #distmat = distmat[sortperm(distmat[:, labels],dims=1), :] # sorted by the 4th column
-    sqr_distmat = label_exhuastively_distmat(distmat;threshold=similarity_threshold,disk=false)
-    
-    assing_progressions,assing_progressions_times,assing_progressions_time_indexs = get_state_transitions(start_windows,end_windows,sqr_distmat,assign;threshold= ε)
-    reassign_no_pattern_group!(assing_progressions)
-    internal_validation_dict(assign,div_spike_mat_no_displacement;file_path=plotsdir()+str(d["calcium_v1_ensemble"]))
-    f=(div_spike_mat_no_displacement,distmat,sqr_distmat,assign,assing_progressions)
-    f
+        #internal_validation_dict(assign,spike_packet;file_path=plotsdir()*"$job"*".png")
+
+        f=(spike_packet,distmat,sqr_distmat,assign)
+        push!(list_of_jobs,f)
+    end
+    list_of_jobs
 end
 
 function reassign_no_pattern_group!(assing_progressions)

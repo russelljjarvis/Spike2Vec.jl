@@ -52,12 +52,17 @@ function preparesim(d::Dict)
     return expanding_param
 end
 
+if !isfile("preparesim.jld")
+    d = dicts[1]
+    param_dict = preparesim(d)
+    @save "preparesim.jld" param_dict
+else
+    @load "preparesim.jld" param_dict
 
+end
 #for (i, d) in enumerate(dicts)
-d = dicts[1]
-param_dict = preparesim(d)
 f = doanalysis(param_dict)
-@tagsave(datadir("simulations", savename(expanding_param["dataset"], "jld2")), f)
+@tagsave(param_dict["dataset"], f)
 #end
 #SNN.@load_units
 #sim_duration = 3.0second
