@@ -9,8 +9,88 @@ using SparseArrays
 using DelimitedFiles
 using DataFrames
 using Revise
+#using ProgressMeter
 
+"""
+Augment by lengthening with duplication useful for sanity checking algorithm.
+Augmentation just concatonates recordings by whole recording durations.
+"""
 
+function augment_by_time(tt,nn,scale)
+    ttt = Vector{Float32}([])
+    nnn = Vector{UInt32}([])
+    append!(nnn,nn)
+    append!(ttt,tt)
+    @inbounds @showprogress for s in 1:scale
+        maxt = maximum(ttt)
+        @inbounds for (t,n) in zip(tt,nn)
+            push!(nnn,n);
+            aug_spike = Float32(t+maxt)
+            push!(ttt,aug_spike)
+        end
+
+    end
+    (nnn,ttt)
+end
+
+"""
+Augment by lengthening with duplication useful for sanity checking algorithm.
+Augmentation just concatonates recordings by total number of neurons.
+"""
+function augment_by_neuron_count(tt,nn,scale)
+    ttt = Vector{Float32}([])
+    nnn = Vector{UInt32}([])
+    append!(nnn,nn)
+    append!(ttt,tt)
+    @inbounds @showprogress for s in 1:scale
+        maxn = maximum(nnn)
+        @inbounds for (t,n) in zip(tt,nn)
+            aug_neuron = n+maxn
+            push!(nnn,aug_neuron)
+            push!(ttt,t)
+        end
+
+    end
+    (nnn,ttt)
+end
+"""
+Augment by lengthening with duplication useful for sanity checking algorithm. 
+"""
+ 
+function augment(spikes,scale)
+     ttt = Vector{Float32}([])
+     nnn = Vector{UInt32}([])
+    for s in 1:scale
+        maxt = maximum(ttt)
+        for (i, t) in enumerate(spikes)
+            for tt in t
+                if length(t)!=0
+                    push!(nnn,i);
+                    txt = Float32(tt+maxt)
+                    push!(ttt,txt)
+                end
+            end
+        end
+    end
+    (nnn,ttt)
+end
+
+#=
+    for s in scale
+        maxn = maximum(nnn)
+        for (i, t) in enumerate(spikes)
+            for tt in t
+                if length(t)!=0
+                    aug_neuron = i+maxn
+                    push!(nnn,aug_neuron);
+                    push!(ttt,tt)
+                end
+            end
+        end
+    end
+    (nnn,ttt)
+end
+=#
 """
 A method to re-represent dense boolean vectors as a two dense vectors of spikes, and times.
 spikes is a matrix with regularly sampled windows, populated by spikes, with calcium spikes.
@@ -49,12 +129,13 @@ function load_datasets_pfc()
     nnn_scatter=Vector{UInt32}([])
     ttt_scatter=Vector{Float32}([])
     @inbounds for (i, t) in enumerate(spikes)
-        @inbounds for tt in t
-            if length(t)!=0
-                push!(nnn_scatter,i)
-                push!(ttt_scatter,Float32(tt))
-            end
+        if length(t)!=0    
+            @inbounds for tt in t
+                        push!(nnn_scatter,i)
+                        push!(ttt_scatter,Float32(tt))
+                    end
         end
+
     end
     maxt = (maximum(ttt_scatter))    
     (nnn_scatter,ttt_scatter,spikes,numb_neurons,maxt)
@@ -110,7 +191,7 @@ Of course the absolute paths below will need to be wrangled to match your direct
 """
 
 function load_datasets_calcium_v1()
-    (nodes,times,whole_duration) = get_all_exempler_of_days()
+    (nodes,times,whole_duration) = get_all_exempler_days()
 
     spikes_ragged,numb_neurons = create_spikes_ragged(nodes,times)
     (times::Vector{Float32},nodes::Vector{UInt32},whole_duration::Real,spikes_ragged::Vector{Any},numb_neurons::Int) 
@@ -132,6 +213,25 @@ function get_105_neurons(nn,tt)
     @save "105_neurons.jld" times nodes current_max_t
     times::Vector{Float32},nodes::Vector{UInt32},current_max_t
 end
+
+function get_105_neurons()
+    (nn,tt,whole_duration) = get_all_exempler_days()
+
+    times=Vector{Float32}([])
+    nodes=Vector{UInt32}([])
+
+    for (t,n) in zip(tt,nn)
+        if n<105
+            push!(times,t)
+            push!(nodes,n)
+        end
+    end
+    current_max_t = maximum(times)
+
+    @save "105_neurons.jld" times nodes current_max_t
+    times::Vector{Float32},nodes::Vector{UInt32},current_max_t
+end
+
 function get_250_neurons(nn,tt)
     times=Vector{Float32}([])
     nodes=Vector{UInt32}([])

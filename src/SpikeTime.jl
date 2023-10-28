@@ -39,11 +39,15 @@ module SpikeTime
     include("ISI.jl")
     export bag_of_isis
     include("input_readers.jl")
+    export get_250_neurons
+    export get_105_neurons
     export get_all_exempler_of_days
     export load_datasets_calcium_v1
     export load_zebra_finche_nmc_dataset
     export convert_bool_matrice_to_raster
     export load_datasets_pfc
+    export augment_by_neuron_count
+    export augment_by_time
     include("spike2vec.jl")
     export doanalysis
     export reassign_no_pattern_group!
