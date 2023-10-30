@@ -87,8 +87,10 @@ function divide_epoch(nodes::AbstractVector,times::AbstractVector,start::Real,st
     for (neuron,t) in zip(n0,t0)
         append!(time_raster[neuron],t)        
     end
-    time_raster
+    time_raster,n0,t0
 end
+
+
 
 function divide_epoch(times::AbstractVector,start::Real,stop::Real)
     t0=Vector{Float32}([])
@@ -231,7 +233,7 @@ function compute_metrics_on_matrix_self_past_divisions(div_spike_mat_no_displace
     (mat_of_distances::Array{Float64})
 end
 function compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{Float64})
-    (nrow::Int32,ncol::UInt32)=size(div_spike_mat_no_displacement)
+    (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     neurons_old = div_spike_mat_no_displacement[:,1]
     @inbounds for (indc,neurons) in enumerate(eachcol(div_spike_mat_no_displacement))
         neurons = neurons[1]
@@ -328,11 +330,14 @@ function compute_metrics_on_divisions!(mat_of_distances::Array{Float64},nodes::V
 
 end
 
-function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance_matrix::AbstractVecOrMat,sws,ews,times;threshold::Real=5)
-    cnts_total = 0.0
-    cnts_threshold = 0.0
+function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance_matrix::AbstractVecOrMat,sws,ews,spikes_ragged;threshold::Real=5)
+    #cnts_total = 0.0
+    NURS = 0.0
+    template_times_dict = Dict()
+    template_nodes_dict = Dict()
 
-    template_index_dict = Dict()
+    nodes,times = ragged_to_lists(spikes_ragged)
+
     @inbounds for (ind,row) in enumerate(eachcol(mat_of_distances))
         #stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
         #if ind <= stop_at_half
@@ -343,26 +348,30 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
         ##
         @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
             if ind!=ind2
-                cnts_total += 1.0
+                #cnts_total += 1.0
                 distance = evaluate(Euclidean(),row,row2)
                 if distance<threshold
-                    cnts_threshold += 1.0
+                    NURS += 1.0
                     distance_matrix[ind,ind2] = abs(distance)
-                    if !(haskey(template_index_dict, ind))
-                        template_index_dict[ind] = []
+                    if !(haskey(template_times_dict, ind))
+                        template_times_dict[ind] = []
+                        template_nodes_dict[ind] = []
                     end
-                    subtimes = divide_epoch(times,sws[ind2],ews[ind2])
-                    @show(subtimes)
-                    push!(template_index_dict[ind],subtimes)
-                    #@show(maximum(ews),ind2)
+                    (subtimes,n0,t0) = divide_epoch(nodes,times,sws[ind2],ews[ind2])
+                    push!(template_times_dict[ind],t0)
+                    push!(template_nodes_dict[ind],n0)
+
                 end
             end
         end
     end
-    #@infiltrate
+    number_windows = length(eachcol(mat_of_distances))
+    window_duration = last(ews)-last(sws)
+    #repeatitive = NURS#/cnts_total
+    repeatitive = NURS/(number_windows*window_duration)
+    #@show(repeatitive)
 
-    repeatitive = cnts_threshold/cnts_total
-    (repeatitive,template_index_dict)
+    (repeatitive,template_times_dict,template_nodes_dict,NURS::Real)
 
 end
 #=
@@ -404,8 +413,8 @@ function label_exhuastively_distmat(mat_of_distances::AbstractVecOrMat,sws,ews,t
         io = open("/tmp/mmap.bin", "w+")
         distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
     end
-    repeatitive,dict = label_exhuastively_distmat!(mat_of_distances,distance_matrix,sws,ews,times;threshold)
-    distance_matrix::AbstractVecOrMat,repeatitive::Real,dict::Dict
+    repeatitive,dict0,dict1,NURS = label_exhuastively_distmat!(mat_of_distances,distance_matrix,sws,ews,times;threshold)
+    distance_matrix::AbstractVecOrMat,repeatitive::Real,dict0::Dict,dict1::Dict,NURS::Real
 end
 
 """
@@ -816,20 +825,54 @@ function doanalysis(d)
         
     spike_jobs = cluster_get_jobs(distmat,spikes_ragged)
     distmats=[]
-    template_index_dicts = []
-    for (ind,spikes_ragged) in enumerate(spike_jobs)
-        @show(length(spikes_ragged))
+    list_of_template_time_dicts = []
+    sum_of_rep=0.0
+    NURS_sum=0.0
+    p1 = Plots.scatter()
+
+    @inbounds for (ind,spikes_ragged) in enumerate(spike_jobs)
         div_spike_mat_with_displacement,sws,ews = spike_matrix_divided(spikes_ragged,window_size,numb_neurons,maxt;displace=true)
         new_distmat = compute_metrics_on_matrix_divisions(div_spike_mat_with_displacement,metric="kreuz")
-        #@show(RR,xs, ys,sss,R)
-        (sqr_distmat,rep,template_dict) = label_exhuastively_distmat(new_distmat,sws,ews,times)
-        #@show(template_dict)
+        (sqr_distmat,rep,template_time_dict,template_node_dict,NURS) = label_exhuastively_distmat(new_distmat,sws,ews,spikes_ragged)
+        sum_of_rep+=rep
+        NURS_sum+=NURS
         push!(distmats,sqr_distmat)
-        push!(template_index_dicts,template_dict)
+        push!(list_of_template_time_dicts,template_time_dict)
+        offset = UInt32(length(spikes_ragged))
+        temp_node_offset=[]
+        temp_time = []
+        #for template_time_dict in list_of_template_time_dicts
+        for (v0,v1) in zip(values(template_time_dict),values(template_node_dict))
+            for x in v1 
 
-        #@show(rep)
+                push!(temp_node_offset,x.+offset)
+            end
+            for t in v0
+                push!(temp_time,t)
+            end
+
+            Plots.scatter!(p1,temp_time,temp_node_offset,legend = false,markersize = 0.7,markerstrokewidth=0,alpha=0.7)
+        end
+
+
+        #end
+        #nx,tx = ragged_to_lists(spikes_ragged)
+
+        #Plots.scatter(times,nodes,legend = false,markersize = 0.7,markerstrokewidth=0,alpha=0.7)
+        #savefig("ThisWorked$ind.png")
+
+        
     end
-    template_index_dicts
+    p2 = Plots.scatter(nodes,times,legend = false,markersize = 0.7,markerstrokewidth=0,alpha=0.7))
+    Plots.plot(p2,p1, layout = (2, 1))
+
+    #@show(sum_of_rep)
+    #@show(NURS_sum)
+
+
+    savefig("scatterp_single.png")
+    #@infiltrate
+    list_of_template_time_dicts
 end
 
 function reassign_no_pattern_group!(assing_progressions)

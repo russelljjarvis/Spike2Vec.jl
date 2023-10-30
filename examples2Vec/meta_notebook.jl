@@ -74,9 +74,9 @@ else
 end
 
 (times,nodes,maxt)= get_105_neurons()
-scale = 2
-(nodes,times) = augment_by_time(times,nodes,scale)
-(nodes,times) = augment_by_neuron_count(times,nodes,scale)
+#scale = 3
+#(nodes,times) = augment_by_time(times,nodes,scale)
+#(nodes,times) = augment_by_neuron_count(times,nodes,scale)
         
 #Plots.scatter(times,nodes)
 Plots.scatter(times,nodes,legend = false,markersize = 0.5,markerstrokewidth=0,alpha=0.7)#, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
