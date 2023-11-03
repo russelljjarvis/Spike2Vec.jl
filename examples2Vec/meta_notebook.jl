@@ -5,8 +5,12 @@ import DrWatson.dict_list
 using SpikeTime
 using JLD2
 using Clustering
-
+using ProfileView
 using Plots
+using StatProfilerHTML
+using Profile
+using PProf
+
 #JET
 #report_and_watch_file("meta_notebook.jl",annotate_types=true)
 
@@ -19,9 +23,9 @@ using Plots
 ## * 
 #@quickactivate "SpikeThroughput.jl" #
 
-function get_window_size()
-    return
-end
+#function get_window_size()
+#    return
+#end
 
 allparams = Dict(
     "dataset" => ["calcium_v1_ensemble", "zebra_finche", "pfc","hippocampus"],         # it is inside vector. It is expanded.
@@ -84,7 +88,7 @@ Plots.scatter(times,nodes,legend = false,markersize = 0.5,markerstrokewidth=0,al
 param_dict["times"] =  times
 
 param_dict["nodes"] =  nodes
-
+param_dict["window_size"] = 200
 #display(Plots.scatter(times,nodes))
 savefig("the_scatter_plot0.png")
 
@@ -92,7 +96,15 @@ savefig("the_scatter_plot0.png")
 #display(Plots.scatter(times,nodes))
 #savefig("the_scatter_plot0.png")
 #for (i, d) in enumerate(dicts)
-f = doanalysis(param_dict)
+#@time f = doanalysis(param_dict)
+
+#@profilehtml doanalysis(param_dict)
+
+# Collect a profile
+Profile.clear()
+@profile doanalysis(param_dict)
+pprof()
+#=
 @tagsave(param_dict["dataset"], f)
 #end
 #SNN.@load_units
@@ -103,3 +115,5 @@ config = @dict(pop_size,sim_duration,division_size)
 produce_or_load(datadir("simulation"),
                 config,
                 run_simulation)
+
+                =#
