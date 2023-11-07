@@ -244,16 +244,16 @@ end
 Visualize one epoch, as a spike train raster and then an ISI histogram.
 """
 
-function plot_ISI_and_raster_scatter()
+function plot_ISI_and_raster_scatter(nodes,times,global_isis)
     p1 = Plots.plot()
-    Plots.scatter!(p1,times,nodes,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, bgcolor=:snow2, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
+    Plots.scatter!(p1,times,nodes,legend = false,markersize = 0.8,markerstrokewidth=0,alpha=0.8, fontcolor=:blue,xlabel="time (Seconds)",ylabel="Cell Id")
     savefig("scatter_plot.png")Spike
     b_range = range(minimum(global_isis), mean(global_isis)+std(global_isis), length=21)
     p2 = Plots.plot()
     Plots.histogram!(p2,global_isis, bins=b_range, normalize=:pdf, color=:gray,xlim=[0.0,mean(global_isis)+std(global_isis)])
     Plots.plot(p1,p2)
     savefig("Spike_raster_and_ISI_bar_plot.png")
-    #resolution = 150
+    (p1,p2)
 end
 function plot_umap_ts(nodes::Vector{Int32}, times::Vector{Float32},dt,tau; file_name::String="empty.png")
     perm = sortperm(times)

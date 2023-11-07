@@ -39,6 +39,16 @@ module SpikeTime
     include("ISI.jl")
     export bag_of_isis
     include("input_readers.jl")
+    export read_path_collectionHIPPOCAMPUS
+    export get_all_exempler_days_revamped
+    export get_all_exempler_days
+    export fromHDF5spikesSleep
+    export fromHDF5spikesHipp
+    export read_path_collection
+    export read_path_collectionPFC
+    export load_datasets_pfc150628
+    export load_datasets_pfc150629
+    export load_datasets_pfc150630
     export get_250_neurons
     export get_105_neurons
     export get_all_exempler_of_days
@@ -49,6 +59,9 @@ module SpikeTime
     export augment_by_neuron_count
     export augment_by_time
     include("spike2vec.jl")
+    export ragged_to_lists
+    export more_plotting1
+    export more_plotting0
     export doanalysis
     export reassign_no_pattern_group!
     export create_spikes_ragged
@@ -116,5 +129,6 @@ module SpikeTime
     export internal_validation0
     export internal_validation_dict
     export ragged_to_uniform
+    export plot_ISI_and_raster_scatter
 
 end
