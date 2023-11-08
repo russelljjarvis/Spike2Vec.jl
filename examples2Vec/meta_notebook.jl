@@ -1,5 +1,6 @@
 using DrWatson
 import DrWatson.dict_list
+using Cthulhu
 #using JuliaSyntax
 #using JET;
 using SpikeTime
@@ -7,9 +8,9 @@ using JLD2
 using Clustering
 using ProfileView
 using Plots
-using StatProfilerHTML
-using Profile
-using PProf
+#using StatProfilerHTML
+#using Profile
+#using PProf
 
 #JET
 #report_and_watch_file("meta_notebook.jl",annotate_types=true)
@@ -77,20 +78,21 @@ else
     #@save "bigger_scatter_plot.jld" nodes times
 end
 
-(times,nodes,maxt)= get_105_neurons()
+#(times,nodes,maxt)= get_105_neurons()
+(nodes,times) = load_zebra_finche_nmc_dataset()
 #scale = 3
 #(nodes,times) = augment_by_time(times,nodes,scale)
 #(nodes,times) = augment_by_neuron_count(times,nodes,scale)
         
 #Plots.scatter(times,nodes)
-Plots.scatter(times,nodes,legend = false,markersize = 0.5,markerstrokewidth=0,alpha=0.7)#, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
+#Plots.scatter(times,nodes,legend = false,markersize = 0.5,markerstrokewidth=0,alpha=0.7)#, bgcolor=:snow2, fontcolor=:blue, xlims=(0, xlimits))
 #Plots.scatter(times,nodes)
 param_dict["times"] =  times
 
 param_dict["nodes"] =  nodes
-param_dict["window_size"] = 200
+param_dict["window_size"] = 100
 #display(Plots.scatter(times,nodes))
-savefig("the_scatter_plot0.png")
+#savefig("the_scatter_plot0.png")
 
 
 #display(Plots.scatter(times,nodes))
@@ -101,9 +103,17 @@ savefig("the_scatter_plot0.png")
 #@profilehtml doanalysis(param_dict)
 
 # Collect a profile
-Profile.clear()
-@profile doanalysis(param_dict)
-pprof()
+#Profile.clear()
+distmat,div_spike_mat_with_displacement,spikes_ragged,sort_idx,NURS_sum,sum_of_rep,sfs = doanalysis(param_dict);
+#more_plotting1(spikes_ragged,sort_idx,IStateI,p1)
+p1 = Plots.plot()
+for state_frequency_histogram in sfs 
+    Plots.histogram!(p1,state_frequency_histogram)
+end
+savefig("state_frequency_histogram.png")
+more_plotting0(distmat,div_spike_mat_with_displacement,nodes,times)
+
+#pprof()
 #=
 @tagsave(param_dict["dataset"], f)
 #end

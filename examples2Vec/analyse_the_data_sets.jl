@@ -5,7 +5,35 @@ using HDF5
 using SpikeTime
 using Plots
 using JLD2
+using DrWatson
+import DrWatson.dict_list
+@load "v1_jesus_day6.jld" nn tt
+nodes5,times5 = nn,tt
+p3=Plots.scatter(times5,nodes5,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes5))
 
+ylabel!(p3,"Neuron Id")
+xlabel!(p3,"Time (ms)")
+savefig("whatOfTimes.png")
+param_dict = Dict()
+param_dict["window_size"] = 100         # same
+param_dict["similarity_threshold"] = 5 # single element inside vector; no expansion
+
+param_dict["nodes"] = nodes5
+param_dict["times"] = times5
+#param_dict = dict_list(param_dict)[1]
+param_struct = (; (Symbol(k) => v for (k,v) in pairs(param_dict))...)
+#@show(param_struct)
+
+distmat,div_spike_mat_with_displacement,spikes_ragged,sort_idx,NURS_sum,sum_of_rep,sfs = doanalysis(param_struct)
+
+#more_plotting1(spikes_ragged,sort_idx,IStateI,p1)
+p1 = Plots.plot()
+for state_frequency_histogram in sfs 
+    Plots.histogram!(p1,state_frequency_histogram)
+end
+savefig("state_frequency_histogram.png")
+more_plotting0(distmat,div_spike_mat_with_displacement,nodes5,times5)
+#=
 (timesHPC,nodesHPC) = read_path_collectionHIPPOCAMPUS()
 p1=Plots.scatter(timesHPC,nodesHPC,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodesHPC))
 
@@ -16,11 +44,13 @@ display(Plots.plot(p1))
 
 @load "v1_jesus_day1.jld" nn tt
 nodes0,times0 = nn,tt
-p1=Plots.scatter(times0,nodes0,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes0))
+p2=Plots.scatter(times0,nodes0,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes0))
 
 ylabel!(p1,"Neuron Id")
 xlabel!(p1,"Time (ms)")
-display(Plots.plot(p1))
+display(Plots.plot(p2))
+
+display(Plots.plot(p1,p2))
 
 @load "v1_jesus_day2.jld" nn tt
 nodes1,times1 = nn,tt
@@ -33,9 +63,8 @@ nodes3,times3 = nn,tt
 
 @load "v1_jesus_day5.jld" nn tt
 nodes4,times4 = nn,tt
+=#
 
-@load "v1_jesus_day6.jld" nn tt
-nodes5,times5 = nn,tt
 
 #(nodesPFC,timesPFC) = read_path_collectionPFC()
 

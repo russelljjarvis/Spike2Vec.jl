@@ -80,7 +80,7 @@ function divide_epoch(times::AbstractVector,start::Real,stop::Real)
 end
 
 #function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, spikes_ragged::AbstractArray, self_distances::AbstractArray;metric=:kreuz)
-function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, neurons_obs::Vector{Float32}, self_distances::AbstractArray;metric=:kreuz)
+function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, neurons_obs::Vector{Vector{Float32}}, self_distances::AbstractArray;metric=:kreuz)
     @inbounds for (ind,n1_) in enumerate(neurons_obs)
         if length(n1_) > 0 && length(one_neuron_surrogate) > 0
             pooledspikes = copy(one_neuron_surrogate)
@@ -118,11 +118,11 @@ function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, neurons
         end
     end
 end
-
+#=
 function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, spikes_ragged::AbstractArray, self_distances::AbstractArray;metric=:kreuz)
 
     @inbounds for (ind,times_obs) in enumerate(spikes_ragged)
-        if length(times_obs) > 0 && length(oneb_neuron_surrogate) > 0
+        if length(times_obs) > 0 && length(one_neuron_surrogate) > 0
             pooledspikes = copy(one_neuron_surrogate)
             append!(pooledspikes,times_obs)
             maxt = maximum(sort!(unique(pooledspikes)))
@@ -153,12 +153,12 @@ function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, spikes_
             else # If no spikes in this window, don't reflect that there was agreement
                  # ie self_distances[ind] = 0, reflects agreement
                  # reflect a big disagreement.
-                self_distances[ind] = abs(length(n1_)-length(t1_))
+                self_distances[ind] = abs(length(spikes_ragged[1])-length(t1_))
             end
         end
     end
 end
-
+=#
 function array_of_empty_vectors(T, dims...)
     array = Array{Vector{T}}(undef, dims...)
     for i in eachindex(array)
@@ -196,13 +196,9 @@ function spike_matrix_slices(nodes::Vector{UInt32},times::Vector{Float32},number
         sw = full_sliding_window_starts[windex]
         push!(times_per_slice,[])
         push!(nodes_per_slice,[])
-        #println("gets here!")
         n0,t0 = divide_epoch(nodes,times,sw,stop)
-        #@show(n0)
         times_per_slice[windex] = t0
         nodes_per_slice[windex] = n0
-        #push!(times_per_slice[windex],t0)
-        #push!(nodes_per_slice[windex],n0)
     end
     times_per_slice::AbstractVecOrMat,nodes_per_slice::AbstractVecOrMat,full_sliding_window_starts::Vector{Float32},full_sliding_window_ends::Vector{Float32}
 end
@@ -222,27 +218,35 @@ function spike_matrix_divided(spikes_raster::AbstractVecOrMat,number_divisions_s
     ##
     
     #@time (full_sliding_window_starts,full_sliding_window_ends) = make_sliding_window(full_sliding_window_starts,full_sliding_window_ends,step_size)
-    
-    mat_of_spikes = array_of_empty_vectors(Vector{Float32},(length(spikes_raster),length(full_sliding_window_ends)))
+    Ncells = length(spikes_raster)
+    mat_of_spikes = array_of_empty_vectors(Vector{Float32},(Ncells,length(full_sliding_window_ends)))
     
     spike_matrix_divided!(mat_of_spikes,spikes_raster,full_sliding_window_ends,full_sliding_window_starts,displace)
+    @assert sum(sum(sum(mat_of_spikes[:,1:5])))>0.0
 
     mat_of_spikes::Matrix{Vector{Vector{Float32}}},full_sliding_window_starts::Vector{Float32},full_sliding_window_ends::Vector{Float32}
 end
 function spike_matrix_divided!(mat_of_spikes::Matrix{Vector{Vector{Float32}}},spikes_raster,end_windows,start_windows,displace)
     @inbounds for (neuron_id,only_one_neuron_spike_times) in enumerate(spikes_raster)
-        @inbounds for (windex,final_end_time) in enumerate(end_windows)
+        @inbounds for (windex,end_window_time) in enumerate(end_windows)
             sw = start_windows[windex]
-            observed_spikes = divide_epoch(only_one_neuron_spike_times,sw,final_end_time)
-            if displace
+            observed_spikes = divide_epoch(only_one_neuron_spike_times,sw,end_window_time)
+            @show(only_one_neuron_spike_times)
+            @show(observed_spikes)
+            @infiltrate
+            if !displace
                 push!(mat_of_spikes[neuron_id,windex],observed_spikes)
 
             else
+                @show(observed_spikes)
+                @show(observed_spikes.-sw)
                 push!(mat_of_spikes[neuron_id,windex],observed_spikes.-sw)
 
             end
         end
     end
+    @assert sum(sum(sum(mat_of_spikes[:,1:5])))>0.0
+
 end
 
 
@@ -262,12 +266,15 @@ function get_window!(nlist,tlist,observed_spikes,sw)
 end
 
 
-function compute_metrics_on_matrix_divisions(NCells,NodeList,timesList;metric=:kreuz,disk=false)
+function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},NCells,NodeList,timesList;metric=:kreuz,disk=false)
     #(nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
+    (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
+    mat_of_distances = Array{Float32}(undef, nrow, ncol)
     
-    mat_of_distances = Array{Float32}(undef, NCells, length(timesList))
+    #mat_of_distances = Array{Float32}(undef, NCells, length(timesList))
     max_spk_countst = Int32(trunc(maximum([length(times) for times in timesList])))
-    maximum_time = maximum([times[2][1] for times in timesList])[1]
+    #@infiltrate
+    maximum_time = maximum(maximum(timesList)) #maximum([times for times in timesList])[1]
     temp = LinRange(0.0, maximum_time, max_spk_countst)
     linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
     
@@ -277,19 +284,20 @@ end
 
 
 
-function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};metric=:kreuz,disk=false)
+function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},timesList;metric=:kreuz,disk=false)
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float32}(undef, nrow, ncol)
-    #refspikes = div_spike_mat_no_displacement[:,:] 
-    #max_spk_countst = Int32(trunc(maximum([length(times[2][1]) for times in enumerate(div_spike_mat_no_displacement)])))
-    #@infiltrate
-    max_spk_countst = Int32(trunc(maximum([length(times) for times in enumerate(div_spike_mat_no_displacement)])))
-    maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
+
+    max_spk_countst = Int32(trunc(maximum([length(times) for times in timesList])))
+    maximum_time = maximum(maximum(timesList)) #maximum([times for times in timesList])[1]
+
+    #max_spk_countst = Int32(trunc(maximum([length(times) for times in enumerate(div_spike_mat_no_displacement)])))
+    #maximum_time = maximum([times[2][1] for times in enumerate(div_spike_mat_no_displacement)])[1]
     
     temp = LinRange(0.0, maximum_time, max_spk_countst)
     linear_uniform_spikes = Vector{Float32}([i for i in temp[:]])
 
-    sum_var = compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement,mat_of_distances,linear_uniform_spikes,nrow;metric=metric)    
+    sum_var = compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement,mat_of_distances,linear_uniform_spikes,timesList,nrow;metric=metric)    
     (mat_of_distances::Array{Float32},sum_var::Float32)
 end
 
@@ -329,19 +337,22 @@ function compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displac
 end
 
 
-function compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{<:Real},linear_uniform_spikes::Vector{Float32},nrow::UInt32;metric=:kreuz)
+function compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},mat_of_distances::Array{<:Real},linear_uniform_spikes::Vector{Float32},timesList,nrow::UInt32;metric=:kreuz)
     sum_varr::Float32=0.0
 
-    @inbounds for (indc,neurons) in enumerate(eachcol(div_spike_mat_no_displacement))
+    @inbounds for (indc,neuron_times) in enumerate(eachcol(div_spike_mat_no_displacement))
+        #@show(typeof(neuron_times))
+
         self_distances = Vector{Float32}(zeros(nrow))
-        if !isa(neurons[1], Number)
-            neurons = [ n[1] for n in neurons ]
+        if !isa(neuron_times[1], Number)
+            neuron_times = [ n[1] for n in neuron_times ]
         end
-        get_vector_coords_uniform!(linear_uniform_spikes, neurons, self_distances; metric=metric)
+
+        get_vector_coords_uniform!(linear_uniform_spikes, neuron_times, self_distances; metric=metric)
         mat_of_distances[:,indc] = copy(self_distances)
     end
     normalize!(mat_of_distances)
-    @assert norm(mat_of_distances)==1
+    #@assert norm(mat_of_distances)==1
     sum_varr=0
     @inbounds for row in eachrow(mat_of_distances)
         sum_varr+=var(row)
@@ -358,10 +369,14 @@ function compute_metrics_on_slices!(Ncells,nodesList::Vector{Any},timesList::Vec
         self_distances = Vector{Float32}(zeros(Ncells))
         #display(Plots.scatter(times,nodesList[indc]))
         nodes = nodesList[indc]
-        @time (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
+        if length(nodes)>0
+            (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
 
-        get_vector_coords_uniform!(Ncells,linear_uniform_spikes, spikes_ragged, self_distances; metric=metric)
-        mat_of_distances[:,indc] = copy(self_distances)
+        else
+            spikes_ragged = [[0],[0]]
+            get_vector_coords_uniform!(linear_uniform_spikes, spikes_ragged, self_distances; metric=metric)
+        end
+        mat_of_distances[:,indc] = self_distances
     end
 
     #create_spikes_ragged(times,nodes)
@@ -692,20 +707,20 @@ end
 A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to collect them together to get the ISI distribution for the whole cell population
 Also output a ragged array (Array of unequal length array) of spike trains. 
 """
-function create_spikes_ragged(nodes::Vector{UInt32},times::Vector{<:Real};plot=false)
+function create_spikes_ragged(nodes::Vector{UInt32},times::Vector{<:Real})
     spikes_ragged = Vector{Any}([])
-    numb_neurons = UInt32(maximum(nodes))+1 # Julia doesn't index at 0.
+    numb_neurons = UInt32(maximum(nodes)) # Julia doesn't index at 0.
     @inbounds for n in 1:numb_neurons
-        push!(spikes_ragged,[])
+        push!(spikes_ragged,Vector{Float32}([]))
     end
-    @inbounds @showprogress for (n,t) in zip(nodes,times)
+    @inbounds for (n,t) in zip(nodes,times)
         @inbounds for i in 1:numb_neurons
             if i==n
-                push!(spikes_ragged[n],t)
+                push!(spikes_ragged[UInt32(n)],t)
             end
         end
     end
-    (spikes_ragged::AbstractVecOrMat,numb_neurons::Int)
+    (spikes_ragged::AbstractVecOrMat,numb_neurons::UInt32)
 end
 
 
@@ -718,8 +733,8 @@ function cluster_distmat(mat_of_distances)
 end
 
 function ragged_to_lists(ragged_array::AbstractVecOrMat)
-    Nx=Vector{Any}([])
-    Tx=Vector{Any}([])
+    Nx=Vector{UInt32}([])
+    Tx=Vector{Float32}([])
     @inbounds for (i, t) in enumerate(ragged_array)
         @inbounds for tt in t
             push!(Nx,i)
@@ -781,37 +796,62 @@ function do_memory_intensive_plot(p1,offset,template_time_dict,template_node_dic
 end                
 
 function doanalysis(d)
-    @unpack nodes,times,dataset, window_size, similarity_threshold = d
-    #list_of_jobs = Vector{Any}([])
-    sfs=[]
+    @unpack nodes,times, window_size, similarity_threshold = d
+    sfs=Vector{Any}([])
     sum_of_rep=0.0
     NURS_sum=0.0
     Ncells = length(unique(nodes))
     maxt = maximum(times)
     times_per_slice,nodes_per_slice,full_sliding_window_starts,full_sliding_window_ends = spike_matrix_slices(nodes,times,window_size,maxt)
-    (distmat,k_variance) = compute_metrics_on_matrix_divisions(Ncells,nodes_per_slice,times_per_slice,metric=:kreuz)
+    @assert length(nodes)>0.0
+    @assert length(times)>0.0
+    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
+
+    #@infiltrate
+    div_spike_mat_with_displacement,sws,ews = spike_matrix_divided(spikes_ragged, window_size, maxt ;displace=true)
+    @assert sum(div_spike_mat_with_displacement[:,1:5])>0.0
+    @assert size(div_spike_mat_with_displacement)[2] == window_size
+    @assert size(div_spike_mat_with_displacement)[1] == Ncells
+    @infiltrate
+    (distmat,k_variance) = compute_metrics_on_matrix_divisions(div_spike_mat_with_displacement,times_per_slice,metric=:count)
+    Plots.heatmap(distmat)
+    ylabel!("Number cells: $Ncells")
+    xlabel!("Number of windows: $window_size")
+    savefig("bug_fixed.png")
+    spike_jobs,sort_idx = cluster_get_jobs(distmat,spikes_ragged)
+
+    #=
     @show(k_variance)
+    Plots.heatmap(distmat)
+    savefig("fixed_code_Kreuz.png")
+
     (distmat,lv_variance) = compute_metrics_on_matrix_divisions(Ncells,nodes_per_slice,times_per_slice,metric=:LV)
     @show(lv_variance)
+    Plots.heatmap(distmat)
+    savefig("fixed_code_LV.png")
+
     (distmat,count_variance) = compute_metrics_on_matrix_divisions(Ncells,nodes_per_slice,times_per_slice,metric=:count)
     @show(count_variance)
+    Plots.heatmap(distmat)
+    savefig("fixed_code_count.png")
+
     (distmat,hybrid_variance) = compute_metrics_on_matrix_divisions(Ncells,nodes_per_slice,times_per_slice,metric=:hybrid)
     @show(hybrid_variance)
-    #@infiltrate
-    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
-    div_spike_mat_with_displacement,sws,ews = spike_matrix_divided(spikes_ragged,window_size,numb_neurons,maxt;displace=true)
+    @assert length(nodes)>0.0
+    =#
+                                              #spike_matrix_divided(spikes_raster::AbstractVecOrMat,number_divisions_size::Int,maxt::Real;displace=true)
+    #println("gets here")
     #@time (distmat,variance) = compute_metrics_on_matrix_divisions(div_spike_mat_with_displacement,metric=:kreuz)
-    spike_jobs,sort_idx = cluster_get_jobs(distmat,spikes_ragged)
     #list_of_template_time_dicts = Vector{Any}([])
     #list_of_template_node_dicts = Vector{Any}([])
 
 
     @inbounds for (_,spikes_ragged_packet) in enumerate(spike_jobs)
         
-
-        div_spike_mat_with_displacement,sws,ews = spike_matrix_divided(spikes_ragged_packet,window_size,numb_neurons,maxt;displace=true)
-        (new_distmat,_) = compute_metrics_on_matrix_divisions(div_spike_mat_with_displacement,metric=:kreuz)
+        div_spike_mat_with_displacement,sws,ews = spike_matrix_divided(spikes_ragged_packet,window_size,maxt;displace=true)
         nodes,times = ragged_to_lists(spikes_ragged_packet)
+        times_per_slice,nodes_per_slice,full_sliding_window_starts,full_sliding_window_ends = spike_matrix_slices(nodes,times,window_size,maxt)
+        (new_distmat,_) = compute_metrics_on_matrix_divisions(div_spike_mat_with_displacement,times_per_slice,metric=:kreuz)
 
         (_,rep,_,_,NURS,state_frequency_histogram) = label_exhuastively_distmat(new_distmat,sws,ews,times,nodes,div_spike_mat_with_displacement)
         #@infiltrate

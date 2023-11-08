@@ -45,6 +45,7 @@ module SpikeTime
     export fromHDF5spikesSleep
     export fromHDF5spikesHipp
     export read_path_collection
+    export read_path_collectionHIPPOCAMPUS
     export read_path_collectionPFC
     export load_datasets_pfc150628
     export load_datasets_pfc150629
