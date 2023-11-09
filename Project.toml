@@ -4,6 +4,8 @@ version = "0.1.1"
 
 
 [deps]
+Cthulhu = "f68482b8-f384-11e8-15f7-abe071a5a75f"
+ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
 RecurrenceAnalysis = "639c3291-70d9-5ea2-8c5b-839eba1ee399"
 InducingPoints = "b4bd816d-b975-4295-ac05-5f2992945579"
 Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"

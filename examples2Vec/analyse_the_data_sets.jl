@@ -7,16 +7,19 @@ using Plots
 using JLD2
 using DrWatson
 import DrWatson.dict_list
-@load "v1_jesus_day6.jld" nn tt
-nodes5,times5 = nn,tt
+(nodes5,times5) = load_zebra_finche_nmc_dataset()
+
+#@load "v1_jesus_day6.jld" nn tt
+#nodes5,times5 = nn,tt
+
 p3=Plots.scatter(times5,nodes5,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes5))
 
 ylabel!(p3,"Neuron Id")
 xlabel!(p3,"Time (ms)")
 savefig("whatOfTimes.png")
 param_dict = Dict()
-param_dict["window_size"] = 100         # same
-param_dict["similarity_threshold"] = 5 # single element inside vector; no expansion
+param_dict["number_divisions"] = 10         # same
+param_dict["similarity_threshold"] = 0.038#9548088f0 # single element inside vector; no expansion
 
 param_dict["nodes"] = nodes5
 param_dict["times"] = times5
@@ -24,7 +27,7 @@ param_dict["times"] = times5
 param_struct = (; (Symbol(k) => v for (k,v) in pairs(param_dict))...)
 #@show(param_struct)
 
-distmat,div_spike_mat_with_displacement,spikes_ragged,sort_idx,NURS_sum,sum_of_rep,sfs = doanalysis(param_struct)
+distmat,div_spike_mat_with_displacement,spikes_ragged,NURS_sum,sum_of_rep,sfs,timesList = doanalysis(param_struct)
 
 #more_plotting1(spikes_ragged,sort_idx,IStateI,p1)
 p1 = Plots.plot()
@@ -32,7 +35,7 @@ for state_frequency_histogram in sfs
     Plots.histogram!(p1,state_frequency_histogram)
 end
 savefig("state_frequency_histogram.png")
-more_plotting0(distmat,div_spike_mat_with_displacement,nodes5,times5)
+more_plotting0(distmat,div_spike_mat_with_displacement,nodes5,times5,timesList)
 #=
 (timesHPC,nodesHPC) = read_path_collectionHIPPOCAMPUS()
 p1=Plots.scatter(timesHPC,nodesHPC,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodesHPC))
