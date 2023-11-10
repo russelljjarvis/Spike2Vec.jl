@@ -18,8 +18,8 @@ ylabel!(p3,"Neuron Id")
 xlabel!(p3,"Time (ms)")
 savefig("whatOfTimes.png")
 param_dict = Dict()
-param_dict["number_divisions"] = 10         # same
-param_dict["similarity_threshold"] = 0.038#9548088f0 # single element inside vector; no expansion
+param_dict["number_divisions"] = 60         # same
+param_dict["similarity_threshold"] = 8#9548088f0 # single element inside vector; no expansion
 
 param_dict["nodes"] = nodes5
 param_dict["times"] = times5
@@ -27,7 +27,7 @@ param_dict["times"] = times5
 param_struct = (; (Symbol(k) => v for (k,v) in pairs(param_dict))...)
 #@show(param_struct)
 
-distmat,div_spike_mat_with_displacement,spikes_ragged,NURS_sum,sum_of_rep,sfs,timesList = doanalysis(param_struct)
+distmat,div_spike_mat_with_displacement,spikes_ragged,NURS_sum,sum_of_rep,sfs,timesList = doanalysisrev(param_struct)
 
 #more_plotting1(spikes_ragged,sort_idx,IStateI,p1)
 p1 = Plots.plot()

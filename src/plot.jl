@@ -138,7 +138,9 @@ end
 Pre-allocation for get time surface
 """
 function get_ts(nodes,times,dt,tau;disk=false)
-    num_neurons = Int(length(nodes))+1
+    #nodes = convert(Vector{Int64},nodes)
+
+    num_neurons = Int(length(unique(nodes)))
     total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
     #@show(time_resolution)
@@ -154,46 +156,64 @@ function get_ts(nodes,times,dt,tau;disk=false)
 
     # Final output. 
     # Timestamp and membrane voltage store for generating time surface
-    timestamps = zeros((num_neurons)) .- Inf
-    mv = zeros((num_neurons))
-    
-    get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
+    #@infiltrate
+    perm = sortperm(times)
+    times = times[perm]
+    nodes = nodes[perm]
+    get_ts!(nodes,times,final_timesurf,num_neurons,total_time,time_resolution,dt,tau)
     return final_timesurf
 end
 """
 get time surface
 """
-function get_ts!(nodes,times,final_timesurf,timestamps,num_neurons,total_time,time_resolution,mv,dt,tau)
+function get_ts!(nodes,times,final_timesurf,num_neurons,total_time,time_resolution,dt,tau)
     last_t = 0
+    timestamps = zeros((num_neurons)) .- Inf
+    mv = zeros((num_neurons))
 
-    @inbounds @showprogress for (tt,nn) in zip(times,nodes)
+    @inbounds for (tt,nn) in zip(times,nodes)
 
         #Get the current spike
         neuron = Int(round(nn))
 
-        time = Int(trunc(Int32,tt))       
+        time = Int(trunc(Int32,tt))   
         # If time of the next spikes leaps over, make sure to generate 
         # timesurfaces for all the intermediate dt time intervals and fill the 
         # final_timesurface.
         if time > last_t
+            
             timesurf = similar(final_timesurf[:,1])
             for t in collect(last_t:dt:time)
                 @. timesurf = mv*exp((timestamps-t)/tau)
+                #@show(mv)
+                #@show(timestamps)
+        
                 final_timesurf[:,1+Int(round(t/dt))] = timesurf
+                #@show(final_timesurf)
             end
             last_t = time
         end
+        #@show(exp((timestamps[neuron]-time)/tau) +1)
         # Update the membrane voltage of the time surface based on the last value and time elapsed
-        mv[neuron] =mv[neuron]*exp((timestamps[neuron]-time)/tau) +1
+        mv[neuron] = mv[neuron]*exp((timestamps[neuron]-time)/tau) +1
+        #if exp((timestamps[neuron]-time)/tau) +1 == 0.0
+        #   @infiltrate
+        #end
         timestamps[neuron] = time
+        #@show(sum(final_timesurf))
+        #display(Plots.heatmap(final_timesurf))
+
+
         # Update the latest timestamp at the channel. 
     end
     # Generate the time surface for the rest of the time if there exists no other spikes. 
     timesurf = similar(final_timesurf[:,1])
-    @inbounds @showprogress  for t in collect(last_t:dt:total_time)
+    @inbounds for t in collect(last_t:dt:total_time)
         @. timesurf = mv*exp((timestamps-t)/tau)
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
+        #@show(final_timesurf)
     end
+    #@infiltrate
 end
 
 
