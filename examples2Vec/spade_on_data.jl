@@ -4,9 +4,11 @@ using HDF5
 using SpikeTime
 using Plots
 using JLD2
-
+using PPseq
 #(times,nodes) = read_path_collectionHIPPOCAMPUS()
 (nodes,times) = load_zebra_finche_nmc_dataset()
+
+
 
 #@load "v1_jesus_day5.jld" nn tt
 #times = convert(Vector{Float32},tt)

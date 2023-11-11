@@ -140,7 +140,7 @@ Pre-allocation for get time surface
 function get_ts(nodes,times,dt,tau;disk=false)
     #nodes = convert(Vector{Int64},nodes)
 
-    num_neurons = Int(length(unique(nodes)))
+    num_neurons = Int(length(unique(nodes)))+1
     total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
     #@show(time_resolution)

@@ -7,10 +7,10 @@ using Plots
 using JLD2
 using DrWatson
 import DrWatson.dict_list
-(nodes5,times5) = load_zebra_finche_nmc_dataset()
+#(nodes5,times5) = load_zebra_finche_nmc_dataset()
 
-#@load "v1_jesus_day6.jld" nn tt
-#nodes5,times5 = nn,tt
+@load "v1_jesus_day6.jld" nn tt
+nodes5,times5 = nn,tt
 
 p3=Plots.scatter(times5,nodes5,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes5))
 
@@ -18,8 +18,8 @@ ylabel!(p3,"Neuron Id")
 xlabel!(p3,"Time (ms)")
 savefig("whatOfTimes.png")
 param_dict = Dict()
-param_dict["number_divisions"] = 60         # same
-param_dict["similarity_threshold"] = 8#9548088f0 # single element inside vector; no expansion
+param_dict["number_divisions"] = 200         # same
+param_dict["similarity_threshold"] = 0.9#9548088f0 # single element inside vector; no expansion
 
 param_dict["nodes"] = nodes5
 param_dict["times"] = times5

@@ -622,7 +622,187 @@ function templates_using_cluster_centres!(mat_of_distances::AbstractVecOrMat,dis
     end
     (repeatitive,template_times_dict,template_nodes_dict,NURS::Real,state_frequency_histogram)
 end
+function get_proto_templates(mat_of_distances::AbstractVecOrMat,enrich::AbstractVecOrMat,fit::Dict,threshold,List_of_templates)
+    indold = -1
+    indold2 = -1
 
+
+    @inbounds for (template_ind,col) in enumerate(eachcol(mat_of_distances))
+        @inbounds for (ind2,col2) in enumerate(eachcol(mat_of_distances))
+            if template_ind!=ind2
+                distance = evaluate(Euclidean(),col,col2)
+
+                if distance<threshold
+                    if template_ind!=indold && ind2!=indold2
+                        append!(List_of_templates,template_ind)
+                    end
+                    enrich[:,template_ind] = col
+                    enrich[:,ind2] = col2
+                    indold=template_ind
+                    indold2=ind2
+                end
+            end
+        end
+    end
+    (List_of_templates,enrich)
+end
+function refine_templates(mat_of_distances,List_of_templates,threshold,distance_distributions)
+    @inbounds for template_ind1 in List_of_templates
+        @inbounds for template_ind0 in List_of_templates
+            if template_ind1!=template_ind0
+ 
+                distance = evaluate(Euclidean(),mat_of_distances[:,template_ind1],mat_of_distances[:,template_ind0])
+                push!(distance_distributions,distance)
+
+                if distance==0#threshold
+
+                    deleteat!(List_of_templates, List_of_templates .== template_ind0)
+                end
+            end
+        end
+    end
+    List_of_templates,distance_distributions
+end
+
+function cluster(enrich,List_of_templates)
+    enrich = enrich[:, vec(mapslices(col -> any(col .!= 0), enrich, dims = 1))]
+    k = length(unique(List_of_templates))
+    display(Plots.heatmap(enrich))
+    @infiltrate
+
+    #@show(k)
+    #@show(size(enrich))
+    #fail = false
+    #if size(enrich)[2]!=0
+    R = kmeans(enrich, k; maxiter=1000, display=:iter)
+    a = assignments(R) # get the assignments of points to clusters
+    sort_idx =  sortperm(assignments(R))
+    enrich = enrich[:,sort_idx]
+    centres = R.centers # get the cluster centers
+    #else
+    #    fail = true
+    #end
+    centres
+end
+
+function final_similarity_test(threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews)
+    #fit=Dict()
+    #@inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+    #    fit[time_ind] = []
+    #end    
+    #new_threshold = mean(distance_distributions) - std(distance_distributions)/10
+    # @show(distance_distributions,new_threshold)
+
+    for (template_ind1,col) in enumerate(eachcol(centres))
+        py= Plots.scatter()
+        @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+            distance = evaluate(Euclidean(),col,col2)
+            if distance<threshold
+                push!(state_time,time_ind)
+                push!(state_number,template_ind1)
+                (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
+                push!(state_spike_nodes,repn)
+                push!(state_spike_times,rept)
+                Plots.scatter!(py,rept,repn,color=time_ind,legend=false,markersize=2.5,markerstrokewidth=0)
+            end
+        end
+        savefig("plots$template_ind1.png")
+    end
+    (state_spike_times,state_spike_nodes)
+end
+
+
+function label_spikes!(mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold::Real=5)
+    NURS = 0.0
+    displacetime=0
+    #NumberTemplates = 0.0#::AbstractVecOrMat
+    List_of_templates = Vector{UInt32}([])
+    distance_distributions = Vector{Float32}([])
+    state_time = Vector{Float32}([])
+    state_number = Vector{Float32}([])
+    state_spike_nodes = Vector{Any}([])
+    state_spike_times = Vector{Any}([])
+
+    enrich = zeros(size(mat_of_distances))
+    fit = Dict()
+    @time List_of_templates,enrich = get_proto_templates(mat_of_distances,enrich,fit,threshold,List_of_templates)
+    @time List_of_templates = refine_templates(mat_of_distances,List_of_templates,threshold,distance_distributions)
+    @time centres = cluster(enrich,List_of_templates)
+    #if !fail
+    @time (state_spike_times,state_spike_nodes) = final_similarity_test(threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews)
+    #end
+    number_windows = length(eachcol(mat_of_distances))
+    window_duration = last(ews)-last(sws)
+    repeatitive = NURS/(number_windows*window_duration)
+    (repeatitive,NURS::Real,state_spike_times,state_spike_nodes,state_number,state_time)
+end
+function old_label_distmat!()
+    #display(Plots.heatmap(enrich))
+    px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=1.5,markerstrokewidth=1)
+    #pz=Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=1)
+
+    #layout=
+    display(Plots.plot(px,py, layout=(2, 1)))
+    #py=Plots.scatter(state_time,state_number,color=state_number,legend=false)
+
+
+    #@infiltrate
+
+    
+
+    #not_templates = [other_ind for (other_ind,row) in enumerate(eachcol(mat_of_distances)) ]
+    #@inbounds for template_ind1 in List_of_templates
+    #    deleteat!(not_templates, not_templates .== template_ind1)
+    #end
+    state_time = []
+    state_number = []
+    py=Plots.scatter()
+    fit=Dict()
+    @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+        fit[time_ind] = []
+    end    
+    @inbounds for template_ind1 in List_of_templates
+        @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+            if template_ind1!=time_ind
+                @assert other_ind!=template_ind1
+                col1 = mat_of_distances[:,template_ind1]
+                if (abs(sum(col1.-col2)))<0.5
+                    push!(fit[time_ind],abs(sum(col1.-col2)))
+                    check_min = minimum(fit[time_ind])
+                    if abs(sum(col1.-col2))<=check_min
+
+                        push!(state_time,time_ind)
+                        push!(state_number,template_ind1)
+                        (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
+                        Plots.scatter!(py,rept,repn,color=template_ind1,legend=false,markersize=2.5,markerstrokewidth=1)
+                    end
+                end
+            end
+        end
+    end
+    #px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=2.5,markerstrokewidth=1)
+    pz=Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=1)
+
+    #layout=
+    #display(Plots.plot(px,py,pz, layout=(3, 1)))
+    px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=1.5,markerstrokewidth=1)
+    #pz=Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=1)
+
+    #layout=
+    Plots.plot(px,py, layout=(2, 1))
+    savefig("quality_check.png")
+    #py=Plots.scatter(state_time,state_number,color=state_number,legend=false)
+
+
+    #@infiltrate
+
+    @inbounds for template_ind in List_of_templates
+        (templaten,templatet) = divide_epoch(nodes,times,sws[template_ind],ews[template_ind])
+        Plots.scatter!(pt,templatet,templaten,color=template_ind,xlims=(minimum(times),maximum(times)),legend=false,ylims=(minimum(nodes),maximum(nodes)),markersize=1.9,markerstrokewidth=1,markershape =:vline)
+
+    end
+    savefig("Template_only_plot.png")
+end
 
 function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold::Real=5)
     #cnts_total = 0.0
@@ -638,8 +818,10 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
 
     NumberTemplates = 0.0
 
+
     List_of_templates = []
-    @inbounds for (template_ind,row) in enumerate(eachcol(mat_of_distances))
+    enrich = zeros(size(mat_of_distances))
+    @inbounds for (template_ind,col) in enumerate(eachcol(mat_of_distances))
 
     #stop_at_half = Int(trunc(length(eachcol(mat_of_distances))/2))
     #if ind <= stop_at_half
@@ -649,20 +831,16 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
         ##
         ##
     
-        @inbounds for (ind2,row2) in enumerate(eachcol(mat_of_distances))
-            #px=Plots.scatter()
-
+        @inbounds for (ind2,col2) in enumerate(eachcol(mat_of_distances))
             if template_ind!=ind2
-                #@show(ind,ind2)
-                
-                #if distance<threshold && distance!=0
-                if (abs(sum(row.-row2)))<0.5
-                    #@show(distance)
-                    distance = evaluate(Euclidean(),row,row2)
+                if (abs(sum(col.-col2)))<0.5
+                    distance = evaluate(Euclidean(),col,col2)
                     if template_ind!=indold && ind2!=indold2
 
                         append!(List_of_templates,template_ind)
                     end
+                    enrich[:,template_ind] = col
+                    enrich[:,ind2] = col2
 
                     indold=template_ind
                     indold2=ind2
@@ -678,7 +856,7 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
                     #t#emp= vcat
                     #@#show(typeof(temp))
                     #@infiltrate
-                    #display(Plots.heatmap(hcat(row',row2')))
+                    #display(Plots.heatmap(hcat(col',col')))
                     #Plots.heatmap(hcat(row',row2'))
                     NURS += 1.0
                     #distance_matrix[template_ind,ind2] = abs(distance)
@@ -718,8 +896,9 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
 
     end
 
-    @show(unique(List_of_templates))
-    @show(length(unique(List_of_templates)))
+
+    #@show(unique(List_of_templates))
+    #@show(length(unique(List_of_templates)))
     pt = Plots.scatter()
 
 
@@ -740,6 +919,54 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
             end
         end
     end
+
+    
+
+    enrich = enrich[:, vec(mapslices(col -> any(col .!= 0), enrich, dims = 1))]
+    classes = length(unique(List_of_templates))
+    R = kmeans(enrich, classes; maxiter=2000, display=:iter)
+    a = assignments(R) # get the assignments of points to clusters
+    sort_idx =  sortperm(assignments(R))
+    enrich = enrich[:,sort_idx]
+    centres = R.centers # get the cluster centers
+    state_time = []
+    state_number = []
+    py=Plots.scatter()
+    state_spike_nodes = []
+    state_spike_times = []
+    fit=Dict()
+    @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+        fit[time_ind] = []
+    end    
+    for (template_ind1,col) in enumerate(eachcol(centres))
+        @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+            if (abs(sum(col2.-col)))<1.0
+                push!(fit[time_ind],abs(sum(col2.-col)))
+                check_min = minimum(fit[time_ind])
+                if abs(sum(col2.-col))<=check_min
+                    push!(state_time,time_ind)
+                    push!(state_number,template_ind1)
+                    (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
+                    push!(state_spike_nodes,repn)
+                    push!(state_spike_nodes,rept)
+
+                    Plots.scatter!(py,rept,repn,color=template_ind1,legend=false,markersize=2.5,markerstrokewidth=1)
+                end
+            end
+        end
+    end
+    #display(Plots.heatmap(enrich))
+    px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=1.5,markerstrokewidth=1)
+    #pz=Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=1)
+
+    #layout=
+    display(Plots.plot(px,py, layout=(2, 1)))
+    #py=Plots.scatter(state_time,state_number,color=state_number,legend=false)
+
+
+    #@infiltrate
+    
+
     #not_templates = [other_ind for (other_ind,row) in enumerate(eachcol(mat_of_distances)) ]
     #@inbounds for template_ind1 in List_of_templates
     #    deleteat!(not_templates, not_templates .== template_ind1)
@@ -747,27 +974,44 @@ function label_exhuastively_distmat!(mat_of_distances::AbstractVecOrMat,distance
     state_time = []
     state_number = []
     py=Plots.scatter()
+    fit=Dict()
+    @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+        fit[time_ind] = []
+    end    
     @inbounds for template_ind1 in List_of_templates
-        @inbounds for (other_ind,row) in enumerate(eachcol(mat_of_distances))
-            #@assert other_ind!=template_ind1
-            if (abs(sum(mat_of_distances[:,template_ind1].-mat_of_distances[:,other_ind])))<0.5
-                push!(state_time,other_ind)
-                push!(state_number,template_ind1)
-                (repn,rept) = divide_epoch(nodes,times,sws[other_ind],ews[other_ind])
-                Plots.scatter!(py,rept,repn,color=template_ind1,legend=false,markersize=2.5,markerstrokewidth=1)
+        @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
+            if template_ind1!=time_ind
+                @assert other_ind!=template_ind1
+                col1 = mat_of_distances[:,template_ind1]
+                if (abs(sum(col1.-col2)))<0.5
+                    push!(fit[time_ind],abs(sum(col1.-col2)))
+                    check_min = minimum(fit[time_ind])
+                    if abs(sum(col1.-col2))<=check_min
 
+                        push!(state_time,time_ind)
+                        push!(state_number,template_ind1)
+                        (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
+                        Plots.scatter!(py,rept,repn,color=template_ind1,legend=false,markersize=2.5,markerstrokewidth=1)
+                    end
+                end
             end
         end
     end
-    px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=2.5,markerstrokewidth=1)
+    #px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=2.5,markerstrokewidth=1)
     pz=Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=1)
 
     #layout=
-    display(Plots.plot(px,py,pz, layout=(3, 1)))
+    #display(Plots.plot(px,py,pz, layout=(3, 1)))
+    px=Plots.scatter(state_time,state_number,color=state_number,legend=false,markersize=1.5,markerstrokewidth=1)
+    #pz=Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=1)
+
+    #layout=
+    Plots.plot(px,py, layout=(2, 1))
+    #savefig("quality_check$.png")
     #py=Plots.scatter(state_time,state_number,color=state_number,legend=false)
 
 
-    @infiltrate
+    #@infiltrate
 
     @inbounds for template_ind in List_of_templates
         (templaten,templatet) = divide_epoch(nodes,times,sws[template_ind],ews[template_ind])
@@ -793,11 +1037,13 @@ function label_exhuastively_distmat(mat_of_distances::AbstractVecOrMat,sws,ews,t
         io = open("/tmp/mmap.bin", "w+")
         distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
     end
+    @time repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time = label_spikes!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold)
     #repeatitive,dict0,dict1,NURS,state_frequency_histogram = templates_using_cluster_centres!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,times_per_slice,nodes_per_slice,ind;threshold)
-    repeatitive,NURS = label_exhuastively_distmat!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold)
+    #repeatitive,NURS = label_exhuastively_distmat!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold)
     #sws,ews,times,nodes
+    #@infiltrate
 
-    distance_matrix::AbstractVecOrMat,repeatitive::Real,NURS::Real
+    repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time
 end
 
 """
@@ -946,7 +1192,7 @@ Also output a ragged array (Array of unequal length array) of spike trains.
 """
 function create_spikes_ragged(nodes::Vector{UInt32},times::Vector{<:Real})
     spikes_ragged = Vector{Any}([])
-    numb_neurons = UInt32(maximum(nodes)) # Julia doesn't index at 0.
+    numb_neurons = UInt32(maximum(nodes))+UInt32(1) # Julia doesn't index at 0.
     @inbounds for n in 1:numb_neurons
         push!(spikes_ragged,Vector{Float32}([]))
     end
@@ -1115,40 +1361,83 @@ function doanalysisrev(d)
     @unpack nodes,times, number_divisions, similarity_threshold = d
     Ncells = length(unique(nodes))
     maxt = maximum(times)
-    #step_size = maxt/number_divisions
-
-    #sfs=Vector{Any}([])
     sum_of_rep=0.0
     NURS_sum=0.0
     recording_start_time = minimum(times)
-
     step_size = dt = 0.5
-    #@infiltrate
     tau = 0.5
     number_divisions = Int(trunc(round(maxt/step_size)))
-    ts = get_ts(nodes,times,step_size,tau)#;disk=false)
-    #normalize!(ts)
-    classes = 10
+    @time ts = get_ts(nodes,times,step_size,tau)#;disk=false)
+    classes = 2
     R = kmeans(ts', classes; maxiter=2000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
-
+    @time (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
+    sst = []
+    ssn=[]
+    sn = []
     for ind in 1:length(unique(a))
         temp = a.==ind
-        ts_ = ts[temp,:]
-        Plots.heatmap(ts_)
-        savefig("xx$ind.sortedTSHeatmap.png")
+        if length(temp)>1
+            @show(size(temp))
+            @time ts_ = ts[:,temp]
+            display(Plots.heatmap(ts_))
+            @infiltrate
+            spikes_ragged_packet = spikes_ragged[temp]
+            @time nodes,times = ragged_to_lists(spikes_ragged_packet)
+            #ts2=get_ts(nodes,times,step_size,tau)
+            #p1=Plots.scatter(times,nodes)
+            #p2=Plots.heatmap(ts2)
+            #p3=Plots.heatmap(ts_)
+            #display(Plots.plot(p1,p2,p3))
+            #@infiltrate
+            @time spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)
+            #times_per_slice,nodes_per_slice,full_sliding_window_starts,full_sliding_window_ends = spike_matrix_slices(nodes,times,number_divisions,maxt,recording_start_time)
+            #(new_distmat,_) = compute_metrics_on_matrix_divisions(spikeMat,times_per_slice,ews,step_size,metric=:kreuz)
+
+            #tps,nps,full_sliding_window_starts,full_sliding_window_ends = spike_matrix_slices(nodes,times,number_divisions,maxt,recording_start_time)
+        
+            @time repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time = label_exhuastively_distmat(ts_,sws,ews,times,nodes,spikeMat,step_size;threshold=similarity_threshold)
+            #@infiltrate
+            push!(sst,spike_state_times)
+            push!(ssn,spike_state_nodes)
+            push!(sn,state_number)
+        end
 
     end
-    sort_idx =  sortperm(assignments(R))
-    ts = ts[sort_idx,:]
-    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
-    spikes_ragged = spikes_ragged[sort_idx,:]
+    p1 = Plots.scatter()
+    offset = 0
+    for (spike_state_times,spike_state_nodes,state_number) in zip(sst,ssn,sn)
 
+        for (t,n,st) in zip(spike_state_times,spike_state_nodes,state_number)
+            #@show(t,n)
+
+            #st = convert(Vector{Int32},st)
+
+            #colors = st.+offset
+            #@show(colors)
+
+            #colors = convert(Vector{Int32},colors)
+
+            Plots.scatter!(p1,t,n,legend=false,markersize=3.5,markerstrokewidth=2)  
+            offset+=Int(maximum(st))
+      
+        end
+    end
+    Plots.plot(p1)
+    savefig("latest_patterns.png")
     @time spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)
     #tps,nps,full_sliding_window_starts,full_sliding_window_ends = spike_matrix_slices(nodes,times,number_divisions,maxt,recording_start_time)
 
-    @time (_,rep,NURS) = label_exhuastively_distmat(ts,sws,ews,times,nodes,spikeMat;threshold=similarity_threshold,step_size)
+    @time (_,rep,NURS) = label_exhuastively_distmat(ts,sws,ews,times,nodes,spikeMat,step_size;threshold=similarity_threshold)
     @show(NURS)
+    spike_jobs,a = cluster_get_jobs(distmat,spikes_ragged)
+    @inbounds for (ind,spikes_ragged_packet) in enumerate(spike_jobs)
+        div_spike_mat_with_displacement_local = div_spike_mat_with_displacement[a.==ind,:]
+        nodes,times = ragged_to_lists(spikes_ragged_packet)
+        times_per_slice,nodes_per_slice,full_sliding_window_starts,full_sliding_window_ends = spike_matrix_slices(nodes,times,number_divisions,maxt,recording_start_time)
+        (new_distmat,_) = compute_metrics_on_matrix_divisions(div_spike_mat_with_displacement_local,times_per_slice,ews,step_size,metric=:kreuz)
+        (_,rep,_,_,NURS,state_frequency_histogram) = label_exhuastively_distmat(new_distmat,sws,ews,times,nodes,div_spike_mat_with_displacement_local;threshold=similarity_threshold)
+    end
     #distance_matrix::AbstractVecOrMat,repeatitive::Real,dict0::Dict,dict1::Dict,NURS::Real
     #(_,rep,_,_,NURS,state_frequency_histogram) = label_exhuastively_distmat(new_distmat,sws,ews,times,nodes,div_spike_mat_with_displacement_local;threshold=similarity_threshold)
 
