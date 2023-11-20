@@ -65,6 +65,7 @@ module SpikeTime
     export more_plotting0
     export doanalysis
     export doanalysisrev
+    export doanalysCV
     
     export reassign_no_pattern_group!
     export create_spikes_ragged

@@ -14,22 +14,23 @@ import Random
 import StatsBase: quantile
 using Infiltrator
 
+@load "v1_jesus_day5.jld" nn tt
 # Load data.
-if !isfile("HippocampusInSleep.jld")
-    (times,nodes) = read_path_collectionHIPPOCAMPUS()
-    @save "HippocampusInSleep.jld" times nodes
-else
-    @load "HippocampusInSleep.jld" times nodes
-end
+#if !isfile("HippocampusInSleep.jld")
+#    (times,nodes) = read_path_collectionHIPPOCAMPUS()
+#    @save "HippocampusInSleep.jld" times nodes
+#else
+#    @load "HippocampusInSleep.jld" times nodes
+#end
 #(nodes,times) = load_zebra_finche_nmc_dataset()
 ###
 # PPSEQ takes 38 seconds to run on this dataset
 # 38.347733 seconds (13.81 M allocations: 1.213 GiB, 0.31% gc time)
 ##
 
-nodes = convert(Vector{Int64},nodes)
+nodes = convert(Vector{Int64},nn)
 
-times = convert(Vector{Float64},times)
+times = convert(Vector{Float64},tt)
 
 # metadata
 num_neurons = maximum(nodes)
@@ -84,7 +85,7 @@ function get_results_PPSEQ(spikes,_p,max_time,num_neurons)
     :max_sequence_length => Inf,
 
     # MCMC Sampling parameters.
-    :num_anneals => 10,
+    :num_anneals => 2,
     :samples_per_anneal => 100,
     :max_temperature => 40.0,
     :save_every_during_anneal => 10,

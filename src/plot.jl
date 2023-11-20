@@ -170,7 +170,9 @@ function get_ts!(nodes,times,final_timesurf,num_neurons,total_time,time_resoluti
     last_t = 0
     timestamps = zeros((num_neurons)) .- Inf
     mv = zeros((num_neurons))
-
+    p = sortperm(times)
+    times = times[p]
+    nodes = nodes[p]
     @inbounds for (tt,nn) in zip(times,nodes)
 
         #Get the current spike
@@ -184,24 +186,19 @@ function get_ts!(nodes,times,final_timesurf,num_neurons,total_time,time_resoluti
             
             timesurf = similar(final_timesurf[:,1])
             for t in collect(last_t:dt:time)
-                @. timesurf = mv*exp((timestamps-t)/tau)
-                #@show(mv)
-                #@show(timestamps)
-        
+                @. timesurf = mv*exp((timestamps-t)/tau)  
+                
+                ###
+                # It is here that a sliding window could be applied.
+                ### 
                 final_timesurf[:,1+Int(round(t/dt))] = timesurf
-                #@show(final_timesurf)
             end
             last_t = time
         end
         #@show(exp((timestamps[neuron]-time)/tau) +1)
         # Update the membrane voltage of the time surface based on the last value and time elapsed
         mv[neuron] = mv[neuron]*exp((timestamps[neuron]-time)/tau) +1
-        #if exp((timestamps[neuron]-time)/tau) +1 == 0.0
-        #   @infiltrate
-        #end
         timestamps[neuron] = time
-        #@show(sum(final_timesurf))
-        #display(Plots.heatmap(final_timesurf))
 
 
         # Update the latest timestamp at the channel. 
@@ -211,9 +208,7 @@ function get_ts!(nodes,times,final_timesurf,num_neurons,total_time,time_resoluti
     @inbounds for t in collect(last_t:dt:total_time)
         @. timesurf = mv*exp((timestamps-t)/tau)
         final_timesurf[:,1+Int(round(t/dt))] = timesurf
-        #@show(final_timesurf)
     end
-    #@infiltrate
 end
 
 
