@@ -12,11 +12,11 @@ using UMAP
 using Infiltrator
 
 
+#get_zebra
+@load "v1_jesus_day1.jld" nn tt
+nodes,times = nn,tt
 
-@infiltrate
-
-
-(times,nodes) = read_path_collectionHIPPOCAMPUS()
+#(times,nodes) = read_path_collectionHIPPOCAMPUS()
 
 #p3=Plots.scatter(times5,nodes5,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes5))
 

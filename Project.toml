@@ -4,6 +4,11 @@ version = "0.1.1"
 
 
 [deps]
+KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
+ConcaveHull = "7d11a335-8259-52c9-8750-e30c45c66484"
+ImageDraw = "4381153b-2b60-58ae-a1ba-fd683676385f"
+Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+ImageFeatures = "92ff4b2b-8094-53d3-b29d-97f740f06cef"
 MatrixProfile = "24e37439-14ec-4097-bda3-6a65822e2305"
 Cthulhu = "f68482b8-f384-11e8-15f7-abe071a5a75f"
 ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"

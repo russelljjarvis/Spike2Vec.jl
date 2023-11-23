@@ -1,6 +1,8 @@
 #
 # Eventually this will need to move to source.
 # 
+using KernelDensity
+
 using HDF5
 using Plots
 using OnlineStats
@@ -684,14 +686,14 @@ function cluster(enrich)
     enrich = enrich[:, vec(mapslices(col -> any(col .!= 0), enrich, dims = 1))]
     #k = length(unique(List_of_templates))
     #display(Plots.heatmap(enrich))
-    k = Int(trunc((3/4)*size(enrich)[1]))
-    @show(k)
-    @show(size(enrich))
+    #k = Int(trunc((3/4)*size(enrich)[1]))
+    #@show(k)
+    #@show(size(enrich))
     #@show(k)
     #@infiltrate
     
     #@show(k)
-    R = kmeans(enrich, k; maxiter=1000, display=:iter)
+    R = kmeans(enrich, 2; maxiter=1000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
     sort_idx =  sortperm(assignments(R))
     enrich = enrich[:,sort_idx]
@@ -731,6 +733,7 @@ function compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
         #Difference_between_heats = sum(t0.-t1)
         #@show(Difference_between_heats)
         #@infiltrate
+        #=
         if length(ts0)>1
             p2=Plots.heatmap(t0,legend=false)
             p3=Plots.heatmap(t1,legend=false)
@@ -738,6 +741,7 @@ function compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
             Plots.plot(p2, p3, layout=layout,legend=false)
             savefig("blah$x$state_time.png")
         end
+        =#
     end
 end
 
@@ -768,7 +772,7 @@ function plot_same_category(state_time,state_number,nodes,times,sws,ews,skip_tim
                     end
                     savefig("category$x.png")
 
-                    compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
+                    #compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
                     rept_old = rept
                     repn_old = repn
 
@@ -796,13 +800,15 @@ function plot_same_category(state_time,state_number,nodes,times,sws,ews,skip_tim
 end
 function CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd,state_time,state_number,state_versus_time,nodes,times,sws,ews,state_spike_nodes,state_spike_times)
     cnt = 0
+    hull_areas_Dict()
+    hull_area =  0.0
     @inbounds for (template_ind,col) in enumerate(eachcol(centres))
         px=Plots.scatter!()
         cnt = 0
-
+        hull_areas_Dict[template_ind] = []
         @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
             distance = evaluate(Euclidean(),col,col2)
-            if distance>new_threshold*120
+            if distance>new_threshold
                 cnt+=1
                 #
                 #if distance<=minimum(fit[template_ind])
@@ -812,8 +818,15 @@ function CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd
                 #    push!(state_number,template_ind)
                  #   state_versus_time[time_ind] = template_ind
                 (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
-
-                    #p1=Plots.plot(col)
+                descriptor=(mean(repn),mean(rept),var(repn),var(rept))
+                @show(descriptor)
+                println("hello")
+                (hull,hull_area) = concave_hull_pc(repn,rept)
+                push!(hull_areas_Dict[template_ind],hull_area)
+                push!(hull_areas_Dict[template_ind],hull)
+                old_hull_area = hull_area
+                hull_difference = old_hull_area-hull_area
+                #p1=Plots.plot(col)
                     #title!("vector of cluster center")
                     #p2 = Plots.plot(col2)
                     #title!("vector of observed spikes")
@@ -822,7 +835,7 @@ function CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd
                     #savefig("fit$distance.png")
                     #push!(state_spike_nodes,repn)
                     #push!(state_spike_times,rept)
-                if cnt<4
+                if hull_difference<2
                     Plots.scatter!(px,rept.-time_ind*(ews[time_ind]-sws[time_ind]),repn,color=time_ind,legend=false,markersize=0.1,marker=0.5)
                     savefig("Worst$template_ind$cnt.png")
                 else 
@@ -835,15 +848,26 @@ function CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd
     end
     (fit,tmd,state_time,state_number,state_spike_nodes,state_spike_times)
 end        
-
-
+#hull_area =  0.0
+#@inbounds for (template_ind,col) in enumerate(eachcol(centres))
+#    px=Plots.scatter!()
+#    cnt = 0
+#    hull_areas_Dict[template_ind] = []
 function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,state_time,state_number,state_versus_time,nodes,times,sws,ews,state_spike_nodes,state_spike_times)
+    old_hull_area =  0.0
+    hull_areas_Dict = Dict()
+    hull_Dict = Dict()
+
+    hull_difference = 100
     @inbounds for (template_ind,col) in enumerate(eachcol(centres))
+        hull_areas_Dict[template_ind] = []
+        #py=Plots.plots()
+
         px=Plots.scatter!()
         @inbounds for (time_ind,col2) in enumerate(eachcol(mat_of_distances))
             distance = evaluate(Euclidean(),col,col2)
             @assert new_threshold>=0.0
-            @show(distance,new_threshold)
+            #@show(distance,new_threshold)
             if distance<new_threshold
                 if distance<=minimum(fit[template_ind])
                     push!(fit[template_ind],distance)
@@ -853,6 +877,46 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
                     state_versus_time[time_ind] = template_ind
                     (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
 
+
+                    #repn = convert(Vector{Float32},repn)
+                    if length(repn) > 1
+                        rept = rept.-minimum(rept)#time_ind*(ews[time_ind]-sws[time_ind])
+
+                        (hull,hull_area) = concave_hull_pc(repn,rept)
+                        
+                        push!(hull_areas_Dict[template_ind],hull_area)
+                        #push!(hull_areas_Dict[template_ind],hull)
+                        hull_diff = abs(old_hull_area-hull_area)
+                        old_hull_area = hull_area
+                        #B = kde((repn, rept))
+                        repto = fit!(OnlineStats.Moments(), rept)
+                        mean(repto)
+                        var(repto)
+                        std(repto)
+                        skewTime = skewness(repto)
+                        kurtTime = kurtosis(repto)
+
+                        repno = fit!(OnlineStats.Moments(), repn)
+                        mean(repno)
+                        var(repno)
+                        std(repno)
+                        SkewNode = skewness(repno)
+                        KurtTime = kurtosis(repno)
+    
+                        descriptor=Vector{<:Any}([mean(repn),mean(rept),var(repn),var(rept),minimum(repn),maximum(repn),minimum(rept),maximum(rept),median(repn),mode(repn),median(rept),mode(rept),hull_area,skewTime,kurtTime,SkewNode,KurtTime]#B.x[1],B.x[2],B.x[3],B.y[1],B.y[2],B.y[3]])
+                        #repn = convert(Vector{Float64},repn)
+                        #@show()
+                        #@show(B.y[1],B.y[2],B.y[3])
+                        #@infiltrate
+
+                    else
+                        descriptor=Vector{<:Any}([0.0,0.0,0.0,0.0,0.0,0.0])
+
+
+                    end        
+                    @show(descriptor)
+
+                    #@show(hull_areas_Dict)
                     p1=Plots.plot(col)
                     title!("vector of cluster center")
                     p2 = Plots.plot(col2)
@@ -862,13 +926,29 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
                     savefig("fit$distance.png")
                     push!(state_spike_nodes,repn)
                     push!(state_spike_times,rept)
-                    Plots.scatter!(px,rept.-time_ind*(ews[time_ind]-sws[time_ind]),repn,color=time_ind,legend=false)
-                    savefig("New_scatter$template_ind.png")
+                #if hull_difference<2
+                    #@show(hull_difference)
+                    if length(rept)>1
+                        min_= minimum(rept)
+                        @show(min_)
+                        #Plots.scatter!(px,rept.-min_,repn,color=time_ind,legend=false)
+                        savefig("New_scatter$template_ind.png")
+                    end
                 end
             end
 
         end
     end
+    #=
+    for (k,v) in pairs(hull_areas_Dict)
+        if length(v)>1
+            @show(v)
+            @show(k)
+            @show(v[1]-v[2])
+        end
+    end
+    =#
+    #@infiltrate
     (fit,tmd,state_time,state_number,state_spike_nodes,state_spike_times)
 end        
 
@@ -886,6 +966,7 @@ function final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distan
     end    
 
     new_threshold = mean(distance_distributions) - std(distance_distributions)
+    #@infiltrate
     @assert new_threshold>=0.0
     #(fit,tmd,state_time,state_number,state_spike_nodes,state_spike_times) = CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd,state_time,state_number,state_versus_time,nodes,times,sws,ews,state_spike_nodes,state_spike_times)
 
@@ -919,13 +1000,18 @@ function final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distan
             #@show(column2)         
             #display(Plots.scatter!(p1,rept,repn,legend=false,colors=column2,markersize=2.0,markerstrokewidth=0,xlims=(0,25)))
             Plots.scatter!(p1,rept,repn,legend=false,colors=cat_cnt)#,markersize=2.0,markerstrokewidth=0)#markersize=2.0,markerstrokewidth=0,xlims=(0,25)))
+            
             if length(rept)>1
+                min_ = minimum(rept)
+                rept = rept.-min_
+                #@show(rept)
+                #@show(min_)
                 vline!(p1,[minimum(rept), maximum(rept)],fill=true,alpha=0.5,colors=["green","blue"])
             end
         
             Plots.plot(p1)
             savefig("grandLabels$cat_cnt$time_ind.png")
-            compare_heatmaps(repn,rept,repn_old,rept_old,time_ind,time_ind)
+            #compare_heatmaps(repn,rept,repn_old,rept_old,time_ind,time_ind)
             repn_old = repn
             rept_old = rept
             #@infiltrate
@@ -1453,6 +1539,13 @@ function get_repeated_scatter(nlist,tlist,start_windows,end_windows,repeated_win
 
     #end
 end
+
+function create_spikes_ragged(nodes::Vector{Any},times::Vector{Any})
+    nodes = convert(Vector{UInt32},nodes)
+    times = convert(Vector{Float32},times)
+    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times)
+    (spikes_ragged::AbstractVecOrMat,numb_neurons::UInt32)
+end
 """
 A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to collect them together to get the ISI distribution for the whole cell population
 Also output a ragged array (Array of unequal length array) of spike trains. 
@@ -1701,9 +1794,9 @@ function doanalysCV(d)
 
     desc_1, ret_keypoints_1 = create_descriptor(img1, keypoints_1, brief_params)
     desc_2, ret_keypoints_2 = create_descriptor(img1, keypoints_1, brief_params)
-    @show(ret_keypoints_2)
-    @show(desc_2)
-    @infiltrate
+    #@show(ret_keypoints_2)
+    #@show(desc_2)
+    #@infiltrate
     
     matches = match_keypoints(ret_keypoints_1, ret_keypoints_2, desc_1, desc_2, 1.5)
 
@@ -1728,7 +1821,24 @@ function doanalysCV(d)
 
 
 end
-    #img = testimage("lighthouse")
+#img = testimage("lighthouse")
+function concave_hull_pc(nodes,times)
+    points = [[ti, no] for (ti,no) in zip(nodes,times)];
+    x = [p[1] for p in points];
+    y = [p[2] for p in points];
+
+    hull = concave_hull(points)
+    hull_area = area(hull)
+
+    #@infiltrate
+    #scatter(x,y,ms=1,label="",axis=false,grid=false,markerstrokewidth=0.0)
+    #display(plot!(hull))
+    #@infiltrate
+
+    #annotate!(pi/2,0.5,"K = $(hull.k)")
+    #annotate!(pi/2,0.25,"Area $(round(hull_area, digits=3))")
+    (hull,hull_area)
+end
 
 function doanalysisrev(d)
     @unpack nodes,times, number_divisions, similarity_threshold = d
@@ -1754,6 +1864,10 @@ function doanalysisrev(d)
     R = kmeans(ts', classes; maxiter=1000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
+
+
+
+
     spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)
     #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size;threshold=similarity_threshold)
     
