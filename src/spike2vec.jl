@@ -225,7 +225,7 @@ function get_vector_coords_uniform!(one_neuron_surrogate::AbstractArray, spikes_
 end
 =#
 function array_of_empty_vectors(T, dims...)
-    array = Array{Vector{T}}(undef, dims...)
+    array = Array{Vector{T}}(undef,dims...)
     for i in eachindex(array)
         array[i] = Vector{T}()
     end
@@ -239,10 +239,10 @@ function make_sliding_window(start_windows,end_windows,step_size)
     ending=length(end_windows)
     @inbounds for (ind,(start,stop)) in enumerate(zip(start_windows,end_windows))
         if ind!=ending
-            @inbounds for _ in 1:10
+            @inbounds for _ in 1:20
                 push!(full_sliding_window_starts,start+offset) 
                 push!(full_sliding_window_ends,stop+offset)
-                offset=step_size/10.0
+                offset=step_size/20.0
             end
         else
             push!(full_sliding_window_starts,start) 
@@ -369,6 +369,7 @@ end
 function compute_metrics_on_matrix_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}},ews,step_size;metric=:kreuz,disk=false)
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float32}(undef, nrow, ncol)
+    @. mat_of_distances = 0.0
     compute_metrics_on_matrix_divisions!(div_spike_mat_no_displacement,mat_of_distances,nrow,ews,step_size;metric=metric)    
     normalize!(mat_of_distances)
     sum_var = get_var_of_mat(mat_of_distances)
@@ -378,6 +379,7 @@ end
 function compute_metrics_on_matrix_self_past_divisions(div_spike_mat_no_displacement::Matrix{Vector{Vector{Float32}}};disk=false)
     (nrow::UInt32,ncol::UInt32)=size(div_spike_mat_no_displacement)
     mat_of_distances = Array{Float64}(undef, nrow, ncol)
+    @. mat_of_distances = 0.0
     compute_metrics_on_matrix_self_past_divisions!(div_spike_mat_no_displacement,mat_of_distances)    
     (mat_of_distances::Array{Float64})
 end
@@ -461,6 +463,8 @@ function compute_metrics_on_divisions(division_size::Integer,numb_neurons::Integ
 
     spike_distance_size = length(end_windows)
     mat_of_distances = Array{Float64}(undef, numb_neurons, spike_distance_size)
+    @. mat_of_distances = 0.0
+
     nlist = Array{Vector{UInt32}}([])
     tlist = Array{Vector{Float32}}([])
     sum_varr = 0.0
@@ -693,7 +697,8 @@ function cluster(enrich)
     #@infiltrate
     
     #@show(k)
-    R = kmeans(enrich, 2; maxiter=1000, display=:iter)
+    @show(size(enrich))
+    R = kmeans(enrich, 1; maxiter=1000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
     sort_idx =  sortperm(assignments(R))
     enrich = enrich[:,sort_idx]
@@ -819,8 +824,6 @@ function CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd
                  #   state_versus_time[time_ind] = template_ind
                 (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
                 descriptor=(mean(repn),mean(rept),var(repn),var(rept))
-                @show(descriptor)
-                println("hello")
                 (hull,hull_area) = concave_hull_pc(repn,rept)
                 push!(hull_areas_Dict[template_ind],hull_area)
                 push!(hull_areas_Dict[template_ind],hull)
@@ -853,11 +856,43 @@ end
 #    px=Plots.scatter!()
 #    cnt = 0
 #    hull_areas_Dict[template_ind] = []
+
+function ReHeat(nodes, times, denom_for_bins;timeBoundary,nodeBoundary)
+    #=
+    templ = Vector{Any}[]
+    for (_) in collect(1:nodeBoundary+1)
+        push!(templ,[])
+    end
+    for (cnt,n) in enumerate(nodes)
+        push!(templ[n+1],times[cnt])    
+    end
+    =#
+    ragged = create_spikes_ragged(nodes,times)
+    temp_vec = collect(0:Float64(timeBoundary/denom_for_bins):timeBoundary)
+    data = zeros(nodeBoundary+1, Int(length(temp_vec)-1))#-1))
+    cnt = 1
+    for i in 1:length(ragged)
+        #@show(times[i])
+        psth = fit(Histogram,times,temp_vec)        
+        #if sum(psth.weights[:]) != 0.0
+            #@show(psth.weights[:])
+            #@show(size(psth.weights[:]))
+
+
+            #@show(size(data))
+        data[i,:] = psth.weights[:]
+            #@assert sum(data[cnt,:])!=0
+        #end
+        #cnt +=1
+    end
+    data::Matrix{Float64}
+end
+
 function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,state_time,state_number,state_versus_time,nodes,times,sws,ews,state_spike_nodes,state_spike_times)
     old_hull_area =  0.0
     hull_areas_Dict = Dict()
     hull_Dict = Dict()
-
+    list_of_descriptors = []
     hull_difference = 100
     @inbounds for (template_ind,col) in enumerate(eachcol(centres))
         hull_areas_Dict[template_ind] = []
@@ -877,7 +912,7 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
                     state_versus_time[time_ind] = template_ind
                     (repn,rept) = divide_epoch(nodes,times,sws[time_ind],ews[time_ind])
 
-
+                    #=
                     #repn = convert(Vector{Float32},repn)
                     if length(repn) > 1
                         rept = rept.-minimum(rept)#time_ind*(ews[time_ind]-sws[time_ind])
@@ -890,31 +925,41 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
                         old_hull_area = hull_area
                         #B = kde((repn, rept))
                         repto = fit!(OnlineStats.Moments(), rept)
-                        mean(repto)
-                        var(repto)
-                        std(repto)
+                        #mean(repto)
+                        #var(repto)
+                        #std(repto)
                         skewTime = skewness(repto)
                         kurtTime = kurtosis(repto)
+                        generalVar = StatsBase.genvar([rept;repn])
+                        @show(generalVar)
+                        sample=StatsBase.totalvar([rept;repn])
+                        @show(sample)
 
                         repno = fit!(OnlineStats.Moments(), repn)
-                        mean(repno)
-                        var(repno)
-                        std(repno)
-                        SkewNode = skewness(repno)
-                        KurtTime = kurtosis(repno)
-    
-                        descriptor=Vector{<:Any}([mean(repn),mean(rept),var(repn),var(rept),minimum(repn),maximum(repn),minimum(rept),maximum(rept),median(repn),mode(repn),median(rept),mode(rept),hull_area,skewTime,kurtTime,SkewNode,KurtTime]#B.x[1],B.x[2],B.x[3],B.y[1],B.y[2],B.y[3]])
+                        #mean(repno)
+                        #var(repno)
+                        #std(repno)
+                        #SkewNode = skewness(repno)
+                        #KurtTime = kurtosis(repno)
+                        
+                        #descriptor=Vector{<:Any}([mean(repno),mean(repto),var(repno),var(repto),minimum(repn),maximum(repn),minimum(rept),maximum(rept),median(repn),mode(repn),median(rept),mode(rept),hull_area,skewTime,kurtTime,SkewNode,KurtTime,generalVar])#B.x[1],B.x[2],B.x[3],B.y[1],B.y[2],B.y[3]])
+                        descriptor=Vector{<:Any}([hull_area,sum(repn),sum(rept)])#B.x[1],B.x[2],B.x[3],B.y[1],B.y[2],B.y[3]])
+
                         #repn = convert(Vector{Float64},repn)
                         #@show()
+
                         #@show(B.y[1],B.y[2],B.y[3])
                         #@infiltrate
 
                     else
-                        descriptor=Vector{<:Any}([0.0,0.0,0.0,0.0,0.0,0.0])
+                        descriptor=Vector{<:Any}([0.0 for _ in 1:3])
 
 
                     end        
-                    @show(descriptor)
+                    push!(list_of_descriptors,descriptor)
+
+                    =#
+                    #@show(descriptor)
 
                     #@show(hull_areas_Dict)
                     p1=Plots.plot(col)
@@ -939,18 +984,63 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
 
         end
     end
-    #=
-    for (k,v) in pairs(hull_areas_Dict)
-        if length(v)>1
-            @show(v)
-            @show(k)
-            @show(v[1]-v[2])
+    #@show(list_of_descriptors)
+    #distance_matrix = ones(length(list_of_descriptors),length(list_of_descriptors)).*20
+
+end
+
+function heatComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
+
+    for (k,v) in  enumerate(eachcol(spike_mat))
+        for (k1,v1) in  enumerate(eachcol(spike_mat))
+            if k>k1
+                #if abs(k-k1)>=20 && abs(k1-k)>=20               
+                    (repn,rept) = divide_epoch(nodes,times,sws[k],ews[k])
+                    (repn1,rept1) = divide_epoch(nodes,times,sws[k1],ews[k1])
+                    if length(rept)>1 && length(rept1)>1
+                        rept = rept.-minimum(rept)
+                        rept1 = rept1.-minimum(rept1)
+                        #timeBoundary=maximum([maximum(rept),maximum(rept1)])
+                        nodeBoundary=maximum([maximum(repn),maximum(repn1)])
+                        #@show(timeBoundary)
+                        #@show(ews[k]-sws[k])
+                        timeBoundary = ews[k]-sws[k]
+                        #@show(timeBoundary)
+                        heat0 = ReHeat(repn,rept,20;timeBoundary,nodeBoundary)
+                        heat1 = ReHeat(repn1,rept1,20;timeBoundary,nodeBoundary)
+                        r = pairwise(Euclidean(), heat0, heat1)
+                        #@show(sum(r))
+                        #println("number of spikes:")
+                        #@show(length(rept))
+                        if sum(r)<=110.0 #&& hull_diff<5
+                            attribute = sum(r)
+                            #@show(sum(r))
+                            enrich[k,k1] = sum(r)
+                            timeBoundaryMin=minimum([minimum(rept),minimum(rept1)])
+                            p1 = Plots.heatmap(heat1)
+                            #title!(p1,length(rept))
+                            p0 = Plots.heatmap(heat0)
+                            #title!(p1,length(rept1))
+
+                            #nodeBoundary=maximum([maximum(repn),maximum(repn1)])
+                            nodeBoundaryLow=minimum([minimum(repn),minimum(repn1)])
+
+                            p2 = Plots.scatter(rept,repn,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
+                            p3 = Plots.scatter(rept1,repn1,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
+                            Plots.plot(p0,p1,p2,p3)
+                            temp = length(rept)
+                            title!("$temp")
+
+                            savefig("heat$k$k1$attribute.png")
+                        end 
+                    end
+               # end
+            end
         end
-    end
-    =#
-    #@infiltrate
-    (fit,tmd,state_time,state_number,state_spike_nodes,state_spike_times)
+    end    
+    enrich
 end        
+using StatsBase
 
 function final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews,color_coded_mat)
     color_coded_mat = zeros(size(mat_of_distances))
@@ -966,7 +1056,6 @@ function final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distan
     end    
 
     new_threshold = mean(distance_distributions) - std(distance_distributions)
-    #@infiltrate
     @assert new_threshold>=0.0
     #(fit,tmd,state_time,state_number,state_spike_nodes,state_spike_times) = CompareObsVsCentresWorst(centres,mat_of_distances,new_threshold,fit,tmd,state_time,state_number,state_versus_time,nodes,times,sws,ews,state_spike_nodes,state_spike_times)
 
@@ -1062,7 +1151,25 @@ end
     =#
 
 
-
+function heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,spike_mat,step_size,color_coded_mat;threshold::Real=5)
+    NURS = 0.0
+    #displacetime=0
+    #NumberTemplates = 0.0#::AbstractVecOrMat
+    #List_of_templates = Vector{UInt32}([])
+    distance_distributions = Vector{Float32}([])
+    state_time = Vector{Float32}([])
+    state_number = Vector{Float32}([])
+    state_spike_nodes = Vector{Any}([])
+    state_spike_times = Vector{Any}([])
+    enrich = zeros(length(sws),length(sws))
+    #@show(size(mat_of_distances))
+    #@show(size(mat_of_distances))
+    if size(spike_mat)[1]>2
+        #fit = Dict()
+        enrich = heatComparison(spike_mat,enrich,nodes,times,sws,ews)
+    end
+    enrich
+end
 
 function label_spikes!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,spike_mat,step_size,color_coded_mat;threshold::Real=5)
     NURS = 0.0
@@ -1079,22 +1186,34 @@ function label_spikes!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMa
     if size(mat_of_distances)[1]>2
         enrich = zeros(size(mat_of_distances))
         #fit = Dict()
-        enrich = get_proto_templates(mat_of_distances,enrich,threshold,distance_distributions,nodes,times,sws,ews)
-        #@show(enrich)
-        #@time List_of_templates = refine_templates(mat_of_distances,List_of_templates,threshold,distance_distributions)
-        centres,_ = cluster(enrich)
-        #if !fail
-        (state_spike_times,state_spike_nodes,cat_cnt,color_coded_mat) = final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews,color_coded_mat)
-        #end
-        number_windows = length(eachcol(mat_of_distances))
-        window_duration = last(ews)-last(sws)
-        repeatitive = NURS/(number_windows*window_duration)
-    
+        enrich = heatComparison(spike_mat,enrich,nodes,times,sws,ews)
+    end
+        #=
+        @infiltrate
+        enrich_ = get_proto_templates(mat_of_distances,enrich,threshold,distance_distributions,nodes,times,sws,ews)
+            #@show(enrich)
+        if size(enrich_)[2] != 0
+            @show(size(enrich_)[2])
+        
+            #@time List_of_templates = refine_templates(mat_of_distances,List_of_templates,threshold,distance_distributions)
+            centres,_ = cluster(enrich_)
+            #if !fail
+            (state_spike_times,state_spike_nodes,cat_cnt,color_coded_mat) = final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews,color_coded_mat)
+
+            #(state_spike_times,state_spike_nodes,cat_cnt,color_coded_mat) = final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews,color_coded_mat)
+            #end
+            number_windows = length(eachcol(mat_of_distances))
+            window_duration = last(ews)-last(sws)
+            repeatitive = NURS/(number_windows*window_duration)
+        else
+            repeatitive= nothing
+            (state_spike_times,state_spike_nodes,cat_cnt,color_coded_mat) = (nothing,nothing,nothing,nothing)
+        end
     else
         repeatitive= nothing
         (state_spike_times,state_spike_nodes,cat_cnt,color_coded_mat) = (nothing,nothing,nothing,nothing)
     end
-
+    =#
     (repeatitive,NURS::Real,state_spike_times,state_spike_nodes,state_number,state_time,cat_cnt,color_coded_mat)
 end
 function old_label_distmat!()
@@ -1392,12 +1511,14 @@ function label_spikes(mat_of_distances::AbstractVecOrMat,sws,ews,times,nodes,div
         distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
     end
     color_coded_mat = zeros(size(div_spike_mat_with_displacement))
-    repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = label_spikes!(cat_cnt,mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size,color_coded_mat;threshold)
+    enrich = heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size,color_coded_mat;threshold)
+    #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = label_spikes!(cat_cnt,mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size,color_coded_mat;threshold)
     #repeatitive,dict0,dict1,NURS,state_frequency_histogram = templates_using_cluster_centres!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,times_per_slice,nodes_per_slice,ind;threshold)
     #repeatitive,NURS = label_exhuastively_distmat!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold)
     #sws,ews,times,nodes
 
-    repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt,color_coded_mat
+    #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt,color_coded_mat
+    enrich
 end
 
 """
@@ -1552,7 +1673,7 @@ Also output a ragged array (Array of unequal length array) of spike trains.
 """
 function create_spikes_ragged(nodes::Vector{UInt32},times::Vector{<:Real})
     spikes_ragged = Vector{Any}([])
-    numb_neurons = UInt32(maximum(nodes))+UInt32(1) # Julia doesn't index at 0.
+    numb_neurons = UInt32(maximum(nodes))#+UInt32(1) # Julia doesn't index at 0.
     @inbounds for n in 1:numb_neurons
         push!(spikes_ragged,Vector{Float32}([]))
     end
@@ -1814,10 +1935,8 @@ function doanalysCV(d)
     #map(m -> draw!(grid, LineSegment(m[1], m[2] + offset)), matches)
     #savefig("TimeSurfaceMatches.png")
     #save("brisk_example.jpg", grid); 
-    @infiltrate
     nothing # hide
 
-    #@infiltrate
 
 
 end
@@ -1830,10 +1949,8 @@ function concave_hull_pc(nodes,times)
     hull = concave_hull(points)
     hull_area = area(hull)
 
-    #@infiltrate
     #scatter(x,y,ms=1,label="",axis=false,grid=false,markerstrokewidth=0.0)
     #display(plot!(hull))
-    #@infiltrate
 
     #annotate!(pi/2,0.5,"K = $(hull.k)")
     #annotate!(pi/2,0.25,"Area $(round(hull_area, digits=3))")
@@ -1842,7 +1959,8 @@ end
 
 function doanalysisrev(d)
     @unpack nodes,times, number_divisions, similarity_threshold = d
-    Ncells = length(unique(nodes))+1
+    #@show(nodes)
+    Ncells = length(unique(nodes))
     maxt = maximum(times)
     sum_of_rep=0.0
     NURS_sum=0.0
@@ -1852,23 +1970,34 @@ function doanalysisrev(d)
     step_size = dt = 3.0
     tau = 0.5
     ts = get_ts(nodes,times,step_size,tau)#;disk=false)
-    ts = ts[:, vec(mapslices(col -> any(col .!= 0), ts, dims = 1))]
+    #ts = ts[:, vec(mapslices(col -> any(col .!= 0), ts, dims = 1))]
 
-    number_divisions = size(ts)[2]
+    #number_divisions = size(ts)[2]
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
     ##
     # Don't actually normalize, I believe it makes things worse.
     #normalize!(ts)
     ##
-    classes = 5
+    classes = 4
     R = kmeans(ts', classes; maxiter=1000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
+    @show(length(spikes_ragged))
+    @show(length(a))
+    @show(size(ts))
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
 
 
 
 
     spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)
+
+    #@show(number_divisions,size(spikeMat))
+    cat_cnt = 0.0
+    enrich = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
+    enrich = sparse(enrich)
+    display(enrich)
+    #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
+
     #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size;threshold=similarity_threshold)
     
     ##
@@ -1881,21 +2010,36 @@ function doanalysisrev(d)
     ssn=[]
     sn = []
     cat_cnt = 0.0
+    enrichs = []
+    enrich = zeros(length(sws),length(sws))
+
     for ind in job_list
         temp = a.==ind
         ts_ = ts[temp,:]
         spikes_ragged_packet = spikes_ragged[temp]
         nodes,times = ragged_to_lists(spikes_ragged_packet)
         spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
-        repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = label_spikes(ts_,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
-        #@infiltrate
+        
+        #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = 
+        
+        enrich = label_spikes(ts_,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
+        push!(enrichs,enrich)
+        #@show(sum.(enrich))
         #@show(NURS)
-        push!(sst,spike_state_times)
-        push!(ssn,spike_state_nodes)
-        push!(sn,state_number)
+        #push!(sst,spike_state_times)
+        #push!(ssn,spike_state_nodes)
+        #push!(sn,state_number)
     #nd
 
     end
+
+    for e in enrichs
+        enrich+=e
+    end
+    enrich = sparse(enrich)
+    display(enrich)
+    #show([sum(enrich) for enrich in enrichs])
+    #@infiltrate
     #=
     p1 = Plots.scatter()
     offset = 0

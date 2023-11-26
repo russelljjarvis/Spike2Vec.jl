@@ -10,9 +10,10 @@ using BenchmarkTools
 using UMAP
 
 using Infiltrator
-
-
+(nodes,times) = load_zebra_finche_nmc_dataset()
+#get_ze
 #get_zebra
+
 @load "v1_jesus_day1.jld" nn tt
 nodes,times = nn,tt
 
@@ -24,7 +25,7 @@ nodes,times = nn,tt
 #xlabel!(p3,"Time (ms)")
 #savefig("whatOfTimes.png")
 param_dict = Dict()
-param_dict["number_divisions"] = 200# same
+param_dict["number_divisions"] = 250# same
 param_dict["similarity_threshold"] = 4.5 #9548088f0 # single element inside vector; no expansion
 
 param_dict["nodes"] = nodes

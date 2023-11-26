@@ -105,17 +105,16 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
 
     # An artifact row is probably just a neuron that doesn't fire.
     list_of_artifact_rows = [] # These will be deleted as they bias analysis.
-    @inbounds @showprogress for (ind,t) in enumerate(templ)
+    @inbounds for (ind,t) in enumerate(templ)
         psth = fit(Histogram,t,temp_vec)
         if sum(psth.weights[:]) == 0.0
             append!(list_of_artifact_rows,ind)
-            #@assert sum(t)==0
         end
     end
     adjusted_length = ns+1-length(list_of_artifact_rows)
     data = Matrix{Float64}(undef, adjusted_length, Int(length(temp_vec)))#-1))
     cnt = 1
-    @inbounds @showprogress  for t in templ
+    @inbounds for t in templ
         psth = fit(Histogram,t,temp_vec)        
         if sum(psth.weights[:]) != 0.0
             data[cnt,:] = psth.weights[:]
@@ -134,13 +133,14 @@ function hist2dHeat(nodes::Vector{UInt32}, times::Vector{Float32}, denom_for_bin
     data::Matrix{Float64}
 end
 
+
 """
 Pre-allocation for get time surface
 """
 function get_ts(nodes,times,dt,tau;disk=false)
     #nodes = convert(Vector{Int64},nodes)
 
-    num_neurons = Int(length(unique(nodes)))+1
+    num_neurons = Int(length(unique(nodes)))
     total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
     #@show(time_resolution)

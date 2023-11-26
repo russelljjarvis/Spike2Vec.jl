@@ -465,6 +465,8 @@ function load_zebra_finche_nmc_dataset()
             end
         end
     end
+    #nodesdense = Vector{UInt32}([ n+1 for n in nodesdense ])
+        
     (nodesdense,timesdense)
 end
 

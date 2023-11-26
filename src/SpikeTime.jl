@@ -67,7 +67,7 @@ module SpikeTime
     export doanalysis
     export doanalysisrev
     export doanalysCV
-    
+    export ReHeat
     export reassign_no_pattern_group!
     export create_spikes_ragged
     export compute_metrics_on_matrix_divisions
