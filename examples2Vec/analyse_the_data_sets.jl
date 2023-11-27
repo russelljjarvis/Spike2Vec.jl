@@ -11,12 +11,36 @@ using UMAP
 
 using Infiltrator
 (nodes,times) = load_zebra_finche_nmc_dataset()
+result = maximum(times)/22.0
+@show(result)
+param_dict = Dict()
+param_dict["number_divisions"] = 44# same
+
+# ideal bin size is half a second
+# or 500 milliseconds
+
+
+#22.2 * 54.05810810810811 = v1_jesus_day1
+#22.2 seconds
+
+#22.2 / 1200.3137f0
+
+#
+# maximum(tt) = 
+# 22.2
+# 1200.094f0 1,200 seconds
+# 0.9998169f0
+# either seconds or milliseconds.
+
 #get_ze
 #get_zebra
+#@@infiltrate
+@load "v1_jesus_day2.jld" nn tt
+param_dict = Dict()
+param_dict["number_divisions"] = 500# same
 
-@load "v1_jesus_day1.jld" nn tt
-nodes,times = nn,tt
-
+#nodes,times = nn,tt
+#@show(maximum(tt))
 #(times,nodes) = read_path_collectionHIPPOCAMPUS()
 
 #p3=Plots.scatter(times5,nodes5,legend=false,markersize=0.3,markerstrokewidth=0.1,markershape =:vline,markercolor = :black,yticks = 1:1:maximum(nodes5))
@@ -24,8 +48,6 @@ nodes,times = nn,tt
 #ylabel!(p3,"Neuron Id")
 #xlabel!(p3,"Time (ms)")
 #savefig("whatOfTimes.png")
-param_dict = Dict()
-param_dict["number_divisions"] = 250# same
 param_dict["similarity_threshold"] = 4.5 #9548088f0 # single element inside vector; no expansion
 
 param_dict["nodes"] = nodes

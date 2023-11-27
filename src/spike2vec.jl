@@ -239,10 +239,10 @@ function make_sliding_window(start_windows,end_windows,step_size)
     ending=length(end_windows)
     @inbounds for (ind,(start,stop)) in enumerate(zip(start_windows,end_windows))
         if ind!=ending
-            @inbounds for _ in 1:20
+            @inbounds for _ in 1:2
                 push!(full_sliding_window_starts,start+offset) 
                 push!(full_sliding_window_ends,stop+offset)
-                offset=step_size/20.0
+                offset=step_size/2.0
             end
         else
             push!(full_sliding_window_starts,start) 
@@ -716,8 +716,8 @@ function cluster(enrich)
     new_threshold = mean(template_distances) - std(template_distances)/3
     centres,new_threshold
 end
-function compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
-    if length(rept_old)>1
+function compare_heatmaps(repn,rept,repn_old,rept_old)#,x,state_time)
+    #if length(rept_old)>1
 
         #rows_to_keep = A[:,10] .!= 0
         min_time = minimum([minimum(rept_old),minimum(rept)])
@@ -725,11 +725,11 @@ function compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
         max_time = maximum([maximum(rept_old),maximum(rept)])
         max_node = maximum([maximum(repn),maximum(repn_old)])
 
-        o0 = HeatMap(min_node:1:max_node, min_time/length(rept):1:max_time)
+        o0 = HeatMap(min_node:1:max_node, min_time:1/length(rept):max_time)
         fit!(o0, zip(repn, rept))
         ts0 = copy(o0.counts)
         t0 = ts0[:, vec(mapslices(col -> any(col .!= 0), ts0, dims = 1))]
-        o1 = HeatMap(min_node:1:max_node, min_time/length(rept_old):1:max_time)
+        o1 = HeatMap(min_node:1:max_node, min_time:1/length(rept_old):max_time)
         fit!(o1, zip(repn_old, rept_old))                    
         ts1 = copy(o1.counts)
         t1 = ts1[:, vec(mapslices(col -> any(col .!= 0), ts1, dims = 1))]
@@ -747,7 +747,8 @@ function compare_heatmaps(repn,rept,repn_old,rept_old,x,state_time)
             savefig("blah$x$state_time.png")
         end
         =#
-    end
+    #end
+    t1,t0
 end
 
 function plot_same_category(state_time,state_number,nodes,times,sws,ews,skip_times)
@@ -989,56 +990,104 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
 
 end
 
-function heatComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
+function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
 
-    for (k,v) in  enumerate(eachcol(spike_mat))
-        for (k1,v1) in  enumerate(eachcol(spike_mat))
+    @inbounds @showprogress for (k,_) in  enumerate(eachcol(spike_mat))
+        @show(k)
+        @inbounds @showprogress for (k1,_) in  enumerate(eachcol(spike_mat))
             if k>k1
-                #if abs(k-k1)>=20 && abs(k1-k)>=20               
+                @show(k1)
+
+                #if abs(k-k1)>=2 && abs(k1-k)>=2             
                     (repn,rept) = divide_epoch(nodes,times,sws[k],ews[k])
                     (repn1,rept1) = divide_epoch(nodes,times,sws[k1],ews[k1])
+
                     if length(rept)>1 && length(rept1)>1
                         rept = rept.-minimum(rept)
                         rept1 = rept1.-minimum(rept1)
-                        #timeBoundary=maximum([maximum(rept),maximum(rept1)])
                         nodeBoundary=maximum([maximum(repn),maximum(repn1)])
-                        #@show(timeBoundary)
-                        #@show(ews[k]-sws[k])
                         timeBoundary = ews[k]-sws[k]
-                        #@show(timeBoundary)
-                        heat0 = ReHeat(repn,rept,20;timeBoundary,nodeBoundary)
-                        heat1 = ReHeat(repn1,rept1,20;timeBoundary,nodeBoundary)
-                        r = pairwise(Euclidean(), heat0, heat1)
-                        #@show(sum(r))
-                        #println("number of spikes:")
-                        #@show(length(rept))
-                        if sum(r)<=110.0 #&& hull_diff<5
+                        B0 = kde((rept,repn))
+                        B1 = kde((rept1,repn1))
+                        r = colwise(Euclidean(), B0.density, B1.density)
+                        if sum(r)<=20.5 #&& hull_diff<5
+                            #@infiltrate
+                            #@show(k,k1)
+                            @show(ews[k1]-sws[k1])
+                            println("bin size")
                             attribute = sum(r)
                             #@show(sum(r))
-                            enrich[k,k1] = sum(r)
+                            #enrich[k,k1] = sum(r)
                             timeBoundaryMin=minimum([minimum(rept),minimum(rept1)])
-                            p1 = Plots.heatmap(heat1)
+                            p1 = Plots.heatmap(B0.density)
+                            title!("Sample $k")
                             #title!(p1,length(rept))
-                            p0 = Plots.heatmap(heat0)
+                            p0 = Plots.heatmap(B1.density)
                             #title!(p1,length(rept1))
+                            title!("Sample $k1")
 
                             #nodeBoundary=maximum([maximum(repn),maximum(repn1)])
-                            nodeBoundaryLow=minimum([minimum(repn),minimum(repn1)])
+                            #nodeBoundaryLow=minimum([minimum(repn),minimum(repn1)])
+                            #(hull0,hull_area) = concave_hull_pc(repn,rept)
+                            nspike0 = length(rept)
+                            p2 = Plots.plot()#hull0)
 
-                            p2 = Plots.scatter(rept,repn,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
-                            p3 = Plots.scatter(rept1,repn1,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
-                            Plots.plot(p0,p1,p2,p3)
-                            temp = length(rept)
-                            title!("$temp")
+                            Plots.scatter!(p2,rept,repn,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
+                            title!(p2,"N. spikes: $nspike0")
+                            #hull = concave_hull(points)
+                            #hull_area = area(hull)
+                            
+                            #scatter(x,y,ms=1,label="",axis=false,grid=false,markerstrokewidth=0.0)
+                            #(hull1,hull_area) = concave_hull_pc(repn1,rept1)
+                            nspike1 = length(rept1)
+                            p3 = Plots.plot()#hull1)
+                            Plots.scatter!(p3,rept1,repn1,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
+                            title!(p3,"N. spikes: $nspike1")
+                            @time isis0,_,_ = create_ISI_histogram(repn,rept)
 
-                            savefig("heat$k$k1$attribute.png")
+                            @time isis1,_,_ = create_ISI_histogram(repn1,rept1)
+                            @time rates0 = create_rates_histogram(repn,rept)
+                            @time rates1 = create_rates_histogram(repn1,rept1)
+                            @show(length(rates0),length(rates1))
+                            #@assert
+                            if length(rates0) == length(rates1)
+                                rrate = cor(rates0,rates1)
+                                @show(rrate)
+                            end
+                            min_binr = minimum([minimum(rates0),minimum(rates1)])
+                            max_binr = maximum([maximum(rates0),maximum(rates1)])
+
+                            p4 = Plots.plot([i for i in 1:length(rates0)],rates0,legend=false)#,xlim=(min_binr,max_binr))
+                            title!(p4,"Firing Rate Histogram")
+                            p5 = Plots.plot([i for i in 1:length(rates1)],rates1,legend=false)#,xlim=(min_binr,max_binr))
+                            title!(p5,"Firing Rate Histogram")
+                            #min_bini = minimum([minimum(isis0),minimum(isis1)])
+                            #max_bini = maximum([maximum(isis0),maximum(isis1)])
+                     
+                            #=
+                            p6 = Plots.plot(hull0,legend=false)#,fillrange = [i for i in 1:size(hull0)[1]])#,xlim=(min_bini,max_bini))
+                            title!(p4,"Firing Rate Histogram")
+                            p7 = Plots.plot(hull1,legend=false)#,fillrange = [i for i in 1:size(hull1)[1]])#,xlim=(min_bini,max_bini))
+                            title!(p5,"Firing Rate Histogram")
+                            =#
+
+                            @time Plots.plot(p0,p1,p2,p3,p4,p5,layout=(3,2))#,size=(1000,1000))
+                            @time savefig("heat$k$k1$attribute.png")
+
+                            #temp = length(rept)
+                            #title!("$temp")
+
+                            #plot(p6,plot(framestyle = :none),
+                            #p3,Plots.histogram(rates0,legend=false,orientation = :horizontal),
+                            #link = :both)
+                            #savefig("heat$k$k1$attribute.second.png")
                         end 
-                    end
-               # end
+                    #end
+               end
             end
         end
     end    
-    enrich
+    #enrich
 end        
 using StatsBase
 
@@ -1166,9 +1215,9 @@ function heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix::AbstractVe
     #@show(size(mat_of_distances))
     if size(spike_mat)[1]>2
         #fit = Dict()
-        enrich = heatComparison(spike_mat,enrich,nodes,times,sws,ews)
+        KernelComparison(spike_mat,enrich,nodes,times,sws,ews)
     end
-    enrich
+    #enrich
 end
 
 function label_spikes!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,spike_mat,step_size,color_coded_mat;threshold::Real=5)
@@ -1511,7 +1560,8 @@ function label_spikes(mat_of_distances::AbstractVecOrMat,sws,ews,times,nodes,div
         distance_matrix = mmap(io, Matrix{Float32}, (length(eachcol(mat_of_distances)),length(eachcol(mat_of_distances))))
     end
     color_coded_mat = zeros(size(div_spike_mat_with_displacement))
-    enrich = heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size,color_coded_mat;threshold)
+    #enrich = 
+    heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size,color_coded_mat;threshold)
     #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = label_spikes!(cat_cnt,mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size,color_coded_mat;threshold)
     #repeatitive,dict0,dict1,NURS,state_frequency_histogram = templates_using_cluster_centres!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,times_per_slice,nodes_per_slice,ind;threshold)
     #repeatitive,NURS = label_exhuastively_distmat!(mat_of_distances,distance_matrix,sws,ews,times,nodes,div_spike_mat_with_displacement,step_size;threshold)
@@ -1872,7 +1922,8 @@ function detect_small(spikes_ragged,a,ts)
 
     for ind in 1:length(unique(a))
         temp = a.==ind
-        ts_ = ts[temp,:]
+        #@infiltrate
+        #ts_ = ts[temp,:]
         cluster_size = []
         #for spike in spikes_ragged[temp]
         #    push!(cluster_size,sum(ind))    
@@ -1883,8 +1934,8 @@ function detect_small(spikes_ragged,a,ts)
     min_key(d) = reduce((x, y) -> d[x] ≤ d[y] ? x : y, keys(d))
     key = min_key(cluster_sizes)
     job_list = unique(a)
-    deleteat!(job_list, key)
-    delete!(cluster_sizes, key)
+    #deleteat!(job_list, key)
+    #delete!(cluster_sizes, key)
 
     #key = min_key(cluster_sizes)
     #deleteat!(job_list, key)
@@ -1956,6 +2007,30 @@ function concave_hull_pc(nodes,times)
     #annotate!(pi/2,0.25,"Area $(round(hull_area, digits=3))")
     (hull,hull_area)
 end
+function make_jobs(spikes_ragged,a)
+    job_list = unique(a)
+    small_job_list = []
+    finished_jobs = []
+    index_list = []
+    @inbounds for ind in job_list
+        temp = a.==ind
+        if sum(temp)<=10
+            push!(small_job_list,temp)
+        else
+            push!(index_list,temp)
+            push!(finished_jobs,spikes_ragged[temp])
+        end
+    end
+    collector = zeros(length(spikes_ragged))
+    @inbounds for s in small_job_list
+        collector += s
+    end
+    push!(index_list,collector)
+
+    collector = convert(Vector{Bool},collector)
+    push!(finished_jobs,spikes_ragged[collector])
+    finished_jobs,index_list
+end
 
 function doanalysisrev(d)
     @unpack nodes,times, number_divisions, similarity_threshold = d
@@ -1978,24 +2053,34 @@ function doanalysisrev(d)
     # Don't actually normalize, I believe it makes things worse.
     #normalize!(ts)
     ##
-    classes = 4
+    classes = 2
     R = kmeans(ts', classes; maxiter=1000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
-    @show(length(spikes_ragged))
-    @show(length(a))
-    @show(size(ts))
+    #@show(length(spikes_ragged))
+    #@show(length(a))
+    #@show(size(ts))
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
 
 
 
 
     spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)
+    #spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
+        
+    #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = 
+    cat_cnt = 0.0
+
+    enrich = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
 
     #@show(number_divisions,size(spikeMat))
-    cat_cnt = 0.0
-    enrich = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
-    enrich = sparse(enrich)
-    display(enrich)
+    
+    
+    
+    #enrich = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
+    #enrich = sparse(enrich)
+    #display(enrich)
+    
+    
     #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
 
     #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size;threshold=similarity_threshold)
@@ -2005,18 +2090,25 @@ function doanalysisrev(d)
     # Disgard all associated channels from the analysis.
     # 
     ##
-    job_list = detect_small(spikes_ragged,a,ts)
+    #job_list = detect_small(spikes_ragged,a,ts)
+
+    finished_jobs,cluster_ind = make_jobs(spikes_ragged,a)
     sst = []
     ssn=[]
     sn = []
     cat_cnt = 0.0
-    enrichs = []
+    #enrichs = []
     enrich = zeros(length(sws),length(sws))
 
-    for ind in job_list
-        temp = a.==ind
-        ts_ = ts[temp,:]
-        spikes_ragged_packet = spikes_ragged[temp]
+    #@show(length(finished_jobs))
+    #@infiltrate
+
+    for (spikes_ragged_packet,cl_ind) in zip(finished_jobs,cluster_ind)
+        #temp = a.==ind
+        ts_ = ts[cl_ind,:]
+        #display(Plots.heatmap(ts_))
+        #@infiltrate
+        #spikes_ragged_packet = ragged_packet
         nodes,times = ragged_to_lists(spikes_ragged_packet)
         spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
         
@@ -2094,20 +2186,19 @@ function doanalysis(d)
     classes = 10
     R = kmeans(ts', classes; maxiter=2000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
+    sort_idx =  sortperm(assignments(R))
+    ts = ts[sort_idx,:]
 
+    #=
     for ind in 1:length(unique(a))
         temp = a.==ind
         ts_ = ts[temp,:]
         Plots.heatmap(ts_)
         savefig("xx$ind.sortedTSHeatmap.png")
-
-
     end
-    sort_idx =  sortperm(assignments(R))
-    ts = ts[sort_idx,:]
     Plots.heatmap(ts)
     savefig("sorted.png")
-
+    =#
 
     #profile = matrix_profile(ts, 2; showprogress=true)
 

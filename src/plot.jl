@@ -43,21 +43,9 @@ end
 A method to get collect the Inter Spike Intervals (ISIs) per neuron, and then to collect them together to get the ISI distribution for the whole cell population
 Also output a ragged array (Array of unequal length array) of spike trains. 
 """
-function create_ISI_histogram(nodes::Vector{UInt32},times::Vector{Float32})
-    global_isis,spikes_ragged,isi_s = Float32[],Any[],Float32[]
-    #global_isis = # the total lumped population ISI distribution.
-    
-    numb_neurons=Int(maximum(nodes))+1 # Julia doesn't index at 0.
-    @inbounds for n in 1:numb_neurons
-        push!(spikes_ragged,[])
-    end
-    @inbounds for (n,t) in zip(nodes,times)
-        @inbounds for i in 1:numb_neurons
-            if i==n
-                push!(spikes_ragged[n],t)
-            end
-        end
-    end
+function create_ISI_histogram(nodes::Vector{<:Real},times::Vector{<:Real})
+    global_isis,isi_s = [],[]
+    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
     @inbounds for (i, times) in enumerate(spikes_ragged)
         push!(isi_s,[])
         for (ind,x) in enumerate(times)
@@ -68,9 +56,19 @@ function create_ISI_histogram(nodes::Vector{UInt32},times::Vector{Float32})
         end
         append!(global_isis,isi_s[i])
     end
-    (global_isis:: Vector{Float32},spikes_ragged::Vector{Any},numb_neurons)
+    (global_isis:: Vector{Any},spikes_ragged::Vector{Any},numb_neurons)
 end
 
+function create_rates_histogram(nodes::Vector{<:Real},times::Vector{<:Real})
+    rates = []
+    (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
+    @assert length(spikes_ragged) == numb_neurons == maximum(nodes)
+    rates = zeros(Int64(maximum(nodes)))
+    @inbounds for (i, times) in enumerate(spikes_ragged)
+        rates[i]=length(times)
+    end
+    rates
+end
 
 
 function raster(P::Vector)
@@ -140,7 +138,7 @@ Pre-allocation for get time surface
 function get_ts(nodes,times,dt,tau;disk=false)
     #nodes = convert(Vector{Int64},nodes)
 
-    num_neurons = Int(length(unique(nodes)))
+    num_neurons = Int(length(unique(nodes)))+1
     total_time =  Int(round(maximum(times)))
     time_resolution = Int(round(total_time/dt))
     #@show(time_resolution)
