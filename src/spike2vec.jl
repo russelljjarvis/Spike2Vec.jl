@@ -993,17 +993,22 @@ end
 
 function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
 
-    #push!(fit[template_ind],distance)
     tmd = Dict()
+    kernel_collector = Dict()
+    current_kernel = Dict()
+    mutated_kernel = Dict()
     state_versus_time = Vector{Int32}([])
     state_time = []
     state_number = []
     @inbounds for (template_ind,_) in enumerate(eachcol(spike_mat))
+        kernel_collector[template_ind] = []
         tmd[template_ind] = []
     end
     @inbounds for (time_ind,_) in enumerate(eachcol(spike_mat))
         push!(state_versus_time,-1.0)
     end    
+
+
     @inbounds @showprogress for (k,_) in  enumerate(eachcol(spike_mat))
         @inbounds for (k1,_) in  enumerate(eachcol(spike_mat))
             if k>k1
@@ -1017,17 +1022,29 @@ function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,n
                     nodeBoundary=maximum([maximum(repn),maximum(repn1)])
                     timeBoundary = ews[k]-sws[k]
                     B0 = kde((rept,repn))
+                    current_kernel[k] = B0.density
                     B1 = kde((rept1,repn1))
-                    r = colwise(Euclidean(), B0.density, B1.density)
-                    threshold = 35.5
+                    r = colwise(Euclidean(), current_kernel[k], B1.density)
+                    threshold = 30.5
 
                     if sum(r)<= threshold                    
                         push!(tmd[k],k1)
                         push!(state_time,k1)
                         push!(state_number,k)
                         state_versus_time[k1] = k
-
-
+                        avg_kernel = (current_kernel[k]+B1.density)/2.0
+                        @show(length(kernel_collector[k]))  
+                        if length(kernel_collector[k])>0
+                            mutated_kernel[k] = (mutated_kernel[k]+avg_kernel)/2.0
+                        else
+                            mutated_kernel[k] = avg_kernel
+                        end
+                        # mutated_kernel[k] = (mutated_kernel[k]+avg_kernel)/2.0
+                        push!(kernel_collector[k],avg_kernel)
+                        Plots.heatmap(mutated_kernel[k])
+                        title!("Sample $k1")
+                        savefig("mutated_average_kernel$k$k1.png")
+                        #=
                         threshold_attribute = sum(r)
                         timeBoundaryMin=minimum([minimum(rept),minimum(rept1)])
                         p1 = Plots.heatmap(B0.density)
@@ -1038,20 +1055,26 @@ function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,n
                         p2 = Plots.plot()#hull0)
                         Plots.scatter!(p2,rept,repn,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
                         difference = sum(r) - threshold 
-                        title!(p2,"N. spikes: $nspike0, Difference From Threshold: $difference")
+                        title!(p2,"N. spike: $nspike0")
                         xlabel!("Time (ms)")
                         ylabel!("Neuron ID")
 
-                        (hull1,hull_area) = concave_hull_pc(repn1,rept1)
                         nspike1 = length(rept1)
                         p3 = Plots.plot()#hull1)
                         Plots.scatter!(p3,rept1,repn1,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
-                        title!(p3,"N. spikes: $nspike1,  Difference From Threshold: $difference")
+                        title!(p3,"N. spike: $nspike1. Threshold delta $difference")
                         xlabel!("Time (ms)")
                         ylabel!("Neuron ID")
 
-                        #isis0,_,_ = create_ISI_histogram(repn,rept)
-                        #isis1,_,_ = create_ISI_histogram(repn1,rept1)
+                        #p4 = Plots.plot()#hull1)
+                        difference_density = B1.density - B0.density
+                        p4 = Plots.heatmap(difference_density)
+                        title!(p4,"Difference between kernel densities")
+                        #=
+                        (hull1,hull_area) = concave_hull_pc(repn1,rept1)
+                        isis0,_,_ = create_ISI_histogram(repn,rept)
+                        isis1,_,_ = create_ISI_histogram(repn1,rept1)
+                        
                         rates0 = create_rates_histogram(repn,rept)
                         rates1 = create_rates_histogram(repn1,rept1)
                         #@show(length(rates0),length(rates1))
@@ -1062,7 +1085,8 @@ function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,n
                         end
                         min_binr = minimum([minimum(rates0),minimum(rates1)])
                         max_binr = maximum([maximum(rates0),maximum(rates1)])
-
+                        =#
+                        =#
                         #p4 = Plots.plot([i for i in 1:length(rates0)],rates0,legend=false)#,xlim=(min_binr,max_binr))
                         #title!(p4,"Firing Rate Histogram")
                         #p5 = Plots.plot([i for i in 1:length(rates1)],rates1,legend=false)#,xlim=(min_binr,max_binr))
@@ -1076,10 +1100,11 @@ function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,n
                         p7 = Plots.plot(hull1,legend=false)#,fillrange = [i for i in 1:size(hull1)[1]])#,xlim=(min_bini,max_bini))
                         title!(p5,"Firing Rate Histogram")
                         =#
-
-                        Plots.plot(p0,p1,p2,p3,layout=(2,2),size=(1000,1000))
+                        #=
+                        Plots.plot(p0,p1,p2,p3,p4,layout=(3,2),size=(1000,1000))
                         #@infiltrate
                         savefig("NewHeat$k$k1$threshold_attribute.png")
+                        =#
                         Plots.closeall()
 
                         #println("save")
@@ -2022,6 +2047,8 @@ function make_jobs(spikes_ragged,a)
     index_list = []
     @inbounds for ind in job_list
         temp = a.==ind
+        temp = convert(Vector{Bool},temp)
+
         if sum(temp)<=10
             push!(small_job_list,temp)
         else
@@ -2053,9 +2080,6 @@ function doanalysisrev(d)
     step_size = dt = 3.0
     tau = 0.5
     ts = get_ts(nodes,times,step_size,tau)#;disk=false)
-    #ts = ts[:, vec(mapslices(col -> any(col .!= 0), ts, dims = 1))]
-
-    #number_divisions = size(ts)[2]
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
     ##
     # Don't actually normalize, I believe it makes things worse.
@@ -2064,24 +2088,11 @@ function doanalysisrev(d)
     classes = 2
     R = kmeans(ts', classes; maxiter=1000, display=:iter)
     a = assignments(R) # get the assignments of points to clusters
-    #@show(length(spikes_ragged))
-    #@show(length(a))
-    #@show(size(ts))
     (spikes_ragged,numb_neurons) = create_spikes_ragged(nodes,times) 
-
-
-
-
     spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)
-    #spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
-        
-    #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = 
     cat_cnt = 0.0
-
-    enrich = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
-
-    #@show(number_divisions,size(spikeMat))
-    
+    #enrich = 
+    label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)    
     
     
     #enrich = label_spikes(ts,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
@@ -2105,39 +2116,20 @@ function doanalysisrev(d)
     ssn=[]
     sn = []
     cat_cnt = 0.0
-    #enrichs = []
     enrich = zeros(length(sws),length(sws))
 
-    #@show(length(finished_jobs))
-    #@infiltrate
-
     for (spikes_ragged_packet,cl_ind) in zip(finished_jobs,cluster_ind)
-        #temp = a.==ind
         ts_ = ts[cl_ind,:]
-        #display(Plots.heatmap(ts_))
-        #@infiltrate
-        #spikes_ragged_packet = ragged_packet
         nodes,times = ragged_to_lists(spikes_ragged_packet)
         spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
-        
-        #repeatitive,NURS,spike_state_times,spike_state_nodes,state_number,state_time,cat_cnt = 
-        
         label_spikes(ts_,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
-        #push!(enrichs,enrich)
-        #@show(sum.(enrich))
-        #@show(NURS)
-        #push!(sst,spike_state_times)
-        #push!(ssn,spike_state_nodes)
-        #push!(sn,state_number)
-    #nd
-
     end
 
-    for e in enrichs
-        enrich+=e
-    end
-    enrich = sparse(enrich)
-    display(enrich)
+    #for e in enrichs
+    #    enrich+=e
+    #end
+    #enrich = sparse(enrich)
+    #display(enrich)
     #show([sum(enrich) for enrich in enrichs])
     #@infiltrate
     #=
