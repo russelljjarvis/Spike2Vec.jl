@@ -35,9 +35,9 @@ param_dict["number_divisions"] = 44# same
 #get_ze
 #get_zebra
 #@@infiltrate
-@load "v1_jesus_day2.jld" nn tt
-param_dict = Dict()
-param_dict["number_divisions"] = 500# same
+#@load "v1_jesus_day2.jld" nn tt
+#param_dict = Dict()
+#param_dict["number_divisions"] = 500# same
 
 #nodes,times = nn,tt
 #@show(maximum(tt))
