@@ -48,7 +48,7 @@ param_dict["number_divisions"] = 44# same
 #ylabel!(p3,"Neuron Id")
 #xlabel!(p3,"Time (ms)")
 #savefig("whatOfTimes.png")
-param_dict["similarity_threshold"] = 4.5 #9548088f0 # single element inside vector; no expansion
+param_dict["similarity_threshold"] = 31.5 #9548088f0 # single element inside vector; no expansion
 
 param_dict["nodes"] = nodes
 param_dict["times"] = times

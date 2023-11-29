@@ -991,137 +991,83 @@ function CompareObsVsCentres(centres,mat_of_distances,new_threshold,fit,tmd,stat
 
 end
 
-function KernelComparison(spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
-
-    tmd = Dict()
-    kernel_collector = Dict()
-    current_kernel = Dict()
-    mutated_kernel = Dict()
-    state_versus_time = Vector{Int32}([])
-    state_time = []
-    state_number = []
-    @inbounds for (template_ind,_) in enumerate(eachcol(spike_mat))
-        kernel_collector[template_ind] = []
-        tmd[template_ind] = []
+function usingAveragedComparison(threshold,spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes::AbstractVecOrMat,times::AbstractVecOrMat,sws::AbstractVecOrMat,ews::AbstractVecOrMat,MutatedKernel::Dict)
+    patternCnt = Dict()
+    PatternTimeInstances = Dict()   
+    @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
+        patternCnt[k] = 0
     end
-    @inbounds for (time_ind,_) in enumerate(eachcol(spike_mat))
-        push!(state_versus_time,-1.0)
-    end    
+    @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
+        PatternTimeInstances[k] = []
+    end
 
-
-    @inbounds @showprogress for (k,_) in  enumerate(eachcol(spike_mat))
+    @inbounds for (key,value) in pairs(MutatedKernel)
         @inbounds for (k1,_) in  enumerate(eachcol(spike_mat))
-            if k>k1
-        
+            if key>k1
+                (repn,rept) = divide_epoch(nodes,times,sws[k1],ews[k1])
+                if length(rept)>1
+                    rept = rept.-minimum(rept)
+                    B1 = kde((rept,repn))
+                    r = colwise(Euclidean(), value, B1.density)
+                    if sum(r)<= threshold
+                        patternCnt[key] += 1
+                        push!(PatternTimeInstances[key],k1)
+                    end
+                end
+            end
+        end
+    end
+    (patternCnt::Dict,PatternTimeInstances::Dict)    
+end
+
+function KernelComparison(threshold,spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
+    kernel_cnt = Dict()
+    @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
+        kernel_cnt[k] = 0
+    end
+    current_kernel = Dict()
+    MutatedKernel = Dict()
+    spike_mass_times, spike_mass_nodes = Dict(),Dict()
+    @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
+        spike_mass_times[k] = []
+        spike_mass_nodes[k] = []
+    end
+
+    @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
+        @inbounds for (k1,_) in  enumerate(eachcol(spike_mat))
+            if k>k1        
                 (repn,rept) = divide_epoch(nodes,times,sws[k],ews[k])
                 (repn1,rept1) = divide_epoch(nodes,times,sws[k1],ews[k1])
-
                 if length(rept)>1 && length(rept1)>1
-                    rept = rept.-minimum(rept)
-                    rept1 = rept1.-minimum(rept1)
+                    stored_min = minimum(rept)
+                    stored_min1 = minimum(rept1)
+
+                    rept = rept.-stored_min
+                    rept1 = rept1.-stored_min1
                     nodeBoundary=maximum([maximum(repn),maximum(repn1)])
                     timeBoundary = ews[k]-sws[k]
                     B0 = kde((rept,repn))
-                    current_kernel[k] = B0.density
                     B1 = kde((rept1,repn1))
-                    r = colwise(Euclidean(), current_kernel[k], B1.density)
-                    threshold = 30.5
-
+                    r = colwise(Euclidean(),B0.density,B1.density)
+    
                     if sum(r)<= threshold                    
-                        push!(tmd[k],k1)
-                        push!(state_time,k1)
-                        push!(state_number,k)
-                        state_versus_time[k1] = k
-                        avg_kernel = (current_kernel[k]+B1.density)/2.0
-                        @show(length(kernel_collector[k]))  
-                        if length(kernel_collector[k])>0
-                            mutated_kernel[k] = (mutated_kernel[k]+avg_kernel)/2.0
+                        append!(spike_mass_nodes[k],repn)
+                        append!(spike_mass_times[k],rept)
+    
+                        avg_kernel = (B0.density+B1.density)/2.0
+                        if kernel_cnt[k]>0.0
+                            MutatedKernel[k] = (MutatedKernel[k]+avg_kernel)/2.0
                         else
-                            mutated_kernel[k] = avg_kernel
+                            MutatedKernel[k] = avg_kernel
                         end
-                        # mutated_kernel[k] = (mutated_kernel[k]+avg_kernel)/2.0
-                        push!(kernel_collector[k],avg_kernel)
-                        Plots.heatmap(mutated_kernel[k])
-                        title!("Sample $k1")
-                        savefig("mutated_average_kernel$k$k1.png")
-                        #=
-                        threshold_attribute = sum(r)
-                        timeBoundaryMin=minimum([minimum(rept),minimum(rept1)])
-                        p1 = Plots.heatmap(B0.density)
-                        title!("Sample $k")
-                        p0 = Plots.heatmap(B1.density)
-                        title!("Sample $k1")
-                        nspike0 = length(rept)
-                        p2 = Plots.plot()#hull0)
-                        Plots.scatter!(p2,rept,repn,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
-                        difference = sum(r) - threshold 
-                        title!(p2,"N. spike: $nspike0")
-                        xlabel!("Time (ms)")
-                        ylabel!("Neuron ID")
-
-                        nspike1 = length(rept1)
-                        p3 = Plots.plot()#hull1)
-                        Plots.scatter!(p3,rept1,repn1,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
-                        title!(p3,"N. spike: $nspike1. Threshold delta $difference")
-                        xlabel!("Time (ms)")
-                        ylabel!("Neuron ID")
-
-                        #p4 = Plots.plot()#hull1)
-                        difference_density = B1.density - B0.density
-                        p4 = Plots.heatmap(difference_density)
-                        title!(p4,"Difference between kernel densities")
-                        #=
-                        (hull1,hull_area) = concave_hull_pc(repn1,rept1)
-                        isis0,_,_ = create_ISI_histogram(repn,rept)
-                        isis1,_,_ = create_ISI_histogram(repn1,rept1)
-                        
-                        rates0 = create_rates_histogram(repn,rept)
-                        rates1 = create_rates_histogram(repn1,rept1)
-                        #@show(length(rates0),length(rates1))
-                        #@assert
-                        if length(rates0) == length(rates1)
-                            rrate = cor(rates0,rates1)
-                            #@show(rrate)
-                        end
-                        min_binr = minimum([minimum(rates0),minimum(rates1)])
-                        max_binr = maximum([maximum(rates0),maximum(rates1)])
-                        =#
-                        =#
-                        #p4 = Plots.plot([i for i in 1:length(rates0)],rates0,legend=false)#,xlim=(min_binr,max_binr))
-                        #title!(p4,"Firing Rate Histogram")
-                        #p5 = Plots.plot([i for i in 1:length(rates1)],rates1,legend=false)#,xlim=(min_binr,max_binr))
-                        #title!(p5,"Firing Rate Histogram")
-                        #min_bini = minimum([minimum(isis0),minimum(isis1)])
-                        #max_bini = maximum([maximum(isis0),maximum(isis1)])
-                    
-                        #=
-                        p6 = Plots.plot(hull0,legend=false)#,fillrange = [i for i in 1:size(hull0)[1]])#,xlim=(min_bini,max_bini))
-                        title!(p4,"Firing Rate Histogram")
-                        p7 = Plots.plot(hull1,legend=false)#,fillrange = [i for i in 1:size(hull1)[1]])#,xlim=(min_bini,max_bini))
-                        title!(p5,"Firing Rate Histogram")
-                        =#
-                        #=
-                        Plots.plot(p0,p1,p2,p3,p4,layout=(3,2),size=(1000,1000))
-                        #@infiltrate
-                        savefig("NewHeat$k$k1$threshold_attribute.png")
-                        =#
-                        Plots.closeall()
-
-                        #println("save")
-
-                        #temp = length(rept)
-                        #title!("$temp")
-
-                        #plot(p6,plot(framestyle = :none),
-                        #p3,Plots.histogram(rates0,legend=false,orientation = :horizontal),
-                        #link = :both)
-                        #savefig("heat$k$k1$attribute.second.png")
+                        kernel_cnt[k]+=1
                     end 
                 end
             end
         end
-    end    
-end        
+    end
+    (MutatedKernel::Dict,kernel_cnt::Dict,spike_mass_nodes::Dict,spike_mass_times::Dict)    
+end
 #using StatsBase
 
 function final_similarity_test(cat_cnt,spike_mat,threshold,centres,mat_of_distances,distance_distributions,nodes,times,state_spike_nodes,state_spike_times,state_time,state_number,sws,ews,color_coded_mat)
@@ -1233,7 +1179,7 @@ end
     =#
 
 
-function heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,spike_mat,step_size,color_coded_mat;threshold::Real=5)
+function heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,spike_mat,step_size,color_coded_mat;threshold::Real=30)
     NURS = 0.0
     #displacetime=0
     #NumberTemplates = 0.0#::AbstractVecOrMat
@@ -1248,10 +1194,134 @@ function heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix::AbstractVe
     #@show(size(mat_of_distances))
     if size(spike_mat)[1]>2
         #fit = Dict()
-        KernelComparison(spike_mat,enrich,nodes,times,sws,ews)
+        @time (MutatedKernel,kernelCntDict,spkn,spkt) = KernelComparison(threshold,spike_mat,enrich,nodes,times,sws,ews)
+        @time (patternCnt,PatternTimeInstances) = usingAveragedComparison(threshold,spike_mat,enrich,nodes,times,sws,ews,MutatedKernel) 
+        plot_patterns_found(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
+        plot_patterns_found_vs_time_hits(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
+
     end
-    #enrich
 end
+function plot_patterns_found_vs_time_hits(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
+    Tcnt = 0
+    p0=Plots.scatter()
+    p1=Plots.plot()
+    for (k,v) in pairs(patternCnt)
+        nn = []
+        tt = []
+        if v>0
+            Plots.vline!(p1,PatternTimeInstances[k],alpha=0.5,legend=false)#,color=k)
+            Plots.scatter!(p0,spkt[k].+Tcnt,spkn[k],legend=false,markersize=1.0,markerstrokewidth=0)
+            Tcnt+=1
+        end
+    end
+    p3 = Plots.scatter(times,nodes,legend=false,markersize=1.0,markerstrokewidth=0)
+    Plots.plot(p0,p1,p3,layout=(2,2),size=(1000,1000))
+    savefig("Templates.png")
+
+end
+function plot_patterns_found(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
+    for (k,v) in pairs(patternCnt)
+        nn = []
+        tt = []
+        if v>0
+            p0=Plots.scatter()
+            for time_index in PatternTimeInstances[k]
+                (repn,rept) = divide_epoch(nodes,times,sws[Int32(time_index)],ews[Int32(time_index)])
+                Plots.scatter!(p0,rept,repn,legend=false,markersize=1.0,markerstrokewidth=0,color=k)
+            end
+            p2=Plots.scatter(spkt[k],spkn[k],legend=false,markersize=1.0,markerstrokewidth=0)
+
+            p1=Plots.heatmap(MutatedKernel[k])#,legend=false)
+            Plots.plot(p0,p1,p2)
+            savefig("patterns$k.png")
+            Plots.plot(tt,nn,legend=false,markersize=1.0,markerstrokewidth=0)
+        end
+    end
+end
+
+
+#=
+        threshold_attribute = sum(r)
+        timeBoundaryMin=minimum([minimum(rept),minimum(rept1)])
+        p1 = Plots.heatmap(B0.density)
+        title!("Sample $k")
+        p0 = Plots.heatmap(B1.density)
+        title!("Sample $k1")
+        nspike0 = length(rept)
+        p2 = Plots.plot()#hull0)
+        Plots.scatter!(p2,rept,repn,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
+        difference = sum(r) - threshold 
+        title!(p2,"N. spike: $nspike0")
+        xlabel!("Time (ms)")
+        ylabel!("Neuron ID")
+
+        nspike1 = length(rept1)
+        p3 = Plots.plot()#hull1)
+        Plots.scatter!(p3,rept1,repn1,legend=false,ylim=(0.0,nodeBoundary),xlim=(timeBoundaryMin,timeBoundary))
+        title!(p3,"N. spike: $nspike1. Threshold delta $difference")
+        xlabel!("Time (ms)")
+        ylabel!("Neuron ID")
+
+        #p4 = Plots.plot()#hull1)
+        difference_density = B1.density - B0.density
+        p4 = Plots.heatmap(difference_density)
+        title!(p4,"Difference between kernel densities")
+        #=
+        (hull1,hull_area) = concave_hull_pc(repn1,rept1)
+        isis0,_,_ = create_ISI_histogram(repn,rept)
+        isis1,_,_ = create_ISI_histogram(repn1,rept1)
+        
+        rates0 = create_rates_histogram(repn,rept)
+        rates1 = create_rates_histogram(repn1,rept1)
+        #@show(length(rates0),length(rates1))
+        #@assert
+        if length(rates0) == length(rates1)
+            rrate = cor(rates0,rates1)
+            #@show(rrate)
+        end
+        min_binr = minimum([minimum(rates0),minimum(rates1)])
+        max_binr = maximum([maximum(rates0),maximum(rates1)])
+        =#
+        =#
+        #p4 = Plots.plot([i for i in 1:length(rates0)],rates0,legend=false)#,xlim=(min_binr,max_binr))
+        #title!(p4,"Firing Rate Histogram")
+        #p5 = Plots.plot([i for i in 1:length(rates1)],rates1,legend=false)#,xlim=(min_binr,max_binr))
+        #title!(p5,"Firing Rate Histogram")
+        #min_bini = minimum([minimum(isis0),minimum(isis1)])
+        #max_bini = maximum([maximum(isis0),maximum(isis1)])
+
+        #=
+        p6 = Plots.plot(hull0,legend=false)#,fillrange = [i for i in 1:size(hull0)[1]])#,xlim=(min_bini,max_bini))
+        title!(p4,"Firing Rate Histogram")
+        p7 = Plots.plot(hull1,legend=false)#,fillrange = [i for i in 1:size(hull1)[1]])#,xlim=(min_bini,max_bini))
+        title!(p5,"Firing Rate Histogram")
+        =#
+        #=
+        Plots.plot(p0,p1,p2,p3,p4,layout=(3,2),size=(1000,1000))
+        #@infiltrate
+        savefig("NewHeat$k$k1$threshold_attribute.png")
+        =#
+        #Plots.closeall()
+
+        #println("save")
+
+        #temp = length(rept)
+        #title!("$temp")
+
+        #plot(p6,plot(framestyle = :none),
+        #p3,Plots.histogram(rates0,legend=false,orientation = :horizontal),
+        #link = :both)
+        #savefig("heat$k$k1$attribute.second.png")
+
+        #@show(sum(values(kernelCntDict)))
+        #66
+        
+        #infil> 
+        #@show(sum(values(patternCnt)))
+        #113
+        
+        #@infiltrate
+
 
 function label_spikes!(cat_cnt,mat_of_distances,distance_matrix::AbstractVecOrMat,sws,ews,times,nodes,spike_mat,step_size,color_coded_mat;threshold::Real=5)
     NURS = 0.0
