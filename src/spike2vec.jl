@@ -1022,11 +1022,13 @@ end
 
 function KernelComparison(threshold,spike_mat::AbstractVecOrMat,enrich::AbstractVecOrMat,nodes,times,sws,ews)
     kernel_cnt = Dict()
+    current_kernel = Dict()
+    MutatedKernel = Dict()
+    cnt=0
+
     @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
         kernel_cnt[k] = 0
     end
-    current_kernel = Dict()
-    MutatedKernel = Dict()
     spike_mass_times, spike_mass_nodes = Dict(),Dict()
     @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
         spike_mass_times[k] = []
@@ -1041,7 +1043,6 @@ function KernelComparison(threshold,spike_mat::AbstractVecOrMat,enrich::Abstract
                 if length(rept)>1 && length(rept1)>1
                     stored_min = minimum(rept)
                     stored_min1 = minimum(rept1)
-
                     rept = rept.-stored_min
                     rept1 = rept1.-stored_min1
                     nodeBoundary=maximum([maximum(repn),maximum(repn1)])
@@ -1049,14 +1050,13 @@ function KernelComparison(threshold,spike_mat::AbstractVecOrMat,enrich::Abstract
                     B0 = kde((rept,repn))
                     B1 = kde((rept1,repn1))
                     r = colwise(Euclidean(),B0.density,B1.density)
-    
-                    if sum(r)<= threshold                    
+                    if sum(r)<= threshold       
                         append!(spike_mass_nodes[k],repn)
                         append!(spike_mass_times[k],rept)
-    
-                        avg_kernel = (B0.density+B1.density)/2.0
+                        avg_kernel = (B0.density+B1.density)
+                        cnt+=1
                         if kernel_cnt[k]>0.0
-                            MutatedKernel[k] = (MutatedKernel[k]+avg_kernel)/2.0
+                            MutatedKernel[k] = MutatedKernel[k]+avg_kernel
                         else
                             MutatedKernel[k] = avg_kernel
                         end
@@ -1066,6 +1066,13 @@ function KernelComparison(threshold,spike_mat::AbstractVecOrMat,enrich::Abstract
             end
         end
     end
+    @inbounds for (k,_) in  enumerate(eachcol(spike_mat))
+        if kernel_cnt[k]>0.0
+            MutatedKernel[k] = MutatedKernel[k]/kernel_cnt[k]
+        end
+    end
+
+    #@infiltrate
     (MutatedKernel::Dict,kernel_cnt::Dict,spike_mass_nodes::Dict,spike_mass_times::Dict)    
 end
 #using StatsBase
@@ -1194,8 +1201,8 @@ function heatCompareRapper!(cat_cnt,mat_of_distances,distance_matrix::AbstractVe
     #@show(size(mat_of_distances))
     if size(spike_mat)[1]>2
         #fit = Dict()
-        @time (MutatedKernel,kernelCntDict,spkn,spkt) = KernelComparison(threshold,spike_mat,enrich,nodes,times,sws,ews)
-        @time (patternCnt,PatternTimeInstances) = usingAveragedComparison(threshold,spike_mat,enrich,nodes,times,sws,ews,MutatedKernel) 
+        (MutatedKernel,kernelCntDict,spkn,spkt) = KernelComparison(threshold,spike_mat,enrich,nodes,times,sws,ews)
+        (patternCnt,PatternTimeInstances) = usingAveragedComparison(threshold,spike_mat,enrich,nodes,times,sws,ews,MutatedKernel) 
         plot_patterns_found(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
         plot_patterns_found_vs_time_hits(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
 
@@ -1204,34 +1211,40 @@ end
 function plot_patterns_found_vs_time_hits(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
     Tcnt = 0
     p0=Plots.scatter()
-    p1=Plots.plot()
+    p1=Plots.scatter()
+    cnt=0
+
     for (k,v) in pairs(patternCnt)
         nn = []
         tt = []
         if v>0
-            Plots.vline!(p1,PatternTimeInstances[k],alpha=0.5,legend=false)#,color=k)
-            Plots.scatter!(p0,spkt[k].+Tcnt,spkn[k],legend=false,markersize=1.0,markerstrokewidth=0)
-            Tcnt+=1
+            Plots.scatter!(p1,PatternTimeInstances[k],[k],legend=false,color=k,markersize=4.5,markerstrokewidth=0.0)
+            Plots.scatter!(p0,spkt[k].+Tcnt,spkn[k],legend=false,markersize=3.5,markerstrokewidth=0.0)
+            Tcnt+=maximum(spkt[k])
         end
+        cnt+=1
+
     end
-    p3 = Plots.scatter(times,nodes,legend=false,markersize=1.0,markerstrokewidth=0)
+    p3 = Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=0.0)
     Plots.plot(p0,p1,p3,layout=(2,2),size=(1000,1000))
+    @show(Tcnt)
+    println("gets here a!")
     savefig("Templates.png")
 
 end
 function plot_patterns_found(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
-    for (k,v) in pairs(patternCnt)
+    cnt =0
+    @inbounds for (k,v) in pairs(patternCnt)
         nn = []
         tt = []
-        if v>0
+        if v>0 
             p0=Plots.scatter()
-            for time_index in PatternTimeInstances[k]
+            @inbounds for time_index in PatternTimeInstances[k]
                 (repn,rept) = divide_epoch(nodes,times,sws[Int32(time_index)],ews[Int32(time_index)])
                 Plots.scatter!(p0,rept,repn,legend=false,markersize=1.0,markerstrokewidth=0,color=k)
             end
             p2=Plots.scatter(spkt[k],spkn[k],legend=false,markersize=1.0,markerstrokewidth=0)
-
-            p1=Plots.heatmap(MutatedKernel[k])#,legend=false)
+            p1=Plots.heatmap(MutatedKernel[k])
             Plots.plot(p0,p1,p2)
             savefig("patterns$k.png")
             Plots.plot(tt,nn,legend=false,markersize=1.0,markerstrokewidth=0)
@@ -2189,11 +2202,17 @@ function doanalysisrev(d)
     enrich = zeros(length(sws),length(sws))
 
     for (spikes_ragged_packet,cl_ind) in zip(finished_jobs,cluster_ind)
-        ts_ = ts[cl_ind,:]
-        nodes,times = ragged_to_lists(spikes_ragged_packet)
-        spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
-        label_spikes(ts_,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
+        @show(sum(cl_ind))
+        if sum(cl_ind) >0.0
+            ts_ = ts[cl_ind,:]
+            #@infiltrate
+            nodes,times = ragged_to_lists(spikes_ragged_packet)
+            spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
+            label_spikes(ts_,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)
+        end
     end
+end
+
 
     #for e in enrichs
     #    enrich+=e
@@ -2242,8 +2261,6 @@ function doanalysisrev(d)
     =#
     #distance_matrix::AbstractVecOrMat,repeatitive::Real,dict0::Dict,dict1::Dict,NURS::Real
     #(_,rep,_,_,NURS,state_frequency_histogram) = label_spikes(new_distmat,sws,ews,times,nodes,div_spike_mat_with_displacement_local;threshold=similarity_threshold)
-
-end
 
 
 
