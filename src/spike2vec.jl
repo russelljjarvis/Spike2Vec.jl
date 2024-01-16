@@ -2,10 +2,10 @@
 # Eventually this will need to move to source.
 # 
 using KernelDensity
-
+using KernelAbstractions
 using HDF5
 using Plots
-Plots.gr(fmt=:png)
+#Plots.gr(fmt=:png)
 using OnlineStats
 #using Plots
 using JLD2
@@ -1227,9 +1227,11 @@ function plot_patterns_found_vs_time_hits(patternCnt,PatternTimeInstances,Mutate
     end
     p3 = Plots.scatter(times,nodes,legend=false,markersize=2.5,markerstrokewidth=0.0)
     Plots.plot(p0,p1,p3,layout=(2,2),size=(1000,1000))
-    @show(Tcnt)
+    #@show(Tcnt)
     println("gets here a!")
-    savefig("Templates.png")
+    temp = length(spkt)
+    @show(temp)
+    savefig("Templates$temp.png")
 
 end
 function plot_patterns_found(patternCnt,PatternTimeInstances,MutatedKernel,sws,ews,nodes,times,spkn,spkt)
@@ -2202,10 +2204,26 @@ function doanalysisrev(d)
     enrich = zeros(length(sws),length(sws))
 
     for (spikes_ragged_packet,cl_ind) in zip(finished_jobs,cluster_ind)
-        @show(sum(cl_ind))
+        if typeof(cl_ind[1]) == Float64
+            cl_ind = [ Int64(i) for i in cl_ind]
+            cl_ind = [ Bool(i) for i in cl_ind]
+
+        end
+        #for (i,item) in enumerate(cl_ind)
+            #@show(typeof(cl_ind[i]))
+        #    cl_ind[i] = Bool(cl_ind[i])
+        #end
+        #cl_ind = [ Int64(i) for i in cl_ind]
+
+        #@show(sum(cl_ind))
+        #@show(size(cl_ind))
+        #@show(size(ts))
+
         if sum(cl_ind) >0.0
+            #if sum(cl_ind)== 4
+            #   cl_ind = [ Int64(i) for i in cl_ind]
+            #end
             ts_ = ts[cl_ind,:]
-            #@infiltrate
             nodes,times = ragged_to_lists(spikes_ragged_packet)
             spikeMat,sws,ews,window_size = spike_matrix_divided(spikes_ragged_packet, step_size,number_divisions, maxt,recording_start_time ;displace=true,sliding=false)    
             label_spikes(ts_,sws,ews,times,nodes,spikeMat,step_size,cat_cnt;threshold=similarity_threshold)

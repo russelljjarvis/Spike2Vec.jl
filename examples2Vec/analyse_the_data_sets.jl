@@ -12,7 +12,7 @@ using UMAP
 using Infiltrator
 (nodes,times) = load_zebra_finche_nmc_dataset()
 result = maximum(times)/22.0
-@show(result)
+#@show(result)
 param_dict = Dict()
 param_dict["number_divisions"] = 44# same
 
