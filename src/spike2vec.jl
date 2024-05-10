@@ -5,34 +5,21 @@ using KernelDensity
 using KernelAbstractions
 using HDF5
 using Plots
-#Plots.gr(fmt=:png)
 using OnlineStats
-#using Plots
 using JLD2
 using SpikeSynchrony
 using LinearAlgebra
 using Revise
-#using StatsBase
 using ProgressMeter
-#using LinearAlgebra
 using Revise
-#using UMAP
 using Distances
 using StaticArrays
 using Clustering
 using StatsBase
-#import OnlineStatsBase.CircBuff
 using Infiltrator
-#using RecurrenceAnalysis
 using Statistics
 import LinearAlgebra.normalize!
 import LinearAlgebra.norm
-#using DataFrames
-#using MatrixProfile, Plots
-#using ProfileView
-#using Cthulhu
-#using StatProfilerHTML
-
 """
 # statistics-Shinomoto2009_e1000433
 # https://github.com/NeuralEnsemble/elephant/blob/master/elephant/statistics.py
